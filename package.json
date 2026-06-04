@@ -1,14 +1,24 @@
 {
-  "name": "my-app",
+  "name": "mother-care-school",
   "version": "0.1.0",
   "private": true,
+  "description": "Mother Care School — School broadcasting & communication platform",
+  "author": "hasan",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next",
+    "dev:clear": "rm -rf .next && next dev",
+    "dev:server": "tsx watch server.ts",
+    "start:server": "tsx server.ts"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
+    "lucide-react": "^1.17.0",
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -21,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
