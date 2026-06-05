@@ -103,15 +103,17 @@ export default function ClassesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1614]">
-      <header className="flex items-center justify-between border-b border-warm-card-border px-6 py-3">
-        <h1 className="text-sm font-medium text-warm-cream">Classes</h1>
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      {/* Sub-header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-light text-warm-cream">Classes</h1>
+          <p className="text-sm text-warm-muted">Manage class groups and sections.</p>
+        </div>
         <button onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
           <Plus size={14} /> Add Class
         </button>
-      </header>
-
-      <main className="mx-auto max-w-3xl px-6 py-8">
+      </div>
         {error && (
           <p className="mb-4 rounded-lg border border-red/20 bg-red/10 px-4 py-2 text-xs text-red">{error}</p>
         )}
@@ -216,6 +218,5 @@ export default function ClassesPage() {
           </div>
         )}
       </main>
-    </div>
   );
 }
