@@ -26,6 +26,8 @@ export default function LoginPage() {
 
       if (data.success && data.token) {
         localStorage.setItem('token', data.token);
+        // Set cookie for proxy middleware (which reads cookies, not localStorage)
+        document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         router.push('/admin');
       } else {
         setError(data.message || 'Invalid credentials');

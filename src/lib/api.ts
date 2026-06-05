@@ -50,6 +50,9 @@ export const api = {
 
   me: () => apiRequest('/auth/me'),
 
+  stats: () =>
+    apiRequest('/admin/stats'),
+
   logout: () =>
     apiRequest('/auth/logout', { method: 'POST' }),
 };
