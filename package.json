@@ -6,15 +6,16 @@
   "author": "hasan",
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/preflight.ts --allow-warn && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "preflight": "tsx scripts/preflight.ts",
     "clean": "rm -rf .next",
-    "dev:clear": "rm -rf .next && next dev",
+    "dev:clear": "rm -rf .next && tsx scripts/preflight.ts --allow-warn && next dev",
     "dev:server": "tsx watch server.ts",
     "start:server": "tsx server.ts"
   },
