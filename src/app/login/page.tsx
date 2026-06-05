@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import config from '@/config';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -22,12 +22,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${config.apiUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim(), password }),
-      });
-      const data = await res.json();
+      const data = await api.login(identifier.trim(), password);
 
       if (data.success && data.token) {
         localStorage.setItem('token', data.token);
@@ -59,7 +54,7 @@ export default function LoginPage() {
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
           </svg>
-          <h1 className="text-xl font-light text-warm-cream">{config.appName}</h1>
+          <h1 className="text-xl font-light text-warm-cream">Mother Care School</h1>
         </div>
 
         {/* Login form */}
