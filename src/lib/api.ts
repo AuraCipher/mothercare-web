@@ -55,4 +55,17 @@ export const api = {
 
   logout: () =>
     apiRequest('/auth/logout', { method: 'POST' }),
+
+  // ─── Groups / Classes ───────────────────────────────
+  getGroups: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
+
+  createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; communityId?: string }) =>
+    apiRequest('/admin/groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteGroup: (id: string) =>
+    apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
 };

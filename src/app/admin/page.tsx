@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { LogOut, Users, BookOpen, GraduationCap, LayoutDashboard, ArrowRight } from 'lucide-react';
+import { LogOut, Users, BookOpen, GraduationCap, LayoutDashboard, ArrowRight, Menu, X } from 'lucide-react';
 
 interface UserData {
   id: string;
@@ -30,6 +30,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -81,6 +82,9 @@ export default function AdminPage() {
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-warm-card-border px-6 py-3">
         <div className="flex items-center gap-2">
+          <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">
+            {menuOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
           <LayoutDashboard size={16} className="text-warm-accent" />
           <span className="text-sm font-medium text-warm-cream">Admin</span>
         </div>
@@ -95,6 +99,29 @@ export default function AdminPage() {
           </button>
         </div>
       </header>
+
+      {/* Sidebar overlay */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 flex">
+          {/* Backdrop */}
+          <div className="flex-1 bg-black/50" onClick={() => setMenuOpen(false)} />
+          {/* Side menu */}
+          <nav className="w-56 bg-[#24201e] border-l border-warm-card-border p-4">
+            <p className="mb-4 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Navigation</p>
+            <div className="space-y-0.5">
+              <a href="/admin/classes" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-cream hover:bg-warm-card transition-colors">
+                <BookOpen size={14} className="text-warm-accent" /> Classes / Groups
+              </a>
+              <a href="/admin" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">
+                <Users size={14} className="text-warm-accent" /> Teachers
+              </a>
+              <a href="/admin" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">
+                <GraduationCap size={14} className="text-warm-accent" /> Students
+              </a>
+            </div>
+          </nav>
+        </div>
+      )}
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         {/* Welcome */}
@@ -145,7 +172,7 @@ export default function AdminPage() {
               <span className="flex items-center gap-2 text-sm text-warm-cream"><Users size={15} className="text-warm-accent" /> Manage Users</span>
               <ArrowRight size={14} className="text-warm-muted" />
             </a>
-            <a href="/admin" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
+            <a href="/admin/classes" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
               <span className="flex items-center gap-2 text-sm text-warm-cream"><BookOpen size={15} className="text-warm-accent" /> Classes & Groups</span>
               <ArrowRight size={14} className="text-warm-muted" />
             </a>
