@@ -3,7 +3,7 @@
 /* ─────────────────────────────────────────────────
    Mother Care School — Global Styles
    Calm, professional, education-first design.
-   Dark theme by default with light variables ready.
+   Warm dark theme matching the Three.js canvas.
    ───────────────────────────────────────────────── */
 
 :root {
@@ -25,17 +25,22 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-warm-accent: #c4a882;
+  --color-warm-cream: #f0ebe3;
+  --color-warm-muted: #a0988a;
+  --color-warm-card: rgba(240, 235, 227, 0.04);
+  --color-warm-card-border: rgba(240, 235, 227, 0.08);
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --border: #334155;
+    --background: #1a1614;
+    --foreground: #f0ebe3;
+    --muted: #2a2522;
+    --muted-foreground: #a0988a;
+    --border: #3a3430;
   }
 }
 
@@ -45,4 +50,15 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keep dark background on autofilled inputs (browser override fix) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #1a1614 inset !important;
+  -webkit-text-fill-color: #f0ebe3 !important;
+  caret-color: #f0ebe3 !important;
+  transition: background-color 9999999s ease-in-out 0s;
 }
