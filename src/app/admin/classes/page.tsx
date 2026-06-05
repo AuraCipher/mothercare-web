@@ -28,6 +28,7 @@ export default function ClassesPage() {
   const [className, setClassName] = useState('');
   const [arrangement, setArrangement] = useState('');
   const [enableSections, setEnableSections] = useState(false);
+  const [sections, setSections] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
 
   useEffect(() => {
@@ -63,8 +64,7 @@ export default function ClassesPage() {
     const order = parseInt(arrangement, 10);
     if (isNaN(order)) return;
 
-    if (enableSections && sectionInput.trim()) {
-      const sections = sectionInput.split(',').map((s) => s.trim()).filter(Boolean);
+    if (enableSections && sections.length > 0) {
       for (const section of sections) {
         await api.createGroup({ name: className.trim(), section, displayOrder: order }).catch(() => {});
       }
@@ -81,6 +81,7 @@ export default function ClassesPage() {
     setClassName('');
     setArrangement('');
     setEnableSections(false);
+    setSections([]);
     setSectionInput('');
   };
 
@@ -143,9 +144,44 @@ export default function ClassesPage() {
 
                 {enableSections && (
                   <div>
-                    <label className="mb-1 block text-xs text-warm-muted">Section names</label>
-                    <input value={sectionInput} onChange={(e) => setSectionInput(e.target.value)} placeholder="A, B, CompSci, Arts" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-                    <p className="mt-0.5 text-[10px] text-warm-muted/60">Comma-separated list. Each section becomes its own group.</p>
+                    <label className="mb-1 block text-xs text-warm-muted">Sections</label>
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                      {sections.map((s, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-md border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-xs text-warm-accent">
+                          {s}
+                          <button onClick={() => setSections(sections.filter((_, j) => j !== i))} className="text-warm-accent/60 hover:text-warm-accent transition-colors">
+                            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      value={sectionInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val.endsWith(',') || val.endsWith('，')) {
+                          const tag = val.slice(0, -1).trim();
+                          if (tag && !sections.includes(tag)) setSections([...sections, tag]);
+                          setSectionInput('');
+                        } else {
+                          setSectionInput(val);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const tag = sectionInput.trim();
+                          if (tag && !sections.includes(tag)) setSections([...sections, tag]);
+                          setSectionInput('');
+                        }
+                        if (e.key === 'Backspace' && sectionInput === '' && sections.length > 0) {
+                          setSections(sections.slice(0, -1));
+                        }
+                      }}
+                      placeholder={sections.length === 0 ? 'Type and press Enter — e.g. A' : 'Add another…'}
+                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent"
+                    />
+                    <p className="mt-0.5 text-[10px] text-warm-muted/60">Press Enter or comma to add each section. Click × to remove.</p>
                   </div>
                 )}
               </div>
