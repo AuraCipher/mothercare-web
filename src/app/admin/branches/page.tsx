@@ -147,22 +147,23 @@ export default function BranchesPage() {
   // ─── Deactivate ──────────────────────────────────────────────
 
   const promptDeactivate = (branch: Branch) => {
-    const hasAy = branch._count && branch._count.academicYears > 0;
+    const hasData = (branch._count?.academicYears ?? 0) > 0 || (branch._count?.branchMembers ?? 0) > 0;
     setConfirm({
       open: true,
-      title: 'Deactivate Branch?',
-      message: hasAy
-        ? `"${branch.name}" has ${branch._count!.academicYears} academic year(s). Deactivating will hide this branch. You can still access archived data.`
-        : `Are you sure you want to deactivate "${branch.name}"? It can be reactivated later.`,
-      variant: 'danger',
-      confirmLabel: 'Deactivate',
+      title: hasData ? 'Archive Branch?' : 'Delete Branch?',
+      message: hasData
+        ? `"${branch.name}" has ${branch._count!.academicYears} academic year(s) and ${branch._count!.branchMembers} member(s). It will be archived — data preserved but branch hidden.`
+        : `"${branch.name}" has no linked academic years or members. It will be permanently deleted.`,
+      variant: hasData ? 'warning' : 'danger',
+      confirmLabel: hasData ? 'Archive Branch' : 'Delete Permanently',
       action: async () => {
         try {
-          await api.deactivateBranch(branch.id);
-          showToast('success', `"${branch.name}" deactivated`);
+          const res = await api.deactivateBranch(branch.id) as any;
+          const msg = res?.message || (hasData ? 'Branch archived' : 'Branch deleted');
+          showToast('success', msg);
           loadBranches();
         } catch (e: any) {
-          showToast('error', e.message || 'Failed to deactivate');
+          showToast('error', e.message || 'Failed to remove branch');
         }
       },
     });
