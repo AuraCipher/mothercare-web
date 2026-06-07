@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Calendar, ArrowLeft, Building2, Users, BookOpen, CheckCircle, Archive } from 'lucide-react';
+import ConfirmModal from '@/components/confirm-modal';
+import { showToast } from '@/components/toast';
 
 interface AcademicYearDetail {
   id: string;
@@ -31,7 +33,16 @@ export default function AcademicYearDetailPage() {
   const [ay, setAy] = useState<AcademicYearDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [publishing, setPublishing] = useState(false);
+
+  // Confirm modal
+  const [confirm, setConfirm] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'default';
+    confirmLabel: string;
+    action: () => Promise<void>;
+  }>({ open: false, title: '', message: '', variant: 'default', confirmLabel: 'Confirm', action: async () => {} });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -50,27 +61,44 @@ export default function AcademicYearDetailPage() {
     }
   };
 
-  const handlePublish = async () => {
-    if (!confirm('Publish this academic year? It will become the ACTIVE year for this branch.')) return;
-    setPublishing(true);
-    try {
-      await api.publishAcademicYear(ayId);
-      loadAy();
-    } catch (e: any) {
-      alert(e.message || 'Failed to publish');
-    } finally {
-      setPublishing(false);
-    }
+  const promptPublish = () => {
+    if (!ay) return;
+    setConfirm({
+      open: true,
+      title: 'Publish Academic Year?',
+      message: `"${ay.calendar.label}" will become the ACTIVE year for ${ay.branch.name}. Only one year can be active per branch.`,
+      variant: 'default',
+      confirmLabel: 'Publish',
+      action: async () => {
+        try {
+          await api.publishAcademicYear(ayId);
+          showToast('success', `"${ay.calendar.label}" is now ACTIVE`);
+          loadAy();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to publish');
+        }
+      },
+    });
   };
 
-  const handleArchive = async () => {
-    if (!confirm('Archive this academic year?')) return;
-    try {
-      await api.archiveAcademicYear(ayId);
-      loadAy();
-    } catch (e: any) {
-      alert(e.message || 'Failed to archive');
-    }
+  const promptArchive = () => {
+    if (!ay) return;
+    setConfirm({
+      open: true,
+      title: 'Archive Academic Year?',
+      message: `"${ay.calendar.label}" will be archived. Data is preserved but the year is closed.`,
+      variant: 'warning',
+      confirmLabel: 'Archive',
+      action: async () => {
+        try {
+          await api.archiveAcademicYear(ayId);
+          showToast('success', `"${ay.calendar.label}" archived`);
+          loadAy();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to archive');
+        }
+      },
+    });
   };
 
   const statusBadge = (status: string) => {
@@ -87,8 +115,8 @@ export default function AcademicYearDetailPage() {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-8 h-6 w-48 rounded bg-warm-card animate-pulse" />
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-warm-card animate-pulse" />)}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-20 rounded-xl bg-warm-card animate-pulse" />)}
         </div>
         <div className="h-40 rounded-xl bg-warm-card animate-pulse" />
       </main>
@@ -97,8 +125,9 @@ export default function AcademicYearDetailPage() {
 
   if (!ay) {
     return (
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10 text-center">
         <p className="text-sm text-warm-muted">Academic year not found.</p>
+        <button onClick={() => router.back()} className="mt-3 text-xs text-warm-accent hover:text-[#b39a76] transition-colors">← Go back</button>
       </main>
     );
   }
@@ -113,14 +142,18 @@ export default function AcademicYearDetailPage() {
         <ArrowLeft size={13} /> Back to {ay.branch.name}
       </button>
 
+      {error && (
+        <p className="mb-4 rounded-lg border border-warm-card-border bg-warm-card px-4 py-2 text-xs text-[#b39a76]">{error}</p>
+      )}
+
       {/* Header card */}
       <div className="mb-8 rounded-xl border border-warm-card-border bg-warm-card p-5">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Calendar size={24} className="text-warm-accent" />
             <div>
               <h1 className="text-xl font-light text-warm-cream">{ay.calendar.label}</h1>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {statusBadge(ay.status)}
                 <span className="text-xs text-warm-muted/70">
                   {new Date(ay.calendar.startDate).toLocaleDateString()} — {new Date(ay.calendar.endDate).toLocaleDateString()}
@@ -131,16 +164,15 @@ export default function AcademicYearDetailPage() {
           <div className="flex items-center gap-2">
             {ay.status === 'BUILD_STAGE' && (
               <button
-                onClick={handlePublish}
-                disabled={publishing}
-                className="flex items-center gap-1.5 rounded-lg bg-green-600/20 px-3.5 py-2 text-xs font-medium text-green-400 hover:bg-green-600/30 border border-green-700/30 disabled:opacity-50 transition-colors"
+                onClick={promptPublish}
+                className="flex items-center gap-1.5 rounded-lg bg-green-600/20 px-3.5 py-2 text-xs font-medium text-green-400 hover:bg-green-600/30 border border-green-700/30 transition-colors"
               >
-                <CheckCircle size={13} /> {publishing ? 'Publishing…' : 'Publish Year'}
+                <CheckCircle size={13} /> Publish Year
               </button>
             )}
             {ay.status === 'ACTIVE' && (
               <button
-                onClick={handleArchive}
+                onClick={promptArchive}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent/15 px-3.5 py-2 text-xs font-medium text-warm-accent hover:bg-warm-accent/25 border border-warm-accent/30 transition-colors"
               >
                 <Archive size={13} /> Archive Year
@@ -149,25 +181,21 @@ export default function AcademicYearDetailPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-4 border-t border-warm-card-border pt-4">
+        <div className="mt-4 flex items-center gap-4 border-t border-warm-card-border pt-4 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-warm-muted/70">
             <Building2 size={13} className="text-warm-accent" />
             {ay.branch.name}
           </div>
           {ay.previousAcademicYear && (
             <div className="flex items-center gap-1.5 text-xs text-warm-muted/70">
-              <span>Previous: {statusBadge(ay.previousAcademicYear.status)}</span>
+              Previous: {statusBadge(ay.previousAcademicYear.status)}
             </div>
           )}
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 rounded-lg border border-warm-card-border bg-warm-card px-4 py-2 text-xs text-[#b39a76]">{error}</p>
-      )}
-
       {/* Stats grid */}
-      <div className="mb-8 grid grid-cols-4 gap-4">
+      <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
           <BookOpen size={15} className="mb-2 text-warm-accent" />
           <p className="text-lg font-light text-warm-cream">{ay._count.groups}</p>
@@ -195,14 +223,15 @@ export default function AcademicYearDetailPage() {
         <h2 className="mb-3 text-sm font-medium text-warm-cream">Groups</h2>
         {ay.groups.length === 0 ? (
           <div className="rounded-xl border border-warm-card-border bg-warm-card p-8 text-center">
+            <BookOpen size={24} className="mx-auto mb-2 text-warm-accent/50" />
             <p className="text-sm text-warm-muted">No groups yet.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
             {ay.groups.map((g) => (
-              <div key={g.id} className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-2.5">
+              <div key={g.id} className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-2.5 hover:bg-warm-card/80 transition-colors">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-warm-muted/50 w-5 text-right">{g.displayOrder}</span>
+                  <span className="text-xs text-warm-muted/50 w-5 text-right font-mono">{g.displayOrder}</span>
                   <span className="text-sm text-warm-cream">{g.name}</span>
                   {g.section && <span className="text-xs text-warm-muted/60">({g.section})</span>}
                 </div>
@@ -221,21 +250,34 @@ export default function AcademicYearDetailPage() {
         <h2 className="mb-3 text-sm font-medium text-warm-cream">Members</h2>
         {ay.members.length === 0 ? (
           <div className="rounded-xl border border-warm-card-border bg-warm-card p-8 text-center">
+            <Users size={24} className="mx-auto mb-2 text-warm-accent/50" />
             <p className="text-sm text-warm-muted">No members yet.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
             {ay.members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-warm-cream">{m.user.name}</span>
-                </div>
+              <div key={m.id} className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-2.5 hover:bg-warm-card/80 transition-colors">
+                <span className="text-sm text-warm-cream">{m.user.name}</span>
                 <span className="text-[10px] text-warm-muted capitalize">{m.user.role.replace('_', ' ')}</span>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmLabel={confirm.confirmLabel}
+        onConfirm={async () => {
+          await confirm.action();
+          setConfirm((prev) => ({ ...prev, open: false }));
+        }}
+        onCancel={() => setConfirm((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

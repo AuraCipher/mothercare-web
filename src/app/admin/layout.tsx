@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
-import { LogOut, Users, BookOpen, GraduationCap, LayoutDashboard, Building2, Calendar, Menu, X } from 'lucide-react';
+import { LogOut, BookOpen, LayoutDashboard, Building2, Menu, X } from 'lucide-react';
+import ToastContainer from '@/components/toast';
 
 interface UserData {
   id: string; name: string; role: string; username?: string; email?: string; phone?: string; status?: string;
@@ -42,9 +43,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-[#1a1614]">
       {/* ── Universal header ─────────────────────────────── */}
-      <header className="flex items-center justify-between border-b border-warm-card-border px-6 py-3">
+      <header className="relative z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          >
             {menuOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
           <LayoutDashboard size={16} className="text-warm-accent" />
@@ -62,35 +67,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      {/* ── Sidebar overlay ──────────────────────────────── */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-40 flex">
-          <div className="flex-1 bg-black/50" onClick={() => setMenuOpen(false)} />
-          <nav className="w-56 bg-[#24201e] border-l border-warm-card-border p-4 overflow-y-auto">
-            <p className="mb-4 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Navigation</p>
-            <div className="space-y-0.5">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
-                return (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
-                      active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'
-                    }`}
-                  >
-                    <Icon size={14} className="text-warm-accent" /> {item.label}
-                  </a>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-      )}
+      {/* ── Sidebar overlay + panel (left side, animated) ── */}
+      <div
+        className={`fixed inset-0 z-40 transition-all duration-300 ease-out ${
+          menuOpen ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+      >
+        {/* Backdrop — fades in/out */}
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ease-out ${
+            menuOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setMenuOpen(false)}
+        />
+
+        {/* Panel — slides from left */}
+        <nav
+          className={`relative h-full w-56 bg-[#24201e] border-r border-warm-card-border p-4 overflow-y-auto transition-transform duration-300 ease-out ${
+            menuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <p className="mb-4 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Navigation</p>
+          <div className="space-y-0.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = pathname === item.href;
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                    active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'
+                  }`}
+                >
+                  <Icon size={14} className="text-warm-accent" /> {item.label}
+                </a>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
 
       {children}
+      <ToastContainer />
     </div>
   );
 }

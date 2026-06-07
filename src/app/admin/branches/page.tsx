@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Building2, MapPin, Phone, ExternalLink, Trash2, Edit3 } from 'lucide-react';
+import { Plus, Building2, MapPin, Phone, ExternalLink, Trash2, Edit3, X } from 'lucide-react';
+import ConfirmModal from '@/components/confirm-modal';
+import { showToast } from '@/components/toast';
 
 interface Branch {
   id: string;
@@ -42,6 +44,16 @@ export default function BranchesPage() {
   const [editError, setEditError] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  // Confirm modal state (replaces native confirm)
+  const [confirm, setConfirm] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'default';
+    confirmLabel: string;
+    action: () => Promise<void>;
+  }>({ open: false, title: '', message: '', variant: 'default', confirmLabel: 'Confirm', action: async () => {} });
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
@@ -78,6 +90,7 @@ export default function BranchesPage() {
       });
       setShowCreate(false);
       resetCreateForm();
+      showToast('success', 'Branch created successfully');
       loadBranches();
     } catch (e: any) {
       setCreateError(e.message || 'Failed to create branch');
@@ -122,6 +135,7 @@ export default function BranchesPage() {
         email: editEmail.trim() || undefined,
       });
       setShowEdit(false);
+      showToast('success', 'Branch updated');
       loadBranches();
     } catch (e: any) {
       setEditError(e.message || 'Failed to update branch');
@@ -132,15 +146,26 @@ export default function BranchesPage() {
 
   // ─── Deactivate ──────────────────────────────────────────────
 
-  const handleDeactivate = async (branch: Branch) => {
-    const msg = `Deactivate "${branch.name}"?\nThis will mark the branch as inactive. ${branch._count && branch._count.academicYears > 0 ? 'It has active academic years.' : ''}`;
-    if (!confirm(msg)) return;
-    try {
-      await api.deactivateBranch(branch.id);
-      loadBranches();
-    } catch (e: any) {
-      alert(e.message || 'Failed to deactivate');
-    }
+  const promptDeactivate = (branch: Branch) => {
+    const hasAy = branch._count && branch._count.academicYears > 0;
+    setConfirm({
+      open: true,
+      title: 'Deactivate Branch?',
+      message: hasAy
+        ? `"${branch.name}" has ${branch._count!.academicYears} academic year(s). Deactivating will hide this branch. You can still access archived data.`
+        : `Are you sure you want to deactivate "${branch.name}"? It can be reactivated later.`,
+      variant: 'danger',
+      confirmLabel: 'Deactivate',
+      action: async () => {
+        try {
+          await api.deactivateBranch(branch.id);
+          showToast('success', `"${branch.name}" deactivated`);
+          loadBranches();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to deactivate');
+        }
+      },
+    });
   };
 
   // ─── Render ──────────────────────────────────────────────────
@@ -245,7 +270,7 @@ export default function BranchesPage() {
                     <Edit3 size={14} />
                   </button>
                   <button
-                    onClick={() => handleDeactivate(branch)}
+                    onClick={() => promptDeactivate(branch)}
                     className="rounded-lg p-2 text-warm-muted hover:text-red/80 hover:bg-warm-card-border/30 transition-colors"
                     title="Deactivate branch"
                   >
@@ -262,38 +287,45 @@ export default function BranchesPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => { setShowCreate(false); resetCreateForm(); }}>
           <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-4 text-sm font-medium text-warm-cream">Add Branch</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Add Branch</h2>
+              <button onClick={() => { setShowCreate(false); resetCreateForm(); }} className="text-warm-muted hover:text-warm-cream transition-colors">
+                <X size={16} />
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Branch Name *</label>
-                  <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Mother Care Sohan" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                  <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Mother Care Sohan" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Branch Code *</label>
-                  <input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="e.g. MCS-SOHAN" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent uppercase" />
+                  <input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="e.g. MCS-SOHAN" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors uppercase" />
                 </div>
               </div>
-
               <div>
                 <label className="mb-1 block text-xs text-warm-muted">Address</label>
-                <input value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} placeholder="e.g. Sohan, Islamabad" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                <input value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} placeholder="e.g. Sohan, Islamabad" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Phone</label>
-                  <input value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="e.g. +92 300 1234567" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                  <input value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="e.g. +92 300 1234567" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Email</label>
-                  <input value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="e.g. sohan@mothercare.edu" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                  <input value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="e.g. sohan@mothercare.edu" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
                 </div>
               </div>
             </div>
 
-            {createError && <p className="mt-3 text-xs text-[#b39a76]">{createError}</p>}
+            {createError && (
+              <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2">
+                <p className="text-xs text-red-400">{createError}</p>
+              </div>
+            )}
 
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => { setShowCreate(false); resetCreateForm(); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
@@ -309,32 +341,39 @@ export default function BranchesPage() {
       {showEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowEdit(false)}>
           <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-4 text-sm font-medium text-warm-cream">Edit Branch</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Edit Branch</h2>
+              <button onClick={() => setShowEdit(false)} className="text-warm-muted hover:text-warm-cream transition-colors">
+                <X size={16} />
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs text-warm-muted">Branch Name</label>
-                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
               </div>
-
               <div>
                 <label className="mb-1 block text-xs text-warm-muted">Address</label>
-                <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Phone</label>
-                  <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                  <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Email</label>
-                  <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                  <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
                 </div>
               </div>
             </div>
 
-            {editError && <p className="mt-3 text-xs text-[#b39a76]">{editError}</p>}
+            {editError && (
+              <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2">
+                <p className="text-xs text-red-400">{editError}</p>
+              </div>
+            )}
 
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setShowEdit(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
@@ -345,6 +384,20 @@ export default function BranchesPage() {
           </div>
         </div>
       )}
+
+      {/* ── Confirm Modal (replaces native confirm) ──────────────── */}
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmLabel={confirm.confirmLabel}
+        onConfirm={async () => {
+          await confirm.action();
+          setConfirm((prev) => ({ ...prev, open: false }));
+        }}
+        onCancel={() => setConfirm((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }
