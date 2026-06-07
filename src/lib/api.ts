@@ -56,11 +56,65 @@ export const api = {
   logout: () =>
     apiRequest('/auth/logout', { method: 'POST' }),
 
+  // ─── Branches ────────────────────────────────────────
+  getBranches: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/admin/branches'),
+
+  getBranch: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}`),
+
+  createBranch: (data: { name: string; code: string; address?: string; phone?: string; email?: string }) =>
+    apiRequest('/admin/branches', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateBranch: (id: string, data: { name?: string; address?: string; phone?: string; email?: string }) =>
+    apiRequest(`/admin/branches/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateBranch: (id: string) =>
+    apiRequest(`/admin/branches/${id}`, { method: 'DELETE' }),
+
+  // ─── Academic Calendars ──────────────────────────────
+  getCalendars: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/admin/calendars'),
+
+  createCalendar: (data: { label: string; startDate: string; endDate: string; isCurrent?: boolean }) =>
+    apiRequest('/admin/calendars', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // ─── Academic Years ──────────────────────────────────
+  getAcademicYears: (branchId: string, status?: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years${status ? `?status=${status}` : ''}`),
+
+  getAcademicYear: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/academic-years/${id}`),
+
+  createAcademicYear: (branchId: string, data: { calendarId: string; previousAcademicYearId?: string }) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  publishAcademicYear: (id: string) =>
+    apiRequest(`/admin/academic-years/${id}/publish`, { method: 'PATCH' }),
+
+  archiveAcademicYear: (id: string) =>
+    apiRequest(`/admin/academic-years/${id}/archive`, { method: 'PATCH' }),
+
+  deleteAcademicYear: (id: string) =>
+    apiRequest(`/admin/academic-years/${id}`, { method: 'DELETE' }),
+
   // ─── Groups / Classes ───────────────────────────────
   getGroups: () =>
     apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
 
-  createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; communityId?: string }) =>
+  createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; academicYearId?: string }) =>
     apiRequest('/admin/groups', {
       method: 'POST',
       body: JSON.stringify(data),

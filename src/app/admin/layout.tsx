@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
-import { LogOut, Users, BookOpen, GraduationCap, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, Users, BookOpen, GraduationCap, LayoutDashboard, Building2, Calendar, Menu, X } from 'lucide-react';
 
 interface UserData {
   id: string; name: string; role: string; username?: string; email?: string; phone?: string; status?: string;
 }
 
 const navItems = [
+  { href: '/admin/branches', icon: Building2, label: 'Branches' },
   { href: '/admin/classes', icon: BookOpen, label: 'Classes / Groups' },
-  { href: '/admin', icon: Users, label: 'Teachers' },
-  { href: '/admin', icon: GraduationCap, label: 'Students' },
+  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -6,7 +6,7 @@ import { Users, BookOpen, GraduationCap, ArrowRight } from 'lucide-react';
 
 interface Stats {
   totalUsers: number; totalGroups: number; totalStudents: number;
-  totalCommunities: number; activeApiKeys: number; byRole: Record<string, number>;
+  totalAcademicYears: number; totalBranches: number; activeApiKeys: number; byRole: Record<string, number>;
 }
 
 export default function AdminDashboard() {
