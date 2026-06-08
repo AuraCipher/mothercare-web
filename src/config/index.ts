@@ -26,7 +26,9 @@ export const config = {
 
   // ── API Keys (for backend auth) ──────────────
   publishableKey: env<string>('NEXT_PUBLIC_PUBLISHABLE_KEY', ''),
-  secretKey: env<string>('NEXT_PUBLIC_SECRET_KEY', ''),
+  // secretKey is intentionally NOT in NEXT_PUBLIC_ — it must NEVER reach the browser.
+  // It is only available server-side (SSR/SSG) and will be undefined in client components.
+  secretKey: env<string>('SECRET_KEY', ''),
 
   // ── Computed Helpers ─────────────────────────
   get isDev(): boolean {
