@@ -2,10 +2,13 @@
  * Mother Care School — Startup Preflight Check
  *
  * Runs before `next dev` / `next start` to verify:
- *   1. Required env vars are set
- *   2. Backend API is reachable
+ *   1. Publishable key (pk_mcs_*) — frontend app identification
+ *   2. Secret key (sk_mcs_*) — server-side admin calls
+ *   3. Both keys use branch-encoded format
+ *   4. Backend API is reachable
+ *   5. Both keys are valid against backend
  *
- * Exits with code 0 on success, 1 on failure.
+ * Exits with code 0 on success, 1 on failure — server NEVER starts if keys are missing.
  */
 
 import dotenv from 'dotenv';
@@ -13,41 +16,73 @@ dotenv.config({ path: '.env.local' });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || 'development';
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY;
+const PUB_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY;
+const SEC_KEY = process.env.SECRET_KEY;
 
 const ts = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
 const log = (msg: string) => console.log(`[${ts()}]  ${msg}`);
-const warn = (msg: string) => console.warn(`[${ts()}]  ⚠ ${msg}`);
 const ok = (msg: string) => console.log(`[${ts()}]  ✅ ${msg}`);
-const fail = (msg: string) => console.error(`[${ts()}]  ❌ ${msg}`);
+const fail = (msg: string) => { console.error(`[${ts()}]  ❌ ${msg}`); hasError = true; };
+
+let hasError = false;
 
 async function main() {
-  const allowWarn = process.argv.includes('--allow-warn');
-  let hasError = false;
-
   log('Running startup preflight...');
   console.log('');
 
-  // ─── 1. Env vars ──────────────────────────────────────
-  if (!API_URL || API_URL === 'http://localhost:5000') {
-    ok(`Backend API URL: ${API_URL}`);
+  // ─── 1. Publishable API key — REQUIRED ───────────────────
+  if (!PUB_KEY) {
+    fail('NEXT_PUBLIC_PUBLISHABLE_KEY is not set in .env.local');
+    console.log('');
+    console.log('  ┌─────────────────────────────────────────────────────┐');
+    console.log('  │  Add this to your web/.env.local file:             │');
+    console.log('  │                                                     │');
+    console.log('  │  NEXT_PUBLIC_PUBLISHABLE_KEY=pk_mcs_global_<hex>   │');
+    console.log('  │                                                     │');
+    console.log('  │  Generate a key via the key-manager as CEO or run:  │');
+    console.log('  │  cd backend && npx ts-node prisma/seed.ts          │');
+    console.log('  └─────────────────────────────────────────────────────┘');
   } else {
-    ok(`Backend API URL: ${API_URL}`);
+    // Check key format: must be pk_mcs_{branchCode}_{hex}
+    const parts = PUB_KEY.split('_');
+    if (parts.length < 4 || parts[0] !== 'pk' || parts[1] !== 'mcs') {
+      fail(`Invalid publishable key format in .env.local`);
+      console.log(`  Expected: pk_mcs_<branch>_<randomHex>`);
+      console.log(`  Got:      ${PUB_KEY.substring(0, 30)}...`);
+      console.log(`  Generate a new key via the key-manager or seed script.`);
+    } else {
+      ok(`Publishable API key: present (branch: ${parts[2]})`);
+    }
   }
 
-  if (APP_MODE) {
-    ok(`App Mode: ${APP_MODE}`);
+  // ─── 2. Secret API key — REQUIRED (server-side) ────────────
+  if (!SEC_KEY) {
+    fail('SECRET_KEY is not set in .env.local');
+    console.log('');
+    console.log('  ┌─────────────────────────────────────────────────────┐');
+    console.log('  │  Add this to your web/.env.local file:             │');
+    console.log('  │                                                     │');
+    console.log('  │  SECRET_KEY=sk_mcs_global_<hex>                    │');
+    console.log('  │                                                     │');
+    console.log('  │  This is for server-side API calls (no NEXT_PUBLIC) │');
+    console.log('  │  Run: cd backend && npx ts-node prisma/seed.ts     │');
+    console.log('  └─────────────────────────────────────────────────────┘');
   } else {
-    warn('APP_MODE not set, defaulting to production');
+    const parts = SEC_KEY.split('_');
+    if (parts.length < 4 || parts[0] !== 'sk' || parts[1] !== 'mcs') {
+      fail(`Invalid secret key format in .env.local`);
+      console.log(`  Expected: sk_mcs_<branch>_<randomHex>`);
+      console.log(`  Got:      ${SEC_KEY.substring(0, 30)}...`);
+    } else {
+      ok(`Secret API key: present (branch: ${parts[2]})`);
+    }
   }
 
-  if (PUBLISHABLE_KEY) {
-    ok('Publishable API key: present');
-  } else {
-    warn('No publishable API key set — frontend auth may be limited');
-  }
+  // ─── 3. Other env vars ────────────────────────────────────
+  if (API_URL) ok(`Backend API URL: ${API_URL}`);
+  if (APP_MODE) ok(`App Mode: ${APP_MODE}`);
 
-  // ─── 2. Backend health check ─────────────────────────
+  // ─── 4. Backend health check ─────────────────────────────
   log(`Checking backend at ${API_URL}/health...`);
   try {
     const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(5000) });
@@ -55,13 +90,52 @@ async function main() {
       ok(`Backend API is reachable (${API_URL})`);
     } else {
       fail(`Backend returned HTTP ${res.status}`);
-      hasError = true;
     }
   } catch (e: any) {
-    warn(`Backend API unreachable (${e.message}) — continuing anyway`);
+    fail(`Backend API unreachable (${API_URL}) — ${e.message}`);
   }
 
-  // ─── 3. Banner ────────────────────────────────────────
+  // ─── 5. Verify keys against backend ──────────────────────
+  // Publishable key
+  if (PUB_KEY && !hasError) {
+    log('Verifying publishable key against backend...');
+    try {
+      const res = await fetch(`${API_URL}/health`, {
+        headers: { 'x-publishable-api-key': PUB_KEY },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        ok('Publishable key accepted by backend');
+      } else {
+        fail(`Backend rejected the publishable key (HTTP ${res.status})`);
+        console.log(`  The key in .env.local doesn't match any key in the database.`);
+        console.log(`  Generate a new key via key-manager or run the seed script.`);
+      }
+    } catch (e: any) {
+      fail(`Could not verify publishable key: ${e.message}`);
+    }
+  }
+
+  // Secret key
+  if (SEC_KEY && !hasError) {
+    log('Verifying secret key against backend...');
+    try {
+      const res = await fetch(`${API_URL}/health`, {
+        headers: { 'x-api-key': SEC_KEY },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        ok('Secret key accepted by backend');
+      } else {
+        fail(`Backend rejected the secret key (HTTP ${res.status})`);
+        console.log(`  The SECRET_KEY in .env.local doesn't match any key in the database.`);
+      }
+    } catch (e: any) {
+      fail(`Could not verify secret key: ${e.message}`);
+    }
+  }
+
+  // ─── 6. Result ────────────────────────────────────────────
   const border = '═'.repeat(48);
   console.log('');
   console.log(`  ╔${border}╗`);
@@ -71,13 +145,13 @@ async function main() {
   if (!hasError) {
     console.log(`  ║     ✅  All checks passed                               ║`);
   } else {
-    console.log(`  ║     ⚠️  Some checks failed — continuing anyway          ║`);
+    console.log(`  ║     ❌  PREFLIGHT FAILED — see errors above             ║`);
   }
   console.log(`  ║     📅  ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`);
   console.log(`  ╚${border}╝`);
   console.log('');
 
-  process.exit(hasError && !allowWarn ? 1 : 0);
+  process.exit(hasError ? 1 : 0);
 }
 
 main().catch((e) => {
