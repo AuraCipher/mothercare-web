@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
-  ChevronDown, Check, MapPin,
+  ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -32,6 +32,9 @@ interface UserData {
 /* ── Admin nav items ── */
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/students', icon: Users, label: 'Students' },
+  { href: '/admin/teachers', icon: GraduationCap, label: 'Teachers' },
+  { href: '/admin/staff', icon: UserPlus, label: 'Staff' },
   { href: '/admin/classes', icon: BookOpen, label: 'Classes / Groups' },
 ];
 

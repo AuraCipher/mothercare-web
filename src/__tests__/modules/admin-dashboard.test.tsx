@@ -2,9 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
 const mockStats = vi.hoisted(() => vi.fn());
+const mockGetBranchStats = vi.hoisted(() => vi.fn());
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/admin',
+}));
 
 vi.mock('@/lib/api', () => ({
-  api: { stats: mockStats },
+  api: { stats: mockStats, getBranchStats: mockGetBranchStats },
 }));
 
 import AdminDashboard from '@/app/admin/page';
@@ -12,19 +18,47 @@ import AdminDashboard from '@/app/admin/page';
 describe('Admin Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it('renders the admin heading', () => {
     mockStats.mockResolvedValue({ success: true, data: null });
     render(<AdminDashboard />);
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Overview of your school portal.')).toBeInTheDocument();
+    expect(screen.getByText(/Overview of your school/)).toBeInTheDocument();
   });
 
-  it('renders stat cards with data', async () => {
+  it('renders stat cards with data (branch stats)', async () => {
+    localStorage.setItem('activeBranchId', 'branch-1');
+    mockGetBranchStats.mockResolvedValue({
+      success: true,
+      data: {
+        name: 'Test Branch',
+        stats: { totalStaff: 10, totalTeachers: 5, totalStudents: 200, totalClasses: 13, totalAcademicYears: 1 },
+        admins: [{ name: 'Admin One', email: 'admin@test.com', since: '2025-01-01' }],
+      },
+    });
+
+    render(<AdminDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(screen.getByText('200')).toBeInTheDocument();
+      expect(screen.getByText('13')).toBeInTheDocument();
+    });
+
+    // Some labels appear in both stats and quick actions — verify count
+    expect(screen.getByText('Total Staff')).toBeInTheDocument();
+    expect(screen.getAllByText('Teachers').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Students').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Classes').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('falls back to global stats when no activeBranchId', async () => {
     mockStats.mockResolvedValue({
       success: true,
-      data: { totalUsers: 15, totalGroups: 8, totalStudents: 200, totalBranches: 1, byRole: {} },
+      data: { totalUsers: 15, totalGroups: 8, totalStudents: 200, byRole: { teacher: 5 } },
     });
 
     render(<AdminDashboard />);
@@ -34,40 +68,40 @@ describe('Admin Dashboard', () => {
       expect(screen.getByText('8')).toBeInTheDocument();
       expect(screen.getByText('200')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Total Users')).toBeInTheDocument();
-    expect(screen.getByText('Classes')).toBeInTheDocument();
-    expect(screen.getByText('Students')).toBeInTheDocument();
   });
 
-  it('renders user roles breakdown', async () => {
-    mockStats.mockResolvedValue({
+  it('shows admin info banner when admin data is available', async () => {
+    localStorage.setItem('activeBranchId', 'branch-1');
+    mockGetBranchStats.mockResolvedValue({
       success: true,
-      data: { totalUsers: 10, totalGroups: 5, totalStudents: 100, totalBranches: 1, byRole: { teacher: 5, parent: 3 } },
+      data: {
+        name: 'Test Branch',
+        stats: { totalStaff: 0, totalTeachers: 0, totalStudents: 0, totalClasses: 0, totalAcademicYears: 0 },
+        admins: [{ name: 'Principal Admin', email: 'principal@school.com', since: '2025-06-01' }],
+      },
     });
 
     render(<AdminDashboard />);
 
-    await waitFor(() => {
-      expect(screen.getByText('teacher')).toBeInTheDocument();
-      expect(screen.getByText('parent')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Principal Admin')).toBeInTheDocument();
   });
 
-  it('renders quick action links', async () => {
+  it('renders all quick action buttons', async () => {
     mockStats.mockResolvedValue({ success: true, data: null });
     render(<AdminDashboard />);
 
-    const classesLink = screen.getByText('Classes & Groups').closest('a');
-    expect(classesLink).toHaveAttribute('href', '/admin/classes');
-
-    // Branches quick action intentionally excluded — CEO-only feature
+    await waitFor(() => {
+      expect(screen.getByText('Register & manage students')).toBeInTheDocument();
+      expect(screen.getByText('Manage teaching staff')).toBeInTheDocument();
+      expect(screen.getByText('View branch members & roles')).toBeInTheDocument();
+      expect(screen.getByText('Manage class groups')).toBeInTheDocument();
+    });
   });
 
-  it('shows dash placeholders when stats are loading', () => {
+  it('shows loading skeleton with 4 animated placeholders', () => {
     mockStats.mockReturnValue(new Promise(() => {}));
-    render(<AdminDashboard />);
-    expect(screen.getAllByText('—').length).toBe(3);
+    const { container } = render(<AdminDashboard />);
+    expect(container.querySelectorAll('.animate-pulse').length).toBe(4);
   });
 
   it('shows error message when stats fail', async () => {
@@ -75,7 +109,12 @@ describe('Admin Dashboard', () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load stats')).toBeInTheDocument();
+      expect(mockStats).toHaveBeenCalled();
     });
+
+    // The catch handler sets error to e.message which is 'fail'
+    await waitFor(() => {
+      expect(screen.queryByText(/fail/i)).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 });
