@@ -5,9 +5,10 @@ import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
   ArrowLeft, Building2, Users, GraduationCap, BookOpen, Key,
-  MapPin, Phone, Mail, Check, X,
+  MapPin, Phone, Mail, Check, X, Trash2,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface BranchStats {
   id: string; name: string; code: string; address: string | null;
@@ -30,14 +31,40 @@ export default function CeoBranchDetail() {
   const [data, setData] = useState<BranchStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirm, setConfirm] = useState<{
+    open: boolean; title: string; message: string;
+    variant: 'danger' | 'warning' | 'default';
+    confirmLabel: string; action: () => Promise<void>;
+  }>({ open: false, title: '', message: '', variant: 'danger', confirmLabel: 'Confirm', action: async () => {} });
 
-  useEffect(() => {
+  const loadBranchData = () => {
     setLoading(true);
     api.getBranchStats(id)
       .then(d => { if (d.success) setData(d.data); })
       .catch(e => setError(e.message || 'Failed to load branch'))
       .finally(() => setLoading(false));
-  }, [id]);
+  };
+
+  useEffect(() => { loadBranchData(); }, [id]);
+
+  const handleRemoveAdmin = (adminId: string, adminName: string) => {
+    setConfirm({
+      open: true,
+      title: 'Remove Admin?',
+      message: `"${adminName}" will lose all access. Their login credentials will be deactivated, but all branch data (students, teachers, classes) will remain untouched. A new admin can be appointed to take over.`,
+      variant: 'danger',
+      confirmLabel: 'Remove Admin',
+      action: async () => {
+        try {
+          await api.removeAdmin(id, adminId);
+          showToast('success', 'Admin removed. Credentials deactivated, data preserved.');
+          loadBranchData();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to remove admin');
+        }
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -153,6 +180,15 @@ export default function CeoBranchDetail() {
                       <span className={`inline-block h-1.5 w-1.5 rounded-full ${admin.status === 'active' ? 'bg-green-400' : 'bg-gray-400'}`} />
                       {admin.status}
                     </span>
+                    {admin.status === 'active' && (
+                      <button
+                        onClick={() => handleRemoveAdmin(admin.id, admin.name)}
+                        className="rounded-lg p-1.5 text-warm-muted hover:text-red/80 hover:bg-warm-card-border/30 transition-colors"
+                        title="Remove admin"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -179,6 +215,17 @@ export default function CeoBranchDetail() {
           </button>
         </div>
       </section>
+
+      {/* ── Confirm Modal (remove admin) ──────────────── */}
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmLabel={confirm.confirmLabel}
+        onConfirm={async () => { await confirm.action(); setConfirm(prev => ({ ...prev, open: false })); }}
+        onCancel={() => setConfirm(prev => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

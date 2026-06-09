@@ -83,6 +83,9 @@ export const api = {
   getBranchStats: (id: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}/stats`),
 
+  removeAdmin: (branchId: string, userId: string) =>
+    apiRequest(`/admin/branches/${branchId}/remove-admin/${userId}`, { method: 'POST' }),
+
   // ─── Academic Calendars ──────────────────────────────
   getCalendars: () =>
     apiRequest<{ success: boolean; data: any[] }>('/admin/calendars'),
