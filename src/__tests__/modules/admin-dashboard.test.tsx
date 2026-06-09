@@ -22,10 +22,9 @@ describe('Admin Dashboard', () => {
   });
 
   it('renders the admin heading', () => {
-    mockStats.mockResolvedValue({ success: true, data: null });
     render(<AdminDashboard />);
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText(/Overview of your school/)).toBeInTheDocument();
+    expect(screen.getByText(/Overview of your school portal/)).toBeInTheDocument();
   });
 
   it('renders stat cards with data (branch stats)', async () => {
@@ -55,18 +54,11 @@ describe('Admin Dashboard', () => {
     expect(screen.getAllByText('Classes').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('falls back to global stats when no activeBranchId', async () => {
-    mockStats.mockResolvedValue({
-      success: true,
-      data: { totalUsers: 15, totalGroups: 8, totalStudents: 200, byRole: { teacher: 5 } },
-    });
-
+  it('shows select branch message when no activeBranchId', async () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText('15')).toBeInTheDocument();
-      expect(screen.getByText('8')).toBeInTheDocument();
-      expect(screen.getByText('200')).toBeInTheDocument();
+      expect(screen.getByText(/No branch selected/i)).toBeInTheDocument();
     });
   });
 
@@ -98,21 +90,22 @@ describe('Admin Dashboard', () => {
     });
   });
 
-  it('shows loading skeleton with 4 animated placeholders', () => {
-    mockStats.mockReturnValue(new Promise(() => {}));
+  it('shows loading skeleton with 4 animated placeholders when branch selected', () => {
+    localStorage.setItem('activeBranchId', 'branch-1');
+    mockGetBranchStats.mockReturnValue(new Promise(() => {}));
     const { container } = render(<AdminDashboard />);
     expect(container.querySelectorAll('.animate-pulse').length).toBe(4);
   });
 
-  it('shows error message when stats fail', async () => {
-    mockStats.mockRejectedValue(new Error('fail'));
+  it('shows error message when branch stats fail', async () => {
+    localStorage.setItem('activeBranchId', 'branch-1');
+    mockGetBranchStats.mockRejectedValue(new Error('fail'));
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(mockStats).toHaveBeenCalled();
+      expect(mockGetBranchStats).toHaveBeenCalled();
     });
 
-    // The catch handler sets error to e.message which is 'fail'
     await waitFor(() => {
       expect(screen.queryByText(/fail/i)).toBeInTheDocument();
     }, { timeout: 2000 });

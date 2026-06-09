@@ -28,18 +28,8 @@ export default function AdminDashboard() {
     const activeBranchId = localStorage.getItem('activeBranchId');
 
     if (!activeBranchId) {
-      // Fallback to global stats if no branch selected
-      api.stats().then(d => {
-        if (d.success) {
-          setStats({
-            totalStaff: d.data.totalUsers || 0,
-            totalTeachers: d.data.byRole?.teacher || 0,
-            totalStudents: d.data.totalStudents || 0,
-            totalClasses: d.data.totalGroups || 0,
-          });
-        }
-      }).catch(() => setError('Failed to load stats'))
-      .finally(() => setLoading(false));
+      setError('No branch selected. Select a branch from the sidebar to view stats.');
+      setLoading(false);
       return;
     }
 

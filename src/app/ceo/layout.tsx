@@ -63,6 +63,9 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
         setActiveBranchId(stored);
       } else if (payload.branchIds?.length) {
         setActiveBranchId(payload.branchIds[0]);
+        localStorage.setItem('activeBranchId', payload.branchIds[0]);
+      } else {
+        localStorage.removeItem('activeBranchId');
       }
       setLoadingUser(false);
     }
@@ -91,6 +94,9 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
           setActiveBranchId(stored);
         } else if (meRes.user?.branchIds?.length) {
           setActiveBranchId(meRes.user.branchIds[0]);
+          localStorage.setItem('activeBranchId', meRes.user.branchIds[0]);
+        } else {
+          localStorage.removeItem('activeBranchId');
         }
 
         if (branchRes.success) setBranches(branchRes.data || []);
