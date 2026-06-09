@@ -80,6 +80,16 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [router]);
 
+  // Cross-tab logout sync: if token is removed from localStorage in another tab,
+  // immediately log out this tab too.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'token' && !e.newValue) clearAuth();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  });
+
   function clearAuth() {
     localStorage.removeItem('token');
     localStorage.removeItem('activeBranchId');

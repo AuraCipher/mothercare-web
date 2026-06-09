@@ -151,7 +151,7 @@ export const api = {
   validateInvitation: (token: string) =>
     apiRequest<{ success: boolean; data: { email: string; branchId: string; branchName: string; branchCode: string } }>(`/admin/invitations/${token}`),
 
-  completeInvitation: (token: string, data: { name: string; password: string; phone?: string }) =>
+  completeInvitation: (token: string, data: { name: string; username: string; password: string; phone?: string }) =>
     apiRequest(`/admin/invitations/${token}/complete`, {
       method: 'POST',
       body: JSON.stringify(data),

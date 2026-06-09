@@ -61,8 +61,7 @@ describe('Admin Dashboard', () => {
     const classesLink = screen.getByText('Classes & Groups').closest('a');
     expect(classesLink).toHaveAttribute('href', '/admin/classes');
 
-    const branchesLink = screen.getByText('Branches').closest('a');
-    expect(branchesLink).toHaveAttribute('href', '/admin/branches');
+    // Branches quick action intentionally excluded — CEO-only feature
   });
 
   it('shows dash placeholders when stats are loading', () => {

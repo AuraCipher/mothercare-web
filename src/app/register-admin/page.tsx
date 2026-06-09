@@ -23,6 +23,7 @@ export default function RegisterAdminPage() {
 
   // Form fields
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -68,6 +69,10 @@ export default function RegisterAdminPage() {
       setFormError('Name is required');
       return;
     }
+    if (!username.trim()) {
+      setFormError('Username is required');
+      return;
+    }
     if (!password) {
       setFormError('Password is required');
       return;
@@ -85,6 +90,7 @@ export default function RegisterAdminPage() {
     try {
       const d = await api.completeInvitation(token!, {
         name: name.trim(),
+        username: username.trim(),
         password,
         phone: phone.trim() || undefined,
       });
@@ -194,6 +200,20 @@ export default function RegisterAdminPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. John Admin"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-9 pr-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="mb-1 block text-xs text-warm-muted">Username *</label>
+              <div className="relative">
+                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. john.admin"
                   className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-9 pr-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
                 />
               </div>

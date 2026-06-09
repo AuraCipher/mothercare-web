@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { Users, BookOpen, GraduationCap, Building2, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, ArrowRight } from 'lucide-react';
 
 interface Stats {
   totalUsers: number; totalGroups: number; totalStudents: number;
@@ -66,13 +66,9 @@ export default function AdminDashboard() {
 
       <div>
         <h2 className="mb-3 text-sm font-medium text-warm-cream">Quick Actions</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-1">
           <a href="/admin/classes" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
             <span className="flex items-center gap-2 text-sm text-warm-cream"><BookOpen size={15} className="text-warm-accent" /> Classes & Groups</span>
-            <ArrowRight size={14} className="text-warm-muted" />
-          </a>
-          <a href="/admin/branches" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
-            <span className="flex items-center gap-2 text-sm text-warm-cream"><Building2 size={15} className="text-warm-accent" /> Branches</span>
             <ArrowRight size={14} className="text-warm-muted" />
           </a>
         </div>
