@@ -9,6 +9,15 @@ import {
   ChevronDown, Check, MapPin, Users, Key,
 } from 'lucide-react';
 
+/* ── Decode JWT payload client-side (no library needed) ── */
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    return JSON.parse(atob(parts[1]));
+  } catch { return null; }
+}
+
 /* ── Types ── */
 interface BranchMember {
   id: string;
@@ -45,6 +54,20 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
 
+    // Show content immediately from JWT — no loading spinner
+    const payload = decodeJwtPayload(token);
+    if (payload && payload.role === 'super_admin') {
+      setUser({ id: payload.id, name: payload.name, role: payload.role, branchIds: payload.branchIds || [] });
+      const stored = localStorage.getItem('activeBranchId');
+      if (stored && (payload.branchIds || []).includes(stored)) {
+        setActiveBranchId(stored);
+      } else if (payload.branchIds?.length) {
+        setActiveBranchId(payload.branchIds[0]);
+      }
+      setLoadingUser(false);
+    }
+
+    // Verify token is still valid in the background
     let cancelled = false;
     (async () => {
       try {

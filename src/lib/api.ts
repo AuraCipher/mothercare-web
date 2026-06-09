@@ -80,6 +80,9 @@ export const api = {
   deactivateBranch: (id: string) =>
     apiRequest(`/admin/branches/${id}`, { method: 'DELETE' }),
 
+  getBranchStats: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}/stats`),
+
   // ─── Academic Calendars ──────────────────────────────
   getCalendars: () =>
     apiRequest<{ success: boolean; data: any[] }>('/admin/calendars'),
