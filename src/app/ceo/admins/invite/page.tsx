@@ -177,6 +177,18 @@ export default function InviteAdminPage() {
             </div>
           </div>
 
+          {/* Invited email + branch info */}
+          <div className="mb-4 rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-warm-muted">
+              <Mail size={13} className="text-warm-accent shrink-0" />
+              <span className="text-warm-cream">{email}</span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-warm-muted">
+              <MapPin size={13} className="text-warm-accent shrink-0" />
+              <span>{branches.find(b => b.id === branchId)?.name || 'Unknown'} ({branches.find(b => b.id === branchId)?.code || ''})</span>
+            </div>
+          </div>
+
           <div className="relative">
             <div className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-3 text-sm text-warm-cream break-all select-all pr-12">
               {inviteLink}
