@@ -32,7 +32,8 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function isProtectedRoute(pathname: string): boolean {
-  return pathname === '/admin' || pathname.startsWith('/admin/');
+  return pathname === '/admin' || pathname.startsWith('/admin/')
+      || pathname === '/ceo' || pathname.startsWith('/ceo/');
 }
 
 function isAuthRoute(pathname: string): boolean {

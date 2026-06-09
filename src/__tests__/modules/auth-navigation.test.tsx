@@ -71,11 +71,11 @@ describe('Auth Navigation — Login Page', () => {
     expect(mockLogin).not.toHaveBeenCalled();
   });
 
-  it('redirects to /admin on successful login (no redirect param)', async () => {
+  it('redirects to /admin on successful login for branch_admin role', async () => {
     mockLogin.mockResolvedValueOnce({
       success: true,
       token: 'test-token-123',
-      user: { id: '1', name: 'Test', role: 'super_admin' },
+      user: { id: '1', name: 'Test', role: 'branch_admin' },
     });
 
     const lsSpy = vi.spyOn(Storage.prototype, 'setItem');
@@ -92,6 +92,25 @@ describe('Auth Navigation — Login Page', () => {
 
     expect(lsSpy).toHaveBeenCalledWith('token', 'test-token-123');
     expect(mockPush).toHaveBeenCalledWith('/admin');
+  });
+
+  it('redirects to /ceo on successful login for super_admin role', async () => {
+    mockLogin.mockResolvedValueOnce({
+      success: true,
+      token: 'test-token-ceo',
+      user: { id: '2', name: 'CEO', role: 'super_admin' },
+    });
+
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText('Enter your identifier'), 'ceo');
+    await user.type(screen.getByPlaceholderText('Enter your password'), 'ceo123');
+    await user.click(screen.getByText('Sign In'));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/ceo');
+    });
   });
 
   it('redirects to the original route when redirect param is present', async () => {

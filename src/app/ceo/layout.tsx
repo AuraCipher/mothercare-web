@@ -5,8 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
-  LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
-  ChevronDown, Check, MapPin,
+  LogOut, LayoutDashboard, Building2, Menu, X,
+  ChevronDown, Check, MapPin, Users, Key,
 } from 'lucide-react';
 
 /* ── Types ── */
@@ -20,20 +20,19 @@ interface UserData {
   id: string; name: string; role: string; email?: string; branchIds?: string[];
 }
 
-/* ── Admin nav items ── */
+/* ── CEO nav items ── */
 const navItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/classes', icon: BookOpen, label: 'Classes / Groups' },
+  { href: '/ceo', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/ceo/branches', icon: Building2, label: 'Branches' },
 ];
 
 /* ── Layout ── */
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function CeoLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [authError, setAuthError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [branches, setBranches] = useState<BranchMember[]>([]);
@@ -55,9 +54,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         if (!meRes.success) { clearAuth(); return; }
 
-        // Guard: CEO belongs in /ceo, not /admin
-        if (meRes.user?.role === 'super_admin') {
-          router.replace('/ceo');
+        // Guard: only super_admin can access /ceo
+        if (meRes.user?.role !== 'super_admin') {
+          router.replace('/admin');
           return;
         }
 
@@ -80,7 +79,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   function clearAuth() {
-    setAuthError(true);
     localStorage.removeItem('token');
     localStorage.removeItem('activeBranchId');
     document.cookie = 'token=; path=/; max-age=0';
@@ -96,13 +94,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleSignOut = async () => {
     try { await api.logout(); } catch {}
-    localStorage.removeItem('token');
-    localStorage.removeItem('activeBranchId');
-    document.cookie = 'token=; path=/; max-age=0';
-    router.push('/login');
+    clearAuth();
   };
 
-  if (loadingUser && !authError) {
+  if (loadingUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#1a1614]">
         <p className="text-sm text-warm-muted">Loading…</p>
@@ -112,6 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-[#1a1614]">
+      {/* Header */}
       <header className="relative z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
         <div className="flex items-center gap-2">
           <button
@@ -122,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {menuOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
           <LayoutDashboard size={16} className="text-warm-accent" />
-          <span className="text-sm font-medium text-warm-cream">Admin</span>
+          <span className="text-sm font-medium text-warm-cream">CEO Panel</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -135,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="hidden text-xs text-warm-muted sm:block">{user?.name}</span>
           <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/30 bg-warm-accent/10 px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-warm-accent uppercase">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-warm-accent" />
-            {user?.role?.replace('_', ' ') || 'user'}
+            CEO
           </span>
           <button
             onClick={handleSignOut}
@@ -153,9 +149,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className={`relative h-full w-64 bg-[#24201e] border-r border-warm-card-border p-4 overflow-y-auto transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="mb-6 border-b border-warm-card-border pb-4">
             <p className="text-sm font-medium text-warm-cream truncate">{user?.name || 'Loading…'}</p>
-            <p className="mt-0.5 text-[10px] text-warm-muted">{user?.role?.replace('_', ' ')}</p>
+            <p className="mt-0.5 text-[10px] text-warm-muted">CEO · Full access</p>
           </div>
 
+          {/* Branch Switcher */}
           {branches.length > 0 && (
             <div className="mb-6">
               <p className="mb-2 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Active Branch</p>
@@ -195,7 +192,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="space-y-0.5">
             {navItems.map(item => {
               const Icon = item.icon;
-              const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+              const active = pathname === item.href || (item.href !== '/ceo' && pathname.startsWith(item.href));
               return (
                 <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)}
                   className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>

@@ -29,10 +29,17 @@ export default function LoginPage() {
         // Set cookie for proxy middleware (which reads cookies, not localStorage)
         document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
-        // Redirect to the page the user came from (set by proxy.ts), or admin
+        // Redirect based on role, or use the redirect param from proxy.ts
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect') || '/admin';
-        router.push(redirect);
+        const redirect = params.get('redirect');
+
+        if (redirect) {
+          router.push(redirect);
+        } else if (data.user?.role === 'super_admin') {
+          router.push('/ceo');
+        } else {
+          router.push('/admin');
+        }
       } else {
         setError(data.message || 'Invalid credentials');
       }
