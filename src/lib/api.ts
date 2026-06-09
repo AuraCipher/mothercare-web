@@ -49,6 +49,8 @@ export const api = {
     }),
 
   me: () => apiRequest('/auth/me'),
+  refresh: () => apiRequest('/auth/refresh', { method: 'POST' }),
+  meBranches: () => apiRequest('/me/branches'),
 
   stats: () =>
     apiRequest('/admin/stats'),

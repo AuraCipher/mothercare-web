@@ -39,8 +39,11 @@ async function main() {
     console.log('  │                                                     │');
     console.log('  │  NEXT_PUBLIC_PUBLISHABLE_KEY=pk_mcs_global_<hex>   │');
     console.log('  │                                                     │');
-    console.log('  │  Generate a key via the key-manager as CEO or run:  │');
-    console.log('  │  cd backend && npx ts-node prisma/seed.ts          │');
+    console.log('  │  Generate keys with:                                │');
+    console.log('  │  curl -X POST http://localhost:5000/setup/init \     │');
+    console.log('  │    -H "Content-Type: application/json" \            │');
+    console.log('  │    -d \'{"name":"CEO","email":"ceo@school.com",\    │');
+    console.log('  │          "password":"YourPass123"}\'                 │');
     console.log('  └─────────────────────────────────────────────────────┘');
   } else {
     // Check key format: must be pk_mcs_{branchCode}_{hex}
@@ -65,7 +68,11 @@ async function main() {
     console.log('  │  SECRET_KEY=sk_mcs_global_<hex>                    │');
     console.log('  │                                                     │');
     console.log('  │  This is for server-side API calls (no NEXT_PUBLIC) │');
-    console.log('  │  Run: cd backend && npx ts-node prisma/seed.ts     │');
+    console.log('  │  Generate keys with:                                │');
+    console.log('  │  curl -X POST http://localhost:5000/setup/init \     │');
+    console.log('  │    -H "Content-Type: application/json" \            │');
+    console.log('  │    -d \'{"name":"CEO","email":"ceo@school.com",\    │');
+    console.log('  │          "password":"YourPass123"}\'                 │');
     console.log('  └─────────────────────────────────────────────────────┘');
   } else {
     const parts = SEC_KEY.split('_');
