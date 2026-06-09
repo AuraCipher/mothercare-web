@@ -24,6 +24,7 @@ interface UserData {
 const navItems = [
   { href: '/ceo', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/ceo/branches', icon: Building2, label: 'Branches' },
+  { href: '/ceo/admins', icon: Users, label: 'Admins' },
   { href: '/ceo/keys', icon: Key, label: 'API Keys' },
 ];
 

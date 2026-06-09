@@ -137,4 +137,23 @@ export const api = {
 
   deleteGroup: (id: string) =>
     apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
+
+  // ─── Admin Invitations (CEO only) ──────────────────
+  createInvitation: (email: string, branchId: string) =>
+    apiRequest('/admin/invitations', {
+      method: 'POST',
+      body: JSON.stringify({ email, branchId }),
+    }),
+
+  getInvitations: () =>
+    apiRequest<{ success: boolean; data: { pendingInvitations: any[]; admins: any[] } }>('/admin/invitations'),
+
+  validateInvitation: (token: string) =>
+    apiRequest<{ success: boolean; data: { email: string; branchId: string; branchName: string; branchCode: string } }>(`/admin/invitations/${token}`),
+
+  completeInvitation: (token: string, data: { name: string; password: string; phone?: string }) =>
+    apiRequest(`/admin/invitations/${token}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
