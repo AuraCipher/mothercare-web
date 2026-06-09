@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -11,6 +11,29 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // If already logged in, redirect to the correct dashboard directly
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const meRes = await api.me();
+        if (cancelled || !meRes.success) return;
+        const role = meRes.user?.role;
+        if (role === 'super_admin') {
+          router.replace('/ceo');
+        } else {
+          router.replace('/admin');
+        }
+      } catch {
+        // Token invalid — let them use the login form
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

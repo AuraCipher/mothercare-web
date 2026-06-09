@@ -44,9 +44,9 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
 
-  // 1. If user has token and visits login, redirect to admin
+  // 1. If user has token and visits login, let the login page handle redirect
   if (isAuthRoute(pathname) && token) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return NextResponse.next();
   }
 
   // 2. Always allow public routes
