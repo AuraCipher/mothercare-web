@@ -65,8 +65,7 @@ describe('CEO Dashboard', () => {
     expect(manageBranchesLink).toHaveAttribute('href', '/ceo/branches');
 
     const apiKeyLink = screen.getByText('API Key Manager').closest('a');
-    expect(apiKeyLink).toHaveAttribute('href', '/key-manager');
-    expect(apiKeyLink).toHaveAttribute('target', '_blank');
+    expect(apiKeyLink).toHaveAttribute('href', '/ceo/keys');
   });
 
   it('shows dash placeholders when stats are loading', () => {

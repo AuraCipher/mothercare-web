@@ -24,6 +24,7 @@ interface UserData {
 const navItems = [
   { href: '/ceo', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/ceo/branches', icon: Building2, label: 'Branches' },
+  { href: '/ceo/keys', icon: Key, label: 'API Keys' },
 ];
 
 /* ── Layout ── */
@@ -117,8 +118,10 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
           >
             {menuOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
-          <LayoutDashboard size={16} className="text-warm-accent" />
-          <span className="text-sm font-medium text-warm-cream">CEO Panel</span>
+          <a href="/ceo" className="flex items-center gap-2">
+            <LayoutDashboard size={16} className="text-warm-accent" />
+            <span className="text-sm font-medium text-warm-cream">CEO Panel</span>
+          </a>
         </div>
 
         <div className="flex items-center gap-3">

@@ -112,6 +112,19 @@ export const api = {
   deleteAcademicYear: (id: string) =>
     apiRequest(`/admin/academic-years/${id}`, { method: 'DELETE' }),
 
+  // ─── API Keys (CEO only) ────────────────────────────
+  getApiKeys: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/api-keys'),
+
+  createApiKey: (data: { name: string; type: string; branchCode?: string }) =>
+    apiRequest('/api-keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  revokeApiKey: (id: string) =>
+    apiRequest(`/api-keys/${id}`, { method: 'DELETE' }),
+
   // ─── Groups / Classes ───────────────────────────────
   getGroups: () =>
     apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
