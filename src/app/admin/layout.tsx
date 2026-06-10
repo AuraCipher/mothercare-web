@@ -35,7 +35,7 @@ const navItems = [
   { href: '/admin/students', icon: Users, label: 'Students' },
   { href: '/admin/teachers', icon: GraduationCap, label: 'Teachers' },
   { href: '/admin/staff', icon: UserPlus, label: 'Staff' },
-  { href: '/admin/classes', icon: BookOpen, label: 'Classes / Groups' },
+  { href: '/admin/classes', icon: BookOpen, label: 'Classes / Sections' },
 ];
 
 /* ── Layout ── */
@@ -181,12 +181,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-warm-accent" />
             {user?.role?.replace('_', ' ') || 'user'}
           </span>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream transition-colors"
-          >
-            <LogOut size={13} /> Sign out
-          </button>
         </div>
       </header>
 
@@ -194,59 +188,79 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className={`fixed inset-0 z-40 transition-all duration-300 ease-out ${menuOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
         <div className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ease-out ${menuOpen ? 'opacity-100' : 'opacity-0'}`}
           onClick={() => setMenuOpen(false)} />
-        <nav className={`relative h-full w-64 bg-[#24201e] border-r border-warm-card-border p-4 overflow-y-auto transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="mb-6 border-b border-warm-card-border pb-4">
-            <p className="text-sm font-medium text-warm-cream truncate">{user?.name || 'Loading…'}</p>
-            <p className="mt-0.5 text-[10px] text-warm-muted">{user?.role?.replace('_', ' ')}</p>
+        <nav className={`relative flex h-full w-64 flex-col bg-[#24201e] border-r border-warm-card-border transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          {/* Scrollable top section */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="mb-6 border-b border-warm-card-border pb-4">
+              <p className="text-sm font-medium text-warm-cream truncate">{user?.name || 'Loading…'}</p>
+              <p className="mt-0.5 text-[10px] text-warm-muted">{user?.role?.replace('_', ' ')}</p>
+            </div>
+
+            {branches.length > 0 && (
+              <div className="mb-6">
+                <p className="mb-2 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Active Branch</p>
+                <div className="relative">
+                  <button
+                    onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+                    className="flex w-full items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream transition-colors hover:border-warm-accent/50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <MapPin size={13} className="text-warm-accent shrink-0" />
+                      <span className="truncate">{activeBranch?.branch.name || 'Select branch…'}</span>
+                    </span>
+                    <ChevronDown size={13} className={`text-warm-muted transition-transform duration-200 ${branchDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {branchDropdownOpen && (
+                    <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl">
+                      {branches.map(b => (
+                        <button key={b.branch.id} onClick={() => handleSetActiveBranch(b.branch.id)}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${activeBranchId === b.branch.id ? 'text-warm-accent' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
+                          <div className="flex flex-col items-start text-left">
+                            <span className="flex items-center gap-1.5">
+                              {activeBranchId === b.branch.id && <Check size={12} className="text-warm-accent shrink-0" />}
+                              <span>{b.branch.name}</span>
+                            </span>
+                            <span className="mt-0.5 text-[9px] text-warm-muted/60 truncate">{b.branch.code} · {b.role}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {branchDropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setBranchDropdownOpen(false)} />}
+                </div>
+              </div>
+            )}
+
+            <p className="mb-4 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Navigation</p>
+            <div className="space-y-0.5">
+              {navItems.map(item => {
+                const Icon = item.icon;
+                const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+                return (
+                  <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
+                    <Icon size={14} className="text-warm-accent" /> {item.label}
+                  </a>
+                );
+              })}
+            </div>
           </div>
 
-          {branches.length > 0 && (
-            <div className="mb-6">
-              <p className="mb-2 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Active Branch</p>
-              <div className="relative">
-                <button
-                  onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                  className="flex w-full items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream transition-colors hover:border-warm-accent/50"
-                >
-                  <span className="flex items-center gap-2">
-                    <MapPin size={13} className="text-warm-accent shrink-0" />
-                    <span className="truncate">{activeBranch?.branch.name || 'Select branch…'}</span>
-                  </span>
-                  <ChevronDown size={13} className={`text-warm-muted transition-transform duration-200 ${branchDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {branchDropdownOpen && (
-                  <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl">
-                    {branches.map(b => (
-                      <button key={b.branch.id} onClick={() => handleSetActiveBranch(b.branch.id)}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${activeBranchId === b.branch.id ? 'text-warm-accent' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
-                        <div className="flex flex-col items-start text-left">
-                          <span className="flex items-center gap-1.5">
-                            {activeBranchId === b.branch.id && <Check size={12} className="text-warm-accent shrink-0" />}
-                            <span>{b.branch.name}</span>
-                          </span>
-                          <span className="mt-0.5 text-[9px] text-warm-muted/60 truncate">{b.branch.code} · {b.role}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {branchDropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setBranchDropdownOpen(false)} />}
-              </div>
-            </div>
-          )}
-
-          <p className="mb-4 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Navigation</p>
-          <div className="space-y-0.5">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
-              return (
-                <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
-                  <Icon size={14} className="text-warm-accent" /> {item.label}
-                </a>
-              );
-            })}
+          {/* Fixed bottom section */}
+          <div className="border-t border-warm-card-border p-3">
+            <button
+              onClick={handleSignOut}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-red transition-colors mb-1"
+            >
+              <LogOut size={14} /> Sign Out
+            </button>
+            <a
+              href="/admin/settings"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
+            >
+              <Settings size={14} /> Settings
+            </a>
           </div>
         </nav>
       </div>
