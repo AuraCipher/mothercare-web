@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
-  ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus,
+  ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */

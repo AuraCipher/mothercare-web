@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, MapPin } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
-interface Group {
+interface Section {
   id: string;
   name: string;
   section: string | null;
@@ -19,19 +19,21 @@ interface Group {
 
 export default function ClassesPage() {
   const router = useRouter();
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
-  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
-  const [branchName, setBranchName] = useState('');
+
+  // Branch + AY context
+  const [branchId, setBranchId] = useState<string>('');
+  const [ayId, setAyId] = useState<string>('');
 
   // Form state
   const [className, setClassName] = useState('');
   const [arrangement, setArrangement] = useState('');
   const [enableSections, setEnableSections] = useState(false);
-  const [sections, setSections] = useState<string[]>([]);
+  const [sectionList, setSectionList] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
 
   // Confirm modal
@@ -44,52 +46,41 @@ export default function ClassesPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
-    loadAcademicYear();
+
+    const activeBranchId = localStorage.getItem('activeBranchId');
+    if (!activeBranchId) {
+      setError('No branch selected. Select a branch from the sidebar.');
+      setLoading(false);
+      return;
+    }
+    setBranchId(activeBranchId);
+
+    // Load active academic year for this branch
+    api.getAcademicYears(activeBranchId, 'ACTIVE')
+      .then(d => {
+        const activeAy = d.data?.[0];
+        if (!activeAy) {
+          setError('No active academic year found. Create and publish one first.');
+          setLoading(false);
+          return;
+        }
+        setAyId(activeAy.id);
+        // Load sections scoped under this AY
+        api.getSections(activeBranchId, activeAy.id)
+          .then(res => setSections(res.data || []))
+          .catch(() => setError('Failed to load sections'))
+          .finally(() => setLoading(false));
+      })
+      .catch(() => {
+        setError('Failed to load academic year');
+        setLoading(false);
+      });
   }, []);
 
-  const loadAcademicYear = async () => {
-    try {
-      const activeBranchId = localStorage.getItem('activeBranchId');
-      if (!activeBranchId) {
-        setError('Select a branch from the sidebar first');
-        setLoading(false);
-        return;
-      }
-
-      // Fetch branch info + academic years
-      const [branchRes, ayRes] = await Promise.all([
-        api.getBranch(activeBranchId),
-        api.getAcademicYears(activeBranchId, 'ACTIVE'),
-      ]);
-
-      if (branchRes.success) setBranchName(branchRes.data?.name || '');
-
-      if (ayRes.success && ayRes.data?.length > 0) {
-        const ayId = ayRes.data[0].id;
-        setAcademicYearId(ayId);
-        loadGroups(ayId);
-      } else {
-        setError('No active academic year found. Create and publish one first.');
-        setLoading(false);
-      }
-    } catch {
-      setError('Failed to load academic year');
-      setLoading(false);
-    }
-  };
-
-  const loadGroups = async (ayId: string) => {
-    try {
-      const data = await api.getGroupsByAcademicYear(ayId);
-      setGroups((data as any).data || []);
-    } catch { setError('Failed to load classes'); }
-    finally { setLoading(false); }
-  };
-
-  // Group classes by name
-  const grouped = groups.reduce<Record<string, Group[]>>((acc, g) => {
-    if (!acc[g.name]) acc[g.name] = [];
-    acc[g.name].push(g);
+  // Group sections by class name
+  const grouped = sections.reduce<Record<string, Section[]>>((acc, s) => {
+    if (!acc[s.name]) acc[s.name] = [];
+    acc[s.name].push(s);
     return acc;
   }, {});
 
@@ -101,23 +92,23 @@ export default function ClassesPage() {
 
   const handleCreate = async () => {
     if (!className.trim() || !arrangement) return;
-    if (!academicYearId) return;
 
     const order = parseInt(arrangement, 10);
     if (isNaN(order)) return;
 
     try {
-      if (enableSections && sections.length > 0) {
-        for (const section of sections) {
-          await api.createGroup(academicYearId, { name: className.trim(), section, displayOrder: order });
+      if (enableSections && sectionList.length > 0) {
+        for (const section of sectionList) {
+          await api.createSection(branchId, ayId, { name: className.trim(), section, displayOrder: order });
         }
       } else {
-        await api.createGroup(academicYearId, { name: className.trim(), displayOrder: order });
+        await api.createSection(branchId, ayId, { name: className.trim(), displayOrder: order });
       }
       setShowForm(false);
       resetForm();
       showToast('success', 'Class created');
-      loadGroups(academicYearId);
+      const res = await api.getSections(branchId, ayId);
+      setSections(res.data || []);
     } catch (e: any) {
       showToast('error', e.message || 'Failed to create class');
     }
@@ -127,7 +118,7 @@ export default function ClassesPage() {
     setClassName('');
     setArrangement('');
     setEnableSections(false);
-    setSections([]);
+    setSectionList([]);
     setSectionInput('');
   };
 
@@ -135,16 +126,17 @@ export default function ClassesPage() {
     setConfirm({
       open: true,
       title: `Delete "${name}"?`,
-      message: `This will deactivate this class group. Students currently assigned will be preserved.`,
+      message: `This will deactivate this section. Students currently assigned will be preserved.`,
       variant: 'danger',
-      confirmLabel: 'Delete Class',
+      confirmLabel: 'Delete',
       action: async () => {
         try {
-          await api.deleteGroup(id);
-          showToast('success', 'Class deactivated');
-          if (academicYearId) loadGroups(academicYearId);
+          await api.deleteSection(branchId, id);
+          showToast('success', 'Section deactivated');
+          const res = await api.getSections(branchId, ayId);
+          setSections(res.data || []);
         } catch (e: any) {
-          showToast('error', e.message || 'Failed to delete class');
+          showToast('error', e.message || 'Failed to delete');
         }
       },
     });
@@ -153,6 +145,8 @@ export default function ClassesPage() {
   const toggleExpand = (name: string) => {
     setExpanded((prev) => ({ ...prev, [name]: !prev[name] }));
   };
+
+  // ─── Render ──────────────────────────────────────────
 
   if (loading) {
     return (
@@ -164,19 +158,15 @@ export default function ClassesPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      {/* Header */}
+      {/* Sub-header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-light text-warm-cream">Classes</h1>
-          <p className="flex items-center gap-1.5 text-sm text-warm-muted">
-            {branchName && <><MapPin size={12} className="text-warm-accent" /> {branchName}</>}
-          </p>
+          <h1 className="text-lg font-light text-warm-cream">Classes / Sections</h1>
+          <p className="text-sm text-warm-muted">Manage class groups and their sections.</p>
         </div>
-        {academicYearId && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-            <Plus size={14} /> Add Class
-          </button>
-        )}
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+          <Plus size={14} /> Add Class
+        </button>
       </div>
 
       {error && (
@@ -185,7 +175,7 @@ export default function ClassesPage() {
 
       {/* Create form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => { setShowForm(false); resetForm(); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowForm(false)}>
           <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-sm font-medium text-warm-cream">Add Class</h2>
 
@@ -198,7 +188,7 @@ export default function ClassesPage() {
               <div>
                 <label className="mb-1 block text-xs text-warm-muted">Class Arrangement</label>
                 <input type="number" value={arrangement} onChange={(e) => setArrangement(e.target.value)} placeholder="e.g. 4" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-                <p className="mt-0.5 text-[10px] text-warm-muted/60">Determines order (1 = Playgroup, 13 = Class 10).</p>
+                <p className="mt-0.5 text-[10px] text-warm-muted/60">Determines the order in which classes appear (1 = Playgroup, 13 = Class 10).</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -210,10 +200,10 @@ export default function ClassesPage() {
                 <div>
                   <label className="mb-1 block text-xs text-warm-muted">Sections</label>
                   <div className="flex flex-wrap gap-1.5 mb-1.5">
-                    {sections.map((s, i) => (
+                    {sectionList.map((s, i) => (
                       <span key={i} className="inline-flex items-center gap-1 rounded-md border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-xs text-warm-accent">
                         {s}
-                        <button onClick={() => setSections(sections.filter((_, j) => j !== i))} className="text-warm-accent/60 hover:text-warm-accent transition-colors">
+                        <button onClick={() => setSectionList(sectionList.filter((_, j) => j !== i))} className="text-warm-accent/60 hover:text-warm-accent transition-colors">
                           <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4l8 8M12 4l-8 8"/></svg>
                         </button>
                       </span>
@@ -225,7 +215,7 @@ export default function ClassesPage() {
                       const val = e.target.value;
                       if (val.endsWith(',') || val.endsWith('，')) {
                         const tag = val.slice(0, -1).trim();
-                        if (tag && !sections.includes(tag)) setSections([...sections, tag]);
+                        if (tag && !sectionList.includes(tag)) setSectionList([...sectionList, tag]);
                         setSectionInput('');
                       } else {
                         setSectionInput(val);
@@ -235,16 +225,15 @@ export default function ClassesPage() {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         const tag = sectionInput.trim();
-                        if (tag && !sections.includes(tag)) setSections([...sections, tag]);
+                        if (tag && !sectionList.includes(tag)) setSectionList([...sectionList, tag]);
                         setSectionInput('');
                       }
-                      if (e.key === 'Backspace' && sectionInput === '' && sections.length > 0) {
-                        setSections(sections.slice(0, -1));
+                      if (e.key === 'Backspace' && sectionInput === '' && sectionList.length > 0) {
+                        setSectionList(sectionList.slice(0, -1));
                       }
                     }}
-                    placeholder={sections.length === 0 ? 'Type and press Enter — e.g. A' : 'Add another…'}
-                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent"
-                  />
+                    placeholder={sectionList.length === 0 ? 'Type and press Enter — e.g. A' : 'Add another…'}
+                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
                   <p className="mt-0.5 text-[10px] text-warm-muted/60">Press Enter or comma to add each section.</p>
                 </div>
               )}
@@ -258,14 +247,8 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* Classes list */}
-      {!academicYearId && !loading && !error && (
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
-          <p className="text-sm text-warm-muted">No active academic year selected.</p>
-        </div>
-      )}
-
-      {sortedClassNames.length === 0 && academicYearId ? (
+      {/* Sections list */}
+      {sortedClassNames.length === 0 ? (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
           <p className="text-sm text-warm-muted">No classes yet.</p>
           <button onClick={() => setShowForm(true)} className="mt-3 text-xs text-warm-accent hover:text-[#b39a76]">Add your first class</button>
@@ -273,13 +256,14 @@ export default function ClassesPage() {
       ) : (
         <div className="space-y-2">
           {sortedClassNames.map((name) => {
-            const sections = grouped[name];
-            const hasSections = sections.length > 1 || sections[0].section !== null;
+            const sectionsForClass = grouped[name];
+            const hasSections = sectionsForClass.length > 1 || sectionsForClass[0].section !== null;
             const isExpanded = expanded[name] ?? true;
-            const order = sections[0]?.displayOrder ?? 0;
+            const order = sectionsForClass[0]?.displayOrder ?? 0;
 
             return (
               <div key={name} className="rounded-xl border border-warm-card-border bg-warm-card overflow-hidden">
+                {/* Class header */}
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
                     {hasSections && (
@@ -294,16 +278,19 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-warm-muted/60">{sections.length} section{sections.length > 1 ? 's' : ''}</span>
-                    <button onClick={() => promptDelete(sections[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
+                    <span className="text-[10px] text-warm-muted/60">
+                      {sectionsForClass.length} section{sectionsForClass.length > 1 ? 's' : ''}
+                    </span>
+                    <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
 
+                {/* Sections (expandable) */}
                 {hasSections && isExpanded && (
                   <div className="border-t border-warm-card-border">
-                    {sections.map((s) => (
+                    {sectionsForClass.map((s) => (
                       <div key={s.id} className="flex items-center justify-between px-4 py-2 pl-12 border-b border-warm-card-border last:border-b-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-warm-muted">{s.section || '—'}</span>
@@ -322,6 +309,7 @@ export default function ClassesPage() {
         </div>
       )}
 
+      {/* Confirm modal */}
       <ConfirmModal
         open={confirm.open}
         title={confirm.title}

@@ -131,22 +131,32 @@ export const api = {
   revokeApiKey: (id: string) =>
     apiRequest(`/api-keys/${id}`, { method: 'DELETE' }),
 
-  // ─── Groups / Classes (scoped under Academic Year) ──
-  getGroupsByAcademicYear: (ayId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/academic-years/${ayId}/groups`),
+  // ─── Sections (branch-scoped, replaces old groups) ──
+  getSections: (branchId: string, ayId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/sections`),
 
-  getGroup: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/groups/${id}`),
-
-  createGroup: (ayId: string, data: { name: string; section?: string; displayOrder?: number; capacity?: number }) =>
-    apiRequest(`/admin/academic-years/${ayId}/groups`, {
+  createSection: (branchId: string, ayId: string, data: { name: string; section?: string; displayOrder: number; capacity?: number }) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  updateGroup: (id: string, data: { name?: string; section?: string; displayOrder?: number; capacity?: number }) =>
-    apiRequest(`/admin/groups/${id}`, {
+  updateSection: (branchId: string, id: string, data: { name?: string; section?: string; displayOrder?: number; capacity?: number }) =>
+    apiRequest(`/admin/branches/${branchId}/sections/${id}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteSection: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/sections/${id}`, { method: 'DELETE' }),
+
+  // ─── Old groups (backward compat) ───────────────────
+  getGroups: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
+
+  createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; academicYearId?: string }) =>
+    apiRequest('/admin/groups', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
