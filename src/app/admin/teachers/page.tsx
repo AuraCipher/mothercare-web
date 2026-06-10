@@ -32,10 +32,6 @@ interface TeacherProfile {
   _count?: { assignments: number };
 }
 
-interface UserOption {
-  id: string; name: string; email: string | null;
-}
-
 /* ── Reusable form field ── */
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -71,15 +67,10 @@ export default function TeachersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [users, setUsers] = useState<UserOption[]>([]);
-
-  // Create-user inline form (create User → then TeacherProfile)
-  const [showNewUserForm, setShowNewUserForm] = useState(false);
-  const [creatingUser, setCreatingUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', username: '', password: '' });
 
   const [cf, setCf] = useState({ // create form fields
-    userId: '', employeeId: '', qualification: '', specialization: '',
+    name: '', email: '', username: '',
+    employeeId: '', qualification: '', specialization: '',
     joiningDate: '', salary: '', phone: '', emergencyContact: '',
     address: '', dateOfBirth: '', gender: '', bloodGroup: '',
   });
@@ -128,61 +119,31 @@ export default function TeachersPage() {
   // ─── Create ──────────────────────────────────────────
 
   const resetCreateForm = () => {
-    setCf({ userId: '', employeeId: '', qualification: '', specialization: '', joiningDate: '', salary: '', phone: '', emergencyContact: '', address: '', dateOfBirth: '', gender: '', bloodGroup: '' });
-    setNewUser({ name: '', email: '', username: '', password: '' });
-    setShowNewUserForm(false);
+    setCf({ name: '', email: '', username: '', employeeId: '', qualification: '', specialization: '', joiningDate: '', salary: '', phone: '', emergencyContact: '', address: '', dateOfBirth: '', gender: '', bloodGroup: '' });
     setCreateError('');
   };
 
-  const openCreate = async () => {
+  const openCreate = () => {
     resetCreateForm();
-    setShowNewUserForm(false);
     setShowCreate(true);
-    // Fetch available users with role=teacher
-    try {
-      const res = await api.getUsers({ role: 'teacher' });
-      if (res.success) setUsers(res.data || []);
-    } catch {}
-  };
-
-  // Step 1: Create a User with role=teacher, then auto-select them
-  const handleCreateUser = async () => {
-    if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim()) {
-      setCreateError('Name, username, and password are required');
-      return;
-    }
-    setCreatingUser(true);
-    setCreateError('');
-    try {
-      const res = await api.createUser({
-        name: newUser.name.trim(),
-        username: newUser.username.trim(),
-        password: newUser.password,
-        email: newUser.email.trim() || undefined,
-        role: 'teacher',
-      });
-      const userId = res.data?.id;
-      if (userId) {
-        // Add to users list and auto-select
-        setUsers(prev => [...prev, { id: userId, name: newUser.name.trim(), email: newUser.email.trim() || null }]);
-        setCf(p => ({ ...p, userId }));
-        setShowNewUserForm(false);
-        setNewUser({ name: '', email: '', username: '', password: '' });
-        showToast('success', 'User account created. Now fill the teacher profile.');
-      }
-    } catch (e: any) {
-      setCreateError(e.message || 'Failed to create user');
-    } finally { setCreatingUser(false); }
   };
 
   const handleCreate = async () => {
     setCreateError('');
-    if (!cf.userId) { setCreateError('Please select a user'); return; }
+    if (!cf.name || !cf.username) {
+      setCreateError('Name and username are required');
+      return;
+    }
 
     setCreating(true);
     try {
+      // Auto-generate a temporary random password
+      const tempPassword = 'tmp_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
       await api.createTeacher({
-        userId: cf.userId,
+        name: cf.name.trim(),
+        email: cf.email.trim() || undefined,
+        username: cf.username.trim(),
+        password: tempPassword,
         employeeId: cf.employeeId || undefined,
         qualification: cf.qualification || undefined,
         specialization: cf.specialization || undefined,
@@ -200,7 +161,14 @@ export default function TeachersPage() {
       showToast('success', 'Teacher profile created');
       loadTeachers();
     } catch (e: any) {
-      setCreateError(e.message || 'Failed to create teacher');
+      const msg = e.message || '';
+      // Show friendly messages for known errors
+      if (msg.includes('already exists') || msg.includes('already in use')) {
+        setCreateError(msg);
+        showToast('error', msg);
+      } else {
+        setCreateError(msg || 'Failed to create teacher');
+      }
     } finally { setCreating(false); }
   };
 
@@ -246,7 +214,13 @@ export default function TeachersPage() {
       showToast('success', 'Teacher profile updated');
       loadTeachers();
     } catch (e: any) {
-      setEditError(e.message || 'Failed to update teacher');
+      const msg = e.message || '';
+      if (msg.includes('already in use')) {
+        setEditError(msg);
+        showToast('error', msg);
+      } else {
+        setEditError(msg || 'Failed to update teacher');
+      }
     } finally { setEditing(false); }
   };
 
@@ -426,54 +400,21 @@ export default function TeachersPage() {
             </div>
 
             <div className="space-y-4">
-              {/* User selection */}
-              <Field label="Select User" required>
-                <select value={cf.userId} onChange={(e) => setCf(p => ({ ...p, userId: e.target.value }))}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-                  <option value="">— Select a teacher user —</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name}{u.email ? ` (${u.email})` : ''}</option>
-                  ))}
-                </select>
-                {/* Toggle to create new user */}
-                {!showNewUserForm && (
-                  <button onClick={() => setShowNewUserForm(true)} className="mt-1.5 text-[11px] text-warm-accent hover:underline">
-                    + Create a new user account
-                  </button>
-                )}
+              {/* User identity fields — creates the User account automatically */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Full Name" required>
+                  <Input value={cf.name} onChange={(v) => setCf(p => ({ ...p, name: v }))} placeholder="e.g. Ms. Fatima" />
+                </Field>
+                <Field label="Email">
+                  <Input value={cf.email} onChange={(v) => setCf(p => ({ ...p, email: v }))} placeholder="e.g. fatima@school.com" />
+                </Field>
+              </div>
+              <Field label="Username" required>
+                <Input value={cf.username} onChange={(v) => setCf(p => ({ ...p, username: v }))} placeholder="e.g. fatima_teacher" />
               </Field>
 
-              {/* ── Inline Create New User form ── */}
-              {showNewUserForm && (
-                <div className="rounded-lg border border-warm-accent/20 bg-warm-accent/5 p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[11px] font-medium text-warm-cream">New Teacher User</p>
-                    <button onClick={() => setShowNewUserForm(false)} className="text-[10px] text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Full Name" required>
-                        <Input value={newUser.name} onChange={(v) => setNewUser(p => ({ ...p, name: v }))} placeholder="e.g. Ms. Fatima" />
-                      </Field>
-                      <Field label="Email">
-                        <Input value={newUser.email} onChange={(v) => setNewUser(p => ({ ...p, email: v }))} placeholder="e.g. fatima@school.com" />
-                      </Field>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Username" required>
-                        <Input value={newUser.username} onChange={(v) => setNewUser(p => ({ ...p, username: v }))} placeholder="e.g. fatima_teacher" />
-                      </Field>
-                      <Field label="Password" required>
-                        <Input type="password" value={newUser.password} onChange={(v) => setNewUser(p => ({ ...p, password: v }))} placeholder="Min 6 characters" />
-                      </Field>
-                    </div>
-                    <button onClick={handleCreateUser} disabled={creatingUser}
-                      className="w-full rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                      {creatingUser ? 'Creating user…' : 'Create User Account'}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <hr className="border-warm-card-border" />
+              <p className="text-[10px] font-medium tracking-wider text-warm-muted uppercase">Professional Details</p>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Employee ID">

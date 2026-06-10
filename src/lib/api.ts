@@ -131,13 +131,22 @@ export const api = {
   revokeApiKey: (id: string) =>
     apiRequest(`/api-keys/${id}`, { method: 'DELETE' }),
 
-  // ─── Groups / Classes ───────────────────────────────
-  getGroups: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
+  // ─── Groups / Classes (scoped under Academic Year) ──
+  getGroupsByAcademicYear: (ayId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/academic-years/${ayId}/groups`),
 
-  createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; academicYearId?: string }) =>
-    apiRequest('/admin/groups', {
+  getGroup: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/groups/${id}`),
+
+  createGroup: (ayId: string, data: { name: string; section?: string; displayOrder?: number; capacity?: number }) =>
+    apiRequest(`/admin/academic-years/${ayId}/groups`, {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateGroup: (id: string, data: { name?: string; section?: string; displayOrder?: number; capacity?: number }) =>
+    apiRequest(`/admin/groups/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 
@@ -193,7 +202,8 @@ export const api = {
     apiRequest<{ success: boolean; data: any }>(`/admin/teachers/${id}`),
 
   createTeacher: (data: {
-    userId: string; employeeId?: string; qualification?: string; specialization?: string;
+    userId?: string; name?: string; email?: string; username?: string; password?: string;
+    employeeId?: string; qualification?: string; specialization?: string;
     joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
   }) =>
@@ -214,6 +224,12 @@ export const api = {
 
   deleteTeacher: (id: string) =>
     apiRequest(`/admin/teachers/${id}`, { method: 'DELETE' }),
+
+  setTeacherPassword: (id: string, newPassword: string, adminPassword: string) =>
+    apiRequest(`/admin/teachers/${id}/set-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword, adminPassword }),
+    }),
 
   getTeacherAssignments: (teacherId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/teachers/${teacherId}/assignments`),

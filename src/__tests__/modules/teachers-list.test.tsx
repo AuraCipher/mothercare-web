@@ -149,7 +149,8 @@ describe('TeachersPage — create modal', () => {
     await user.click(addBtn);
 
     expect(await screen.findByText('Add Teacher Profile')).toBeInTheDocument();
-    expect(await screen.findByText(/Select User/)).toBeInTheDocument();
+    expect(await screen.findByText(/Full Name/)).toBeInTheDocument();
+    expect(await screen.findByText(/Username/)).toBeInTheDocument();
   });
 
   it('shows all form fields in create modal', async () => {
