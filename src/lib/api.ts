@@ -144,6 +144,21 @@ export const api = {
   deleteGroup: (id: string) =>
     apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
 
+  // ─── Users (for dropdowns) ──────────────────────────
+  getUsers: (params?: { role?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.role) q.set('role', params.role);
+    if (params?.search) q.set('search', params.search);
+    const qs = q.toString();
+    return apiRequest<{ success: boolean; data: any[] }>(`/admin/users${qs ? `?${qs}` : ''}`);
+  },
+
+  createUser: (data: { name: string; username: string; password: string; email?: string; phone?: string; role?: string }) =>
+    apiRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // ─── Admin Invitations (CEO only) ──────────────────
   createInvitation: (email: string, branchId: string) =>
     apiRequest('/admin/invitations', {
@@ -162,4 +177,63 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // ─── Teachers ────────────────────────────────────────────
+  getTeachers: (params?: { search?: string; qualification?: string; page?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set('search', params.search);
+    if (params?.qualification) q.set('qualification', params.qualification);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/teachers${qs ? `?${qs}` : ''}`);
+  },
+
+  getTeacher: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/teachers/${id}`),
+
+  createTeacher: (data: {
+    userId: string; employeeId?: string; qualification?: string; specialization?: string;
+    joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
+    address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
+  }) =>
+    apiRequest('/admin/teachers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateTeacher: (id: string, data: {
+    employeeId?: string; qualification?: string; specialization?: string;
+    joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
+    address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
+  }) =>
+    apiRequest(`/admin/teachers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteTeacher: (id: string) =>
+    apiRequest(`/admin/teachers/${id}`, { method: 'DELETE' }),
+
+  getTeacherAssignments: (teacherId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/teachers/${teacherId}/assignments`),
+
+  // ─── Assignments ──────────────────────────────────────────
+  getGroupAssignments: (groupId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/groups/${groupId}/assignments`),
+
+  createAssignment: (data: { academicYearId: string; teacherId: string; groupId: string; subjectId: string; isClassTeacher?: boolean }) =>
+    apiRequest('/admin/assignments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateAssignment: (id: string, data: { isClassTeacher?: boolean }) =>
+    apiRequest(`/admin/assignments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteAssignment: (id: string) =>
+    apiRequest(`/admin/assignments/${id}`, { method: 'DELETE' }),
 };
