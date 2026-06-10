@@ -100,23 +100,23 @@ export const api = {
   getAcademicYears: (branchId: string, status?: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years${status ? `?status=${status}` : ''}`),
 
-  getAcademicYear: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/academic-years/${id}`),
+  getAcademicYear: (branchId: string, id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/academic-years/${id}`),
 
-  createAcademicYear: (branchId: string, data: { calendarId: string; previousAcademicYearId?: string }) =>
+  createAcademicYear: (branchId: string, data: { calendarId: string; previousAcademicYearId?: string; directToArchived?: boolean }) =>
     apiRequest(`/admin/branches/${branchId}/academic-years`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  publishAcademicYear: (id: string) =>
-    apiRequest(`/admin/academic-years/${id}/publish`, { method: 'PATCH' }),
+  publishAcademicYear: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}/publish`, { method: 'PATCH' }),
 
-  archiveAcademicYear: (id: string) =>
-    apiRequest(`/admin/academic-years/${id}/archive`, { method: 'PATCH' }),
+  archiveAcademicYear: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}/archive`, { method: 'PATCH' }),
 
-  deleteAcademicYear: (id: string) =>
-    apiRequest(`/admin/academic-years/${id}`, { method: 'DELETE' }),
+  deleteAcademicYear: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}`, { method: 'DELETE' }),
 
   // ─── API Keys (CEO only) ────────────────────────────
   getApiKeys: () =>

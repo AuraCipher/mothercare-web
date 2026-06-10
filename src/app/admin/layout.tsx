@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
-  ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings,
+  ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -51,6 +51,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [branches, setBranches] = useState<BranchMember[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+
+  // Academic Year switcher
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [activeAYId, setActiveAYId] = useState<string | null>(null);
+  const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -102,6 +107,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
 
         if (branchRes.success) setBranches(branchRes.data || []);
+
+        // Fetch academic years for the active branch
+        const currentBranchId = stored && meRes.user?.branchIds?.includes(stored)
+          ? stored
+          : meRes.user?.branchIds?.[0];
+        if (currentBranchId) {
+          api.getAcademicYears(currentBranchId).then(ayRes => {
+            if (ayRes.success) {
+              setAcademicYears(ayRes.data || []);
+              // Auto-select stored AY or first ACTIVE
+              const storedAy = localStorage.getItem('activeAYId');
+              if (storedAy && ayRes.data?.some((a: any) => a.id === storedAy)) {
+                setActiveAYId(storedAy);
+              } else {
+                const active = ayRes.data?.find((a: any) => a.status === 'ACTIVE');
+                if (active) {
+                  setActiveAYId(active.id);
+                  localStorage.setItem('activeAYId', active.id);
+                }
+              }
+            }
+          }).catch(() => {});
+        }
       } catch {
         clearAuth();
       } finally {
@@ -130,6 +158,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const activeBranch = branches.find(b => b.branch.id === activeBranchId);
+  const activeAY = academicYears.find(a => a.id === activeAYId);
+  const isAyArchived = activeAY?.status === 'ARCHIVED';
+
+  const handleSetActiveAY = (ayId: string) => {
+    setActiveAYId(ayId);
+    localStorage.setItem('activeAYId', ayId);
+    setAyDropdownOpen(false);
+  };
+
   const handleSetActiveBranch = (branchId: string) => {
     setActiveBranchId(branchId);
     localStorage.setItem('activeBranchId', branchId);
@@ -226,7 +263,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       ))}
                     </div>
                   )}
-                  {branchDropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setBranchDropdownOpen(false)} />}
+                  {/* Overlay not needed — sidebar backdrop closes menu */}
+                </div>
+              </div>
+            )}
+
+            {academicYears.length > 0 && (
+              <div className="mb-6">
+                <p className="mb-2 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Academic Year</p>
+                <div className="relative">
+                  <button
+                    onClick={() => setAyDropdownOpen(!ayDropdownOpen)}
+                    className="flex w-full items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream transition-colors hover:border-warm-accent/50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Calendar size={13} className="text-warm-accent shrink-0" />
+                      <span className="truncate">{activeAY?.calendar?.label || 'Select year…'}</span>
+                      {isAyArchived && <span className="text-[9px] text-yellow-400">(Read Only)</span>}
+                    </span>
+                    <ChevronDown size={13} className={`text-warm-muted transition-transform duration-200 ${ayDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {ayDropdownOpen && (
+                    <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl max-h-48 overflow-y-auto">
+                      {academicYears.map(ay => (
+                        <button key={ay.id} onClick={() => handleSetActiveAY(ay.id)}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${activeAYId === ay.id ? 'text-warm-accent' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
+                          <div className="flex flex-col items-start text-left">
+                            <span className="flex items-center gap-1.5">
+                              {activeAYId === ay.id && <Check size={12} className="text-warm-accent shrink-0" />}
+                              <span>{ay.calendar?.label}</span>
+                              <span className={`text-[9px] ${
+                                ay.status === 'ACTIVE' ? 'text-green-400' : ay.status === 'ARCHIVED' ? 'text-yellow-400' : 'text-gray-400'
+                              }`}>({ay.status.replace('_', ' ')})</span>
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Overlay not needed — sidebar backdrop closes menu */}
                 </div>
               </div>
             )}

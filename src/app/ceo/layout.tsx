@@ -222,7 +222,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
                       ))}
                     </div>
                   )}
-                  {branchDropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setBranchDropdownOpen(false)} />}
+                  {/* Overlay not needed — sidebar backdrop closes menu */}
                 </div>
               </div>
             )}

@@ -142,7 +142,7 @@ export default function BranchDetailPage() {
       confirmLabel: 'Publish',
       action: async () => {
         try {
-          await api.publishAcademicYear(ay.id);
+          await api.publishAcademicYear(branchId, ay.id);
           showToast('success', `"${ay.calendar.label}" is now ACTIVE`);
           loadData();
         } catch (e: any) {
@@ -163,7 +163,7 @@ export default function BranchDetailPage() {
       confirmLabel: 'Archive',
       action: async () => {
         try {
-          await api.archiveAcademicYear(ay.id);
+          await api.archiveAcademicYear(branchId, ay.id);
           showToast('success', `"${ay.calendar.label}" archived`);
           loadData();
         } catch (e: any) {
@@ -184,7 +184,7 @@ export default function BranchDetailPage() {
       confirmLabel: 'Delete',
       action: async () => {
         try {
-          await api.deleteAcademicYear(ay.id);
+          await api.deleteAcademicYear(branchId, ay.id);
           showToast('success', 'Academic year deleted');
           loadData();
         } catch (e: any) {

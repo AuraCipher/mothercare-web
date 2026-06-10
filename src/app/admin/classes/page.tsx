@@ -55,26 +55,34 @@ export default function ClassesPage() {
     }
     setBranchId(activeBranchId);
 
-    // Load active academic year for this branch
-    api.getAcademicYears(activeBranchId, 'ACTIVE')
-      .then(d => {
-        const activeAy = d.data?.[0];
-        if (!activeAy) {
-          setError('No active academic year found. Create and publish one first.');
+    // Use AY from localStorage (sidebar dropdown) or fall back to ACTIVE
+    const storedAyId = localStorage.getItem('activeAYId');
+    if (storedAyId) {
+      setAyId(storedAyId);
+      api.getSections(activeBranchId, storedAyId)
+        .then(res => setSections(res.data || []))
+        .catch(() => setError('Failed to load sections'))
+        .finally(() => setLoading(false));
+    } else {
+      api.getAcademicYears(activeBranchId, 'ACTIVE')
+        .then(d => {
+          const activeAy = d.data?.[0];
+          if (!activeAy) {
+            setError('No active academic year found. Create and publish one first.');
+            setLoading(false);
+            return;
+          }
+          setAyId(activeAy.id);
+          api.getSections(activeBranchId, activeAy.id)
+            .then(res => setSections(res.data || []))
+            .catch(() => setError('Failed to load sections'))
+            .finally(() => setLoading(false));
+        })
+        .catch(() => {
+          setError('Failed to load academic year');
           setLoading(false);
-          return;
-        }
-        setAyId(activeAy.id);
-        // Load sections scoped under this AY
-        api.getSections(activeBranchId, activeAy.id)
-          .then(res => setSections(res.data || []))
-          .catch(() => setError('Failed to load sections'))
-          .finally(() => setLoading(false));
-      })
-      .catch(() => {
-        setError('Failed to load academic year');
-        setLoading(false);
-      });
+        });
+    }
   }, []);
 
   // Group sections by class name

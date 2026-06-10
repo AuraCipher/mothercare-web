@@ -31,6 +31,7 @@ export default function AcademicYearDetailPage() {
   const ayId = params.id as string;
 
   const [ay, setAy] = useState<AcademicYearDetail | null>(null);
+  const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,12 +48,16 @@ export default function AcademicYearDetailPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
+    const bId = localStorage.getItem('activeBranchId');
+    if (bId) setBranchId(bId);
     loadAy();
   }, [ayId]);
 
   const loadAy = async () => {
     try {
-      const data = await api.getAcademicYear(ayId);
+      const bId = localStorage.getItem('activeBranchId');
+      if (!bId) { setError('No branch selected'); return; }
+      const data = await api.getAcademicYear(bId, ayId);
       setAy(data.data);
     } catch (e: any) {
       setError(e.message || 'Failed to load academic year');
@@ -71,7 +76,7 @@ export default function AcademicYearDetailPage() {
       confirmLabel: 'Publish',
       action: async () => {
         try {
-          await api.publishAcademicYear(ayId);
+          await api.publishAcademicYear(branchId, ayId);
           showToast('success', `"${ay.calendar.label}" is now ACTIVE`);
           loadAy();
         } catch (e: any) {
@@ -91,7 +96,7 @@ export default function AcademicYearDetailPage() {
       confirmLabel: 'Archive',
       action: async () => {
         try {
-          await api.archiveAcademicYear(ayId);
+          await api.archiveAcademicYear(branchId, ayId);
           showToast('success', `"${ay.calendar.label}" archived`);
           loadAy();
         } catch (e: any) {
