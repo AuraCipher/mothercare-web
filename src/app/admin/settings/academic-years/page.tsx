@@ -114,6 +114,44 @@ export default function AcademicYearsPage() {
     });
   };
 
+  const handlePause = (ay: AcademicYear) => {
+    setConfirm({
+      open: true,
+      title: 'Pause Academic Year?',
+      message: `"${ay.calendar.label}" will be paused. It can be resumed later. Use this for breaks between terms.`,
+      variant: 'default',
+      confirmLabel: 'Pause',
+      action: async () => {
+        try {
+          await api.pauseAcademicYear(branchId, ay.id);
+          showToast('success', 'Academic year paused');
+          loadYears(branchId);
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to pause');
+        }
+      },
+    });
+  };
+
+  const handleResume = (ay: AcademicYear) => {
+    setConfirm({
+      open: true,
+      title: 'Resume Academic Year?',
+      message: `"${ay.calendar.label}" will become ACTIVE again.`,
+      variant: 'default',
+      confirmLabel: 'Resume',
+      action: async () => {
+        try {
+          await api.resumeAcademicYear(branchId, ay.id);
+          showToast('success', 'Academic year resumed');
+          loadYears(branchId);
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to resume');
+        }
+      },
+    });
+  };
+
   const handleArchive = (ay: AcademicYear) => {
     setConfirm({
       open: true,
@@ -156,13 +194,15 @@ export default function AcademicYearsPage() {
     const colors: Record<string, string> = {
       BUILD_STAGE: 'border-gray-500/30 bg-gray-500/10 text-gray-400',
       ACTIVE: 'border-green-500/30 bg-green-500/10 text-green-400',
+      ON_HOLD: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
       ARCHIVED: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400',
+    };
+    const dotColors: Record<string, string> = {
+      ACTIVE: 'bg-green-400', ON_HOLD: 'bg-blue-400', ARCHIVED: 'bg-yellow-400',
     };
     return (
       <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${colors[status]}`}>
-        <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-          status === 'ACTIVE' ? 'bg-green-400' : status === 'ARCHIVED' ? 'bg-yellow-400' : 'bg-gray-400'
-        }`} />
+        <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColors[status] || 'bg-gray-400'}`} />
         {status.replace('_', ' ')}
       </span>
     );
@@ -199,14 +239,15 @@ export default function AcademicYearsPage() {
           {years.map(ay => {
             const isBuild = ay.status === 'BUILD_STAGE';
             const isActive = ay.status === 'ACTIVE';
+            const isOnHold = ay.status === 'ON_HOLD';
             return (
               <div key={ay.id} className="flex items-center justify-between rounded-xl border border-warm-card-border bg-warm-card p-4">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    isActive ? 'bg-green-900/20' : ay.status === 'ARCHIVED' ? 'bg-yellow-900/20' : 'bg-gray-800/30'
+                    isActive ? 'bg-green-900/20' : isOnHold ? 'bg-blue-900/20' : ay.status === 'ARCHIVED' ? 'bg-yellow-900/20' : 'bg-gray-800/30'
                   }`}>
                     <Calendar size={16} className={`${
-                      isActive ? 'text-green-400' : ay.status === 'ARCHIVED' ? 'text-yellow-400' : 'text-warm-muted'
+                      isActive ? 'text-green-400' : isOnHold ? 'text-blue-400' : ay.status === 'ARCHIVED' ? 'text-yellow-400' : 'text-warm-muted'
                     }`} />
                   </div>
                   <div className="min-w-0">
@@ -227,7 +268,13 @@ export default function AcademicYearsPage() {
                     </>
                   )}
                   {isActive && (
-                    <button onClick={() => handleArchive(ay)} title="Archive" className="rounded-lg p-1.5 text-warm-muted hover:text-yellow-400 hover:bg-yellow-900/20 transition-colors"><Archive size={15} /></button>
+                    <>
+                      <button onClick={() => handlePause(ay)} title="Pause" className="rounded-lg p-1.5 text-warm-muted hover:text-blue-400 hover:bg-blue-900/20 transition-colors"><span className="text-[11px] font-bold">⏸</span></button>
+                      <button onClick={() => handleArchive(ay)} title="Archive" className="rounded-lg p-1.5 text-warm-muted hover:text-yellow-400 hover:bg-yellow-900/20 transition-colors"><Archive size={15} /></button>
+                    </>
+                  )}
+                  {isOnHold && (
+                    <button onClick={() => handleResume(ay)} title="Resume" className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-green-900/20 transition-colors"><span className="text-[11px] font-bold">▶</span></button>
                   )}
                   {ay.status === 'ARCHIVED' && <span className="text-[10px] text-warm-muted/50 italic">Read only</span>}
                 </div>

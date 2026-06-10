@@ -115,6 +115,12 @@ export const api = {
   archiveAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}/archive`, { method: 'PATCH' }),
 
+  pauseAcademicYear: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}/pause`, { method: 'PATCH' }),
+
+  resumeAcademicYear: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}/resume`, { method: 'PATCH' }),
+
   deleteAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}`, { method: 'DELETE' }),
 
