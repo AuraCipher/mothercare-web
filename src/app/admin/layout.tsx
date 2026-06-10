@@ -167,6 +167,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setAyDropdownOpen(false);
   };
 
+  const handleApplyAY = () => {
+    if (activeAYId) {
+      localStorage.setItem('activeAYId', activeAYId);
+      window.location.reload();
+    }
+  };
+
   const handleSetActiveBranch = (branchId: string) => {
     setActiveBranchId(branchId);
     localStorage.setItem('activeBranchId', branchId);
@@ -274,15 +281,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="relative">
                   <button
                     onClick={() => setAyDropdownOpen(!ayDropdownOpen)}
-                    className="flex w-full items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream transition-colors hover:border-warm-accent/50"
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      activeAYId
+                        ? 'border-warm-card-border bg-warm-card text-warm-cream hover:border-warm-accent/50'
+                        : 'border-yellow-500/30 bg-yellow-500/5 text-yellow-300 hover:border-yellow-400/50'
+                    }`}
                   >
                     <span className="flex items-center gap-2">
-                      <Calendar size={13} className="text-warm-accent shrink-0" />
-                      <span className="truncate">{activeAY?.calendar?.label || 'Select year…'}</span>
+                      <Calendar size={13} className={`shrink-0 ${activeAYId ? 'text-warm-accent' : 'text-yellow-400'}`} />
+                      <span className="truncate">{activeAY?.calendar?.label || '— Select Year —'}</span>
                       {isAyArchived && <span className="text-[9px] text-yellow-400">(Read Only)</span>}
                     </span>
                     <ChevronDown size={13} className={`text-warm-muted transition-transform duration-200 ${ayDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
+                  {!activeAYId && !ayDropdownOpen && (
+                    <p className="mt-1 text-[9px] text-yellow-400/70">Select a year, then press Go to load data</p>
+                  )}
                   {ayDropdownOpen && (
                     <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl max-h-48 overflow-y-auto">
                       {academicYears.map(ay => (
@@ -303,6 +317,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   )}
                   {/* Overlay not needed — sidebar backdrop closes menu */}
                 </div>
+                {activeAYId && (
+                  <button onClick={handleApplyAY}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
+                  >
+                    <Check size={13} /> Go
+                  </button>
+                )}
               </div>
             )}
 
