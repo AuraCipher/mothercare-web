@@ -152,6 +152,11 @@ export default function AcademicYearsPage() {
     });
   };
 
+  const handleViewAY = (ay: AcademicYear) => {
+    localStorage.setItem('activeAYId', ay.id);
+    window.location.reload();
+  };
+
   const handleArchive = (ay: AcademicYear) => {
     setConfirm({
       open: true,
@@ -261,6 +266,10 @@ export default function AcademicYearsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                  <button onClick={() => handleViewAY(ay)} title="View this year's data"
+                    className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors">
+                    <span className="text-[11px]">👁</span>
+                  </button>
                   {isBuild && (
                     <>
                       <button onClick={() => handlePublish(ay)} title="Publish" className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-green-900/20 transition-colors"><Check size={15} /></button>
