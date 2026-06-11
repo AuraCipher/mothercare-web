@@ -161,3 +161,78 @@ describe('ClassesPage — grouping and section display', () => {
     expect(sections.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// 24-C: AY-Aware — loads sections from stored AY instead of ACTIVE
+// ═══════════════════════════════════════════════════════════════════
+
+describe('ClassesPage — AY-aware (24-C)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('loads sections directly when activeAYId is in localStorage', async () => {
+    const { api } = await import('@/lib/api');
+    localStorage.setItem('activeAYId', 'ay-archived-1');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: 'a1', name: 'Class 5', section: null, displayOrder: 9, capacity: 30, isActive: true, _count: { members: 0, students: 0 } },
+      ],
+    });
+
+    render(<ClassesPage />);
+    expect(await screen.findByText('Class 5')).toBeInTheDocument();
+    // Should NOT have called getAcademicYears (no ACTIVE lookup)
+    expect(api.getAcademicYears).not.toHaveBeenCalled();
+    // Should have called getSections directly with the stored AY
+    expect(api.getSections).toHaveBeenCalledWith('branch-1', 'ay-archived-1');
+
+    localStorage.removeItem('activeAYId');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 24-D: Read-only mode when viewing ARCHIVED year
+// ═══════════════════════════════════════════════════════════════════
+
+describe('ClassesPage — read-only archived mode (24-D)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('activeAYId', 'ay-archived-1');
+    localStorage.setItem('activeAYStatus', 'ARCHIVED');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('activeAYId');
+    localStorage.removeItem('activeAYStatus');
+  });
+
+  it('shows "Read Only" button instead of "Add Class"', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Playgroup', section: null, displayOrder: 1, capacity: 30, isActive: true, _count: { members: 2, students: 20 } },
+      ],
+    });
+
+    render(<ClassesPage />);
+    expect(await screen.findByText('Read Only')).toBeInTheDocument();
+    expect(screen.queryByText('Add Class')).not.toBeInTheDocument();
+  });
+
+  it('hides delete buttons for archived years', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Playgroup', section: null, displayOrder: 1, capacity: 30, isActive: true, _count: { members: 2, students: 20 } },
+      ],
+    });
+
+    render(<ClassesPage />);
+    expect(await screen.findByText('Playgroup')).toBeInTheDocument();
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
+  });
+});

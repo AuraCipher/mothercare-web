@@ -120,11 +120,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               const storedAy = localStorage.getItem('activeAYId');
               if (storedAy && ayRes.data?.some((a: any) => a.id === storedAy)) {
                 setActiveAYId(storedAy);
+                const ay = ayRes.data.find((a: any) => a.id === storedAy);
+                if (ay) localStorage.setItem('activeAYStatus', ay.status);
               } else {
                 const active = ayRes.data?.find((a: any) => a.status === 'ACTIVE');
                 if (active) {
                   setActiveAYId(active.id);
                   localStorage.setItem('activeAYId', active.id);
+                  localStorage.setItem('activeAYStatus', active.status);
                 }
               }
             }
@@ -164,12 +167,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleSetActiveAY = (ayId: string) => {
     setActiveAYId(ayId);
     localStorage.setItem('activeAYId', ayId);
+    const ay = academicYears.find(a => a.id === ayId);
+    if (ay) localStorage.setItem('activeAYStatus', ay.status);
     setAyDropdownOpen(false);
   };
 
   const handleApplyAY = () => {
     if (activeAYId) {
       localStorage.setItem('activeAYId', activeAYId);
+      if (activeAY) localStorage.setItem('activeAYStatus', activeAY.status);
       window.location.reload();
     }
   };

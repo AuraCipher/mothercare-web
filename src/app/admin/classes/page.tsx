@@ -24,6 +24,7 @@ export default function ClassesPage() {
   const [showForm, setShowForm] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
+  const isReadOnly = localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
   // Branch + AY context
   const [branchId, setBranchId] = useState<string>('');
@@ -172,8 +173,8 @@ export default function ClassesPage() {
           <h1 className="text-lg font-light text-warm-cream">Classes / Sections</h1>
           <p className="text-sm text-warm-muted">Manage class groups and their sections.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-          <Plus size={14} /> Add Class
+        <button onClick={() => setShowForm(true)} disabled={isReadOnly} className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isReadOnly ? 'bg-warm-card-border/30 text-warm-muted/50 cursor-not-allowed' : 'bg-warm-accent text-[#1a1614] hover:bg-[#b39a76]'}`}>
+          <Plus size={14} /> {isReadOnly ? 'Read Only' : 'Add Class'}
         </button>
       </div>
 
@@ -289,9 +290,11 @@ export default function ClassesPage() {
                     <span className="text-[10px] text-warm-muted/60">
                       {sectionsForClass.length} section{sectionsForClass.length > 1 ? 's' : ''}
                     </span>
-                    <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
-                      <Trash2 size={13} />
-                    </button>
+                    {!isReadOnly && (
+                      <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -304,9 +307,11 @@ export default function ClassesPage() {
                           <span className="text-xs text-warm-muted">{s.section || '—'}</span>
                           <span className="text-[10px] text-warm-muted/40">({s._count?.students || 0} students)</span>
                         </div>
-                        <button onClick={() => promptDelete(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
-                          <Trash2 size={11} />
-                        </button>
+                        {!isReadOnly && (
+                          <button onClick={() => promptDelete(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
+                            <Trash2 size={11} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
