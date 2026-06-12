@@ -188,4 +188,28 @@ describe('SubjectsPage — delete & edit', () => {
     const { container } = render(<SubjectsPage />);
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThanOrEqual(3);
   });
+
+  it('renders link to classes button on subject cards', async () => {
+    render(<SubjectsPage />);
+    const linkBtns = await screen.findAllByTitle('Link to classes');
+    expect(linkBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows link count on subject cards', async () => {
+    render(<SubjectsPage />);
+    expect(await screen.findByText(/2 class/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 assignment/)).toBeInTheDocument();
+  });
+
+  it('shows elective badge only for elective subjects', async () => {
+    render(<SubjectsPage />);
+    const electives = await screen.findAllByText(/Elective/);
+    expect(electives.length).toBe(1);
+  });
+
+  it('disables delete button for linked subjects', async () => {
+    render(<SubjectsPage />);
+    const linkedBtns = await screen.findAllByTitle('Linked to classes');
+    expect(linkedBtns.length).toBeGreaterThanOrEqual(1);
+  });
 });

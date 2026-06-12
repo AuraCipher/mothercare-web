@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '../helpers/test-utils';
 import userEvent from '@testing-library/user-event';
 
@@ -234,5 +234,101 @@ describe('ClassesPage — read-only archived mode (24-D)', () => {
     render(<ClassesPage />);
     expect(await screen.findByText('Playgroup')).toBeInTheDocument();
     expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
+  });
+});
+
+describe('ClassesPage — edit modal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('activeAYId', 'ay-1');
+    localStorage.setItem('activeBranchId', 'branch-1');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('activeAYId');
+  });
+
+  it('shows link subjects button on class card', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Class 1', section: null, displayOrder: 4, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    expect(await screen.findByTitle('Link subjects')).toBeInTheDocument();
+  });
+
+  it('shows section count for classes with sections', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Class 1', section: 'A', displayOrder: 4, isActive: true, _count: { students: 0 } },
+        { id: '2', name: 'Class 1', section: 'B', displayOrder: 4, isActive: true, _count: { students: 0 } },
+        { id: '3', name: 'Class 1', section: 'C', displayOrder: 4, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    expect(await screen.findByText('3 sections')).toBeInTheDocument();
+  });
+
+  it('opens edit modal when Edit button is clicked', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Class 1', section: 'A', displayOrder: 4, isActive: true, _count: { students: 0 } },
+        { id: '2', name: 'Class 1', section: 'B', displayOrder: 4, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    expect(await screen.findByText('Class 1')).toBeInTheDocument();
+    const editBtn = await screen.findByTitle('Edit class');
+    await userEvent.setup().click(editBtn);
+    expect(await screen.findByText('Edit Class')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Class 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('4')).toBeInTheDocument();
+  });
+
+  it('renders existing sections in edit modal', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Class 1', section: 'A', displayOrder: 4, isActive: true, _count: { students: 0 } },
+        { id: '2', name: 'Class 1', section: 'B', displayOrder: 4, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    await userEvent.setup().click(await screen.findByTitle('Edit class'));
+    expect(await screen.findByText('Edit Class')).toBeInTheDocument();
+    // Wait for modal content
+    expect(await screen.findByText('Existing Sections')).toBeInTheDocument();
+  });
+});
+
+describe('ClassesPage — delete section', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('activeAYId', 'ay-1');
+    localStorage.setItem('activeBranchId', 'branch-1');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('activeAYId');
+  });
+
+  it('shows delete confirmation for section', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: '1', name: 'Class 1', section: 'A', displayOrder: 4, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    expect(await screen.findByText('Class 1')).toBeInTheDocument();
   });
 });

@@ -206,6 +206,9 @@ export const api = {
   deleteSubject: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${id}`, { method: 'DELETE' }),
 
+  getSectionSubjects: (branchId: string, sectionId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/subjects`),
+
   linkSubjectGroups: (branchId: string, subjectId: string, groupIds: string[]) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/link`, {
       method: 'POST',

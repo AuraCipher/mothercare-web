@@ -30,10 +30,12 @@ export default function ClassesPage() {
   const [branchId, setBranchId] = useState<string>('');
   const [ayId, setAyId] = useState<string>('');
 
-  // Subject link modal
-  const [linkSectionId, setLinkSectionId] = useState<string | null>(null);
+  // Subject link modal (per-section)
+  const [linkClassName, setLinkClassName] = useState<string | null>(null);
+  const [linkSections, setLinkSections] = useState<any[]>([]);
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
+  const [sectionSubjectMap, setSectionSubjectMap] = useState<Record<string, Set<string>>>({});
+  const [linkExpanded, setLinkExpanded] = useState<Record<string, boolean>>({});
   const [savingLinks, setSavingLinks] = useState(false);
 
   // Form state
@@ -191,17 +193,50 @@ export default function ClassesPage() {
     } finally { setEditing(false); }
   };
 
-  const promptDelete = (id: string, name: string) => {
+  // Delete a single section (checks for subject links, students, teachers)
+  const promptDeleteSection = (id: string, name: string) => {
     setConfirm({
       open: true,
-      title: `Delete "${name}"?`,
-      message: `This will deactivate this section. Students currently assigned will be preserved.`,
+      title: `Delete Section "${name}"?`,
+      message: `This section will be deactivated. It will be blocked if subjects, students, or teachers depend on it.`,
       variant: 'danger',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Delete Section',
       action: async () => {
         try {
           await api.deleteSection(branchId, id);
           showToast('success', 'Section deactivated');
+          const res = await api.getSections(branchId, ayId);
+          setSections(res.data || []);
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to delete');
+        }
+      },
+    });
+  };
+
+  // Delete an entire class (all sections under this class name)
+  const promptDeleteClass = (className: string) => {
+    const classSections = sections.filter(s => s.name === className);
+    const deps = classSections.filter(s => (s._count?.students ?? 0) > 0);
+    const totalSubjects = classSections.reduce((sum, s) => sum + (s._count?.subjectLinks ?? 0), 0);
+
+    if (deps.length > 0 || totalSubjects > 0) {
+      showToast('error', `Cannot delete "${className}": sections have students or subject links. Remove dependencies first.`);
+      return;
+    }
+
+    setConfirm({
+      open: true,
+      title: `Delete Entire Class "${className}"?`,
+      message: `This will delete all ${classSections.length} section(s) under "${className}". This cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: `Delete All ${classSections.length} Sections`,
+      action: async () => {
+        try {
+          for (const sec of classSections) {
+            await api.deleteSection(branchId, sec.id).catch(() => {});
+          }
+          showToast('success', `"${className}" deleted`);
           const res = await api.getSections(branchId, ayId);
           setSections(res.data || []);
         } catch (e: any) {
@@ -217,37 +252,54 @@ export default function ClassesPage() {
 
   // ─── Subject linking ─────────────────────────────
 
-  const openSubjectLink = async (sectionId: string) => {
-    setLinkSectionId(sectionId);
-    setSelectedSubjectIds(new Set());
+  const openSubjectLink = async (className: string) => {
+    setLinkClassName(className);
     if (!ayId) return;
     try {
       const subjData = await api.getSubjects(branchId, ayId);
       setAllSubjects(subjData.data || []);
-      // Find which subjects are already linked to this section
-      const section = sections.find(s => s.id === sectionId);
-      if (section) {
-        // Check groupSubjects via subject detail — simplified: just show all subjects
+
+      // Find all sections with this class name
+      const classSections = sections.filter(s => s.name === className);
+      setLinkSections(classSections);
+
+      // Load linked subjects for each section
+      const map: Record<string, Set<string>> = {};
+      const exp: Record<string, boolean> = {};
+      for (const sec of classSections) {
+        try {
+          const linked = await api.getSectionSubjects(branchId, sec.id);
+          map[sec.id] = new Set((linked.data || []).map((s: any) => s.id));
+        } catch { map[sec.id] = new Set(); }
+        exp[sec.id] = true; // start expanded
       }
+      setSectionSubjectMap(map);
+      setLinkExpanded(exp);
     } catch {}
   };
 
-  const toggleSubject = (subjectId: string) => {
-    setSelectedSubjectIds(prev => {
-      const next = new Set(prev);
-      if (next.has(subjectId)) next.delete(subjectId); else next.add(subjectId);
+  const toggleSectionSubject = (sectionId: string, subjectId: string) => {
+    setSectionSubjectMap(prev => {
+      const next = { ...prev };
+      const set = new Set(next[sectionId] || []);
+      if (set.has(subjectId)) set.delete(subjectId); else set.add(subjectId);
+      next[sectionId] = set;
       return next;
     });
   };
 
   const handleSaveSubjectLinks = async () => {
-    if (!linkSectionId) return;
+    if (!linkClassName || linkSections.length === 0) return;
     setSavingLinks(true);
     try {
-      for (const subjectId of selectedSubjectIds) {
-        await api.linkSubjectGroups(branchId, subjectId, [linkSectionId]).catch(() => {});
+      for (const sec of linkSections) {
+        const selectedIds = sectionSubjectMap[sec.id] || new Set();
+        // Link each selected subject to this section
+        for (const subjectId of selectedIds) {
+          await api.linkSubjectGroups(branchId, subjectId, [sec.id]).catch(() => {});
+        }
       }
-      setLinkSectionId(null);
+      setLinkClassName(null);
       showToast('success', 'Subjects linked');
     } catch (e: any) {
       showToast('error', e.message || 'Failed to update');
@@ -386,7 +438,7 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => openSubjectLink(sectionsForClass[0].id)} title="Link subjects"
+                    <button onClick={() => openSubjectLink(name)} title="Link subjects"
                       className="rounded p-1 text-warm-muted/40 hover:text-warm-accent transition-colors">
                       <BookOpen size={12} />
                     </button>
@@ -398,7 +450,7 @@ export default function ClassesPage() {
                         <button onClick={() => openEdit(name)} className="rounded p-1 text-warm-muted/40 hover:text-warm-cream transition-colors" title="Edit class">
                           <Edit3 size={12} />
                         </button>
-                        <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
+                        <button onClick={() => promptDeleteClass(name)} className="text-warm-muted/40 hover:text-red transition-colors" title="Delete entire class">
                           <Trash2 size={13} />
                         </button>
                       </>
@@ -416,7 +468,7 @@ export default function ClassesPage() {
                           <span className="text-[10px] text-warm-muted/40">({s._count?.students || 0} students)</span>
                         </div>
                         {!isReadOnly && (
-                          <button onClick={() => promptDelete(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
+                          <button onClick={() => promptDeleteSection(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
                             <Trash2 size={11} />
                           </button>
                         )}
@@ -497,29 +549,61 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* ── Link Subjects Modal ───────────────────────── */}
-      {linkSectionId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setLinkSectionId(null)}>
-          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      {/* ── Link Subjects Modal (per-section) ──────────── */}
+      {linkClassName && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setLinkClassName(null)}>
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-warm-cream">Link Subjects</h2>
-              <button onClick={() => setLinkSectionId(null)} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
+              <h2 className="text-sm font-medium text-warm-cream">Link Subjects — {linkClassName}</h2>
+              <button onClick={() => setLinkClassName(null)} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
             </div>
-            <p className="mb-3 text-xs text-warm-muted">Select subjects taught in this class:</p>
+
+            {linkSections.length > 1 && (
+              <div className="mb-4 flex gap-2">
+                <button onClick={() => {
+                  const allExp = Object.fromEntries(linkSections.map(s => [s.id, true]));
+                  setLinkExpanded(allExp);
+                }} className="rounded-lg border border-warm-card-border px-2.5 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">Expand All</button>
+                <button onClick={() => {
+                  const allCollapsed = Object.fromEntries(linkSections.map(s => [s.id, false]));
+                  setLinkExpanded(allCollapsed);
+                }} className="rounded-lg border border-warm-card-border px-2.5 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">Collapse All</button>
+              </div>
+            )}
+
             {allSubjects.length === 0 ? (
               <p className="text-xs text-warm-muted">No subjects found. Create subjects first.</p>
             ) : (
-              <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                {allSubjects.map((subj: any) => (
-                  <label key={subj.id} className="flex items-center gap-2.5 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 cursor-pointer hover:border-warm-accent/50 transition-colors">
-                    <input type="checkbox" checked={selectedSubjectIds.has(subj.id)} onChange={() => toggleSubject(subj.id)} className="h-3.5 w-3.5 rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
-                    <span className="text-sm text-warm-cream">{subj.name}{subj.code ? ` (${subj.code})` : ''}</span>
-                  </label>
-                ))}
+              <div className="space-y-3">
+                {linkSections.map(sec => {
+                  const isExpanded = linkExpanded[sec.id] ?? true;
+                  const checkedSet = sectionSubjectMap[sec.id] || new Set();
+                  return (
+                    <div key={sec.id} className="rounded-lg border border-warm-card-border overflow-hidden">
+                      <button
+                        onClick={() => setLinkExpanded(prev => ({ ...prev, [sec.id]: !prev[sec.id] }))}
+                        className="flex w-full items-center justify-between bg-warm-card/50 px-3 py-2 text-xs text-warm-cream hover:bg-warm-card/80 transition-colors"
+                      >
+                        <span>{linkSections.length > 1 ? `${linkClassName} — Section ${sec.section || '(default)'}` : linkClassName}</span>
+                        <span className="text-warm-muted">{isExpanded ? '▲' : '▼'}</span>
+                      </button>
+                      {isExpanded && (
+                        <div className="p-2 space-y-1">
+                          {allSubjects.map((subj: any) => (
+                            <label key={subj.id} className="flex items-center gap-2.5 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 cursor-pointer hover:border-warm-accent/50 transition-colors text-xs">
+                              <input type="checkbox" checked={checkedSet.has(subj.id)} onChange={() => toggleSectionSubject(sec.id, subj.id)} className="h-3 w-3 rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                              <span className="text-warm-cream">{subj.name}{subj.code ? ` (${subj.code})` : ''}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setLinkSectionId(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => setLinkClassName(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
               <button onClick={handleSaveSubjectLinks} disabled={savingLinks} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
                 {savingLinks ? 'Saving…' : 'Save'}
               </button>
