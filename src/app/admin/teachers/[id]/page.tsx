@@ -167,35 +167,41 @@ export default function TeacherDetailPage() {
 
   useEffect(() => { loadData(); }, [id]);
 
-  const handleDelete = () => {
+  const handleDeactivate = () => {
     if (!data) return;
-    const count = data.assignments?.length ?? 0;
-
-    if (count > 0) {
-      setConfirm({
-        open: true,
-        title: 'Cannot Delete Teacher',
-        message: `This teacher has ${count} active assignment(s). Remove all assignments first.`,
-        variant: 'warning',
-        confirmLabel: 'Got it',
-        action: async () => {},
-      });
-      return;
-    }
-
     setConfirm({
       open: true,
-      title: `Delete "${data.user.name}"?`,
-      message: `Their profile will be deactivated and login disabled. All associated data is preserved.`,
-      variant: 'danger',
-      confirmLabel: 'Delete Teacher',
+      title: `Deactivate "${data.user.name}"?`,
+      message: `Their assignments will be ended and login disabled. All teaching history preserved. They can be reactivated later.`,
+      variant: 'warning',
+      confirmLabel: 'Deactivate',
       action: async () => {
         try {
-          await api.deleteTeacher(data.id);
-          showToast('success', 'Teacher profile deactivated');
+          await api.deactivateTeacher(data.id);
+          showToast('success', `"${data.user.name}" deactivated`);
           router.push('/admin/teachers');
         } catch (e: any) {
-          showToast('error', e.message || 'Failed to delete');
+          showToast('error', e.message || 'Failed to deactivate');
+        }
+      },
+    });
+  };
+
+  const handleReactivate = () => {
+    if (!data) return;
+    setConfirm({
+      open: true,
+      title: `Reactivate "${data.user.name}"?`,
+      message: `Their login and branch access will be restored.`,
+      variant: 'default',
+      confirmLabel: 'Reactivate',
+      action: async () => {
+        try {
+          await api.reactivateTeacher(data.id);
+          showToast('success', `"${data.user.name}" reactivated`);
+          loadData();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to reactivate');
         }
       },
     });
@@ -266,12 +272,19 @@ export default function TeacherDetailPage() {
             </div>
           </div>
         </div>
-        <button
-          onClick={handleDelete}
-          className="flex items-center gap-1.5 rounded-lg border border-red-900/30 bg-red-900/10 px-4 py-2 text-xs text-red-400 hover:bg-red-900/20 transition-colors"
-        >
-          <AlertTriangle size={13} /> Delete Teacher
-        </button>
+        {user.status === 'active' ? (
+          <button onClick={handleDeactivate}
+            className="flex items-center gap-1.5 rounded-lg border border-red-900/30 bg-red-900/10 px-4 py-2 text-xs text-red-400 hover:bg-red-900/20 transition-colors"
+          >
+            <AlertTriangle size={13} /> Deactivate
+          </button>
+        ) : (
+          <button onClick={handleReactivate}
+            className="flex items-center gap-1.5 rounded-lg border border-green-900/30 bg-green-900/10 px-4 py-2 text-xs text-green-400 hover:bg-green-900/20 transition-colors"
+          >
+            ↻ Reactivate
+          </button>
+        )}
       </div>
 
       {/* Profile details grid */}

@@ -218,7 +218,7 @@ export const api = {
     apiRequest<{ success: boolean; data: any }>(`/admin/teachers/${id}`),
 
   createTeacher: (data: {
-    userId?: string; name?: string; email?: string; username?: string; password?: string;
+    userId?: string; name?: string; email?: string; username?: string; password?: string; branchId?: string;
     employeeId?: string; qualification?: string; specialization?: string;
     joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
@@ -240,6 +240,12 @@ export const api = {
 
   deleteTeacher: (id: string) =>
     apiRequest(`/admin/teachers/${id}`, { method: 'DELETE' }),
+
+  deactivateTeacher: (id: string) =>
+    apiRequest(`/admin/teachers/${id}/deactivate`, { method: 'POST' }),
+
+  reactivateTeacher: (id: string) =>
+    apiRequest(`/admin/teachers/${id}/reactivate`, { method: 'POST' }),
 
   setTeacherPassword: (id: string, newPassword: string, adminPassword: string) =>
     apiRequest(`/admin/teachers/${id}/set-password`, {

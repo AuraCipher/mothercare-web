@@ -6,7 +6,8 @@ const mockGetTeachers = vi.hoisted(() => vi.fn());
 const mockGetUsers = vi.hoisted(() => vi.fn());
 const mockCreateTeacher = vi.hoisted(() => vi.fn());
 const mockUpdateTeacher = vi.hoisted(() => vi.fn());
-const mockDeleteTeacher = vi.hoisted(() => vi.fn());
+const mockDeactivateTeacher = vi.hoisted(() => vi.fn());
+const mockReactivateTeacher = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
@@ -19,7 +20,9 @@ vi.mock('@/lib/api', () => ({
     getUsers: mockGetUsers,
     createTeacher: mockCreateTeacher,
     updateTeacher: mockUpdateTeacher,
-    deleteTeacher: mockDeleteTeacher,
+    deleteTeacher: vi.fn(),
+    deactivateTeacher: mockDeactivateTeacher,
+    reactivateTeacher: mockReactivateTeacher,
   },
 }));
 
@@ -185,21 +188,20 @@ describe('TeachersPage — delete', () => {
     render(<TeachersPage />);
     const user = userEvent.setup();
 
-    const deleteBtns = await screen.findAllByTitle('Delete teacher');
-    await user.click(deleteBtns[0]); // Ms. Sarah has 2 assignments
+    const deactivateBtns = await screen.findAllByTitle('Deactivate teacher');
+    await user.click(deactivateBtns[0]); // Ms. Sarah has 2 assignments
 
-    expect(await screen.findByText('Cannot Delete Teacher')).toBeInTheDocument();
-    expect(screen.getByText(/2 active assignment/)).toBeInTheDocument();
+    expect(await screen.findByText(/Deactivate "Ms. Sarah"\?/)).toBeInTheDocument();
   });
 
   it('shows delete confirmation when teacher has no assignments', async () => {
     render(<TeachersPage />);
     const user = userEvent.setup();
 
-    const deleteBtns = await screen.findAllByTitle('Delete teacher');
-    await user.click(deleteBtns[1]); // Mr. Ahmed has 0 assignments
+    const deactivateBtns = await screen.findAllByTitle('Deactivate teacher');
+    await user.click(deactivateBtns[1]); // Mr. Ahmed has 0 assignments
 
-    expect(await screen.findByText(/Delete "Mr. Ahmed"\?/)).toBeInTheDocument();
+    expect(await screen.findByText(/Deactivate "Mr. Ahmed"\?/)).toBeInTheDocument();
   });
 });
 

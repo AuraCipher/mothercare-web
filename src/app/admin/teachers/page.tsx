@@ -139,11 +139,13 @@ export default function TeachersPage() {
     try {
       // Auto-generate a temporary random password
       const tempPassword = 'tmp_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+      const branchId = localStorage.getItem('activeBranchId') || '';
       await api.createTeacher({
         name: cf.name.trim(),
         email: cf.email.trim() || undefined,
         username: cf.username.trim(),
         password: tempPassword,
+        branchId,
         employeeId: cf.employeeId || undefined,
         qualification: cf.qualification || undefined,
         specialization: cf.specialization || undefined,
@@ -224,31 +226,66 @@ export default function TeachersPage() {
     } finally { setEditing(false); }
   };
 
-  // ─── Delete ──────────────────────────────────────────
+  // ─── Deactivate / Reactivate / Delete ────────────────
 
-  const promptDelete = (t: TeacherProfile) => {
-    const count = t._count?.assignments ?? 0;
-    const hasAssignments = count > 0;
-
+  const promptDeactivate = (t: TeacherProfile) => {
     setConfirm({
       open: true,
-      title: hasAssignments ? 'Cannot Delete Teacher' : `Delete "${t.user.name}"?`,
-      message: hasAssignments
-        ? `This teacher has ${count} active assignment(s). Remove all assignments before deleting the teacher profile.`
-        : `"${t.user.name}" (${t.employeeId || 'no employee ID'}) will be deactivated. Their data will be preserved but login disabled.`,
-      variant: hasAssignments ? 'warning' : 'danger',
-      confirmLabel: hasAssignments ? 'Remove Assignments First' : 'Delete Teacher',
-      action: hasAssignments
-        ? async () => { setConfirm(p => ({ ...p, open: false })); }
-        : async () => {
-            try {
-              await api.deleteTeacher(t.id);
-              showToast('success', 'Teacher profile deactivated');
-              loadTeachers();
-            } catch (e: any) {
-              showToast('error', e.message || 'Failed to delete teacher');
-            }
-          },
+      title: `Deactivate "${t.user.name}"?`,
+      message: `Their assignments will be ended and login disabled. All teaching history will be preserved. They can be reactivated later.`,
+      variant: 'warning',
+      confirmLabel: 'Deactivate',
+      action: async () => {
+        try {
+          await api.deactivateTeacher(t.id);
+          showToast('success', `"${t.user.name}" deactivated`);
+          loadTeachers();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to deactivate');
+        }
+      },
+    });
+  };
+
+  const promptReactivate = (t: TeacherProfile) => {
+    setConfirm({
+      open: true,
+      title: `Reactivate "${t.user.name}"?`,
+      message: `Their login and branch access will be restored. Past assignments remain as history.`,
+      variant: 'default',
+      confirmLabel: 'Reactivate',
+      action: async () => {
+        try {
+          await api.reactivateTeacher(t.id);
+          showToast('success', `"${t.user.name}" reactivated`);
+          loadTeachers();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to reactivate');
+        }
+      },
+    });
+  };
+
+  const promptDelete = (t: TeacherProfile) => {
+    if ((t._count?.assignments ?? 0) > 0) {
+      showToast('error', 'Cannot delete: teacher has assignment history. Deactivate instead.');
+      return;
+    }
+    setConfirm({
+      open: true,
+      title: `Permanently Delete "${t.user.name}"?`,
+      message: `This teacher has no teaching history. They will be permanently removed. This cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: 'Delete Permanently',
+      action: async () => {
+        try {
+          await api.deleteTeacher(t.id);
+          showToast('success', 'Teacher deleted permanently');
+          loadTeachers();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to delete');
+        }
+      },
     });
   };
 
@@ -349,9 +386,20 @@ export default function TeachersPage() {
                 <button onClick={() => openEdit(t)} className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="Edit teacher">
                   <Edit3 size={14} />
                 </button>
-                <button onClick={() => promptDelete(t)} className="rounded-lg p-1.5 text-warm-muted hover:text-red/80 hover:bg-warm-card-border/30 transition-colors" title="Delete teacher">
-                  <Trash2 size={14} />
-                </button>
+                {t.user.status === 'active' ? (
+                  <button onClick={() => promptDeactivate(t)} className="rounded-lg p-1.5 text-warm-muted hover:text-red/80 hover:bg-warm-card-border/30 transition-colors" title="Deactivate teacher">
+                    <Trash2 size={14} />
+                  </button>
+                ) : (
+                  <button onClick={() => promptReactivate(t)} className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-warm-card-border/30 transition-colors" title="Reactivate teacher">
+                    <span className="text-[13px]">↻</span>
+                  </button>
+                )}
+                {(t._count?.assignments ?? 0) === 0 && t.user.status !== 'active' && (
+                  <button onClick={() => promptDelete(t)} className="rounded-lg p-1.5 text-warm-muted hover:text-red/80 hover:bg-warm-card-border/30 transition-colors" title="Delete permanently">
+                    <span className="text-[11px]">✕</span>
+                  </button>
+                )}
                 <button onClick={() => router.push(`/admin/teachers/${t.id}`)} className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="View details">
                   <ExternalLink size={14} />
                 </button>
