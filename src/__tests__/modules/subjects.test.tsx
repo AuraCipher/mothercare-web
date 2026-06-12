@@ -32,7 +32,7 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-import SubjectsPage from '@/app/admin/settings/subjects/page';
+import SubjectsPage from '../../app/admin/settings/subjects/page';
 
 const mockSubjects = [
   { id: 's-1', academicYearId: 'ay-1', name: 'Mathematics', code: 'MATH', description: null, totalMarks: 100, passingMarks: 50, isElective: false, hodId: null, hod: null, _count: { groupSubjects: 2, teacherAssignments: 1 } },

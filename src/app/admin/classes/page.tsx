@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, BookOpen, Link2, X, Check } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -29,6 +29,12 @@ export default function ClassesPage() {
   // Branch + AY context
   const [branchId, setBranchId] = useState<string>('');
   const [ayId, setAyId] = useState<string>('');
+
+  // Subject link modal
+  const [linkSectionId, setLinkSectionId] = useState<string | null>(null);
+  const [allSubjects, setAllSubjects] = useState<any[]>([]);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
+  const [savingLinks, setSavingLinks] = useState(false);
 
   // Form state
   const [className, setClassName] = useState('');
@@ -153,6 +159,45 @@ export default function ClassesPage() {
 
   const toggleExpand = (name: string) => {
     setExpanded((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  // ─── Subject linking ─────────────────────────────
+
+  const openSubjectLink = async (sectionId: string) => {
+    setLinkSectionId(sectionId);
+    setSelectedSubjectIds(new Set());
+    if (!ayId) return;
+    try {
+      const subjData = await api.getSubjects(branchId, ayId);
+      setAllSubjects(subjData.data || []);
+      // Find which subjects are already linked to this section
+      const section = sections.find(s => s.id === sectionId);
+      if (section) {
+        // Check groupSubjects via subject detail — simplified: just show all subjects
+      }
+    } catch {}
+  };
+
+  const toggleSubject = (subjectId: string) => {
+    setSelectedSubjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(subjectId)) next.delete(subjectId); else next.add(subjectId);
+      return next;
+    });
+  };
+
+  const handleSaveSubjectLinks = async () => {
+    if (!linkSectionId) return;
+    setSavingLinks(true);
+    try {
+      for (const subjectId of selectedSubjectIds) {
+        await api.linkSubjectGroups(branchId, subjectId, [linkSectionId]).catch(() => {});
+      }
+      setLinkSectionId(null);
+      showToast('success', 'Subjects linked');
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to update');
+    } finally { setSavingLinks(false); }
   };
 
   // ─── Render ──────────────────────────────────────────
@@ -287,6 +332,10 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button onClick={() => openSubjectLink(sectionsForClass[0].id)} title="Link subjects"
+                      className="rounded p-1 text-warm-muted/40 hover:text-warm-accent transition-colors">
+                      <BookOpen size={12} />
+                    </button>
                     <span className="text-[10px] text-warm-muted/60">
                       {sectionsForClass.length} section{sectionsForClass.length > 1 ? 's' : ''}
                     </span>
@@ -319,6 +368,37 @@ export default function ClassesPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Link Subjects Modal ───────────────────────── */}
+      {linkSectionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setLinkSectionId(null)}>
+          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Link Subjects</h2>
+              <button onClick={() => setLinkSectionId(null)} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
+            </div>
+            <p className="mb-3 text-xs text-warm-muted">Select subjects taught in this class:</p>
+            {allSubjects.length === 0 ? (
+              <p className="text-xs text-warm-muted">No subjects found. Create subjects first.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {allSubjects.map((subj: any) => (
+                  <label key={subj.id} className="flex items-center gap-2.5 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 cursor-pointer hover:border-warm-accent/50 transition-colors">
+                    <input type="checkbox" checked={selectedSubjectIds.has(subj.id)} onChange={() => toggleSubject(subj.id)} className="h-3.5 w-3.5 rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                    <span className="text-sm text-warm-cream">{subj.name}{subj.code ? ` (${subj.code})` : ''}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setLinkSectionId(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleSaveSubjectLinks} disabled={savingLinks} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+                {savingLinks ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

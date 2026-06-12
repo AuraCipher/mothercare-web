@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { BookOpen, Plus, X, Edit3, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, X, Edit3, Trash2, Link2, Check } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -163,6 +163,64 @@ export default function SubjectsPage() {
     });
   };
 
+  // ─── Link to Classes ───────────────────────────────
+
+  const [linkSubjectId, setLinkSubjectId] = useState<string | null>(null);
+  const [sections, setSections] = useState<any[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [linking, setLinking] = useState(false);
+
+  const openLinkModal = async (s: Subject) => {
+    setLinkSubjectId(s.id);
+    setSelectedGroupIds(new Set());
+    if (!activeAYId) return;
+    try {
+      // Fetch existing linked groups
+      const subjectData = await api.getSubject(branchId, s.id);
+      const linkedIds = subjectData.data?.groupSubjects?.map((gs: any) => gs.group.id) || [];
+      setSelectedGroupIds(new Set(linkedIds));
+
+      // Fetch all sections for this AY
+      const secData = await api.getSections(branchId, activeAYId);
+      setSections(secData.data || []);
+    } catch {}
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setSelectedGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      return next;
+    });
+  };
+
+  const handleSaveLinks = async () => {
+    if (!linkSubjectId) return;
+    setLinking(true);
+    try {
+      // Get currently linked groups from the subject data we already fetched
+      const subjectData = await api.getSubject(branchId, linkSubjectId);
+      const currentLinked: string[] = subjectData.data?.groupSubjects?.map((gs: any) => gs.group.id) || [];
+
+      // Unlink removed
+      for (const gid of currentLinked) {
+        if (!selectedGroupIds.has(gid)) {
+          await api.unlinkSubjectGroup(branchId, linkSubjectId, gid).catch(() => {});
+        }
+      }
+      // Link new
+      const toAdd = Array.from(selectedGroupIds).filter(gid => !currentLinked.includes(gid));
+      if (toAdd.length > 0) {
+        await api.linkSubjectGroups(branchId, linkSubjectId, toAdd);
+      }
+      setLinkSubjectId(null);
+      showToast('success', 'Links updated');
+      loadSubjects(branchId);
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to update links');
+    } finally { setLinking(false); }
+  };
+
   // ─── Render ──────────────────────────────────────────
 
   if (!activeAYId) {
@@ -226,6 +284,9 @@ export default function SubjectsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                  <button onClick={() => openLinkModal(s)} title="Link to classes" className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors">
+                    <Link2 size={14} />
+                  </button>
                   <button onClick={() => openEdit(s)} title="Edit" className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors">
                     <Edit3 size={14} />
                   </button>
@@ -336,6 +397,37 @@ export default function SubjectsPage() {
               <button onClick={() => setShowEdit(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
               <button onClick={handleUpdate} disabled={editing} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
                 {editing ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Link to Classes Modal ────────────────────────── */}
+      {linkSubjectId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setLinkSubjectId(null)}>
+          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Link to Classes</h2>
+              <button onClick={() => setLinkSubjectId(null)} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
+            </div>
+            <p className="mb-3 text-xs text-warm-muted">Select which classes teach this subject:</p>
+            {sections.length === 0 ? (
+              <p className="text-xs text-warm-muted">No classes/sections found for this academic year.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {sections.map((sec: any) => (
+                  <label key={sec.id} className="flex items-center gap-2.5 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 cursor-pointer hover:border-warm-accent/50 transition-colors">
+                    <input type="checkbox" checked={selectedGroupIds.has(sec.id)} onChange={() => toggleGroup(sec.id)} className="h-3.5 w-3.5 rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                    <span className="text-sm text-warm-cream">{sec.name}{sec.section ? ` · ${sec.section}` : ''}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setLinkSubjectId(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleSaveLinks} disabled={linking} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+                {linking ? 'Saving…' : 'Save Links'}
               </button>
             </div>
           </div>
