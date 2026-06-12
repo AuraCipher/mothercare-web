@@ -184,6 +184,37 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // ─── Subjects ────────────────────────────────────────────
+  getSubjects: (branchId: string, ayId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/subjects`),
+
+  getSubject: (branchId: string, id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/subjects/${id}`),
+
+  createSubject: (branchId: string, ayId: string, data: { name: string; code?: string; description?: string; totalMarks?: number; passingMarks?: number; isElective?: boolean; hodId?: string }) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/subjects`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSubject: (branchId: string, id: string, data: { name?: string; code?: string; description?: string; totalMarks?: number; passingMarks?: number; isElective?: boolean; hodId?: string | null }) =>
+    apiRequest(`/admin/branches/${branchId}/subjects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteSubject: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/subjects/${id}`, { method: 'DELETE' }),
+
+  linkSubjectGroups: (branchId: string, subjectId: string, groupIds: string[]) =>
+    apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({ groupIds }),
+    }),
+
+  unlinkSubjectGroup: (branchId: string, subjectId: string, groupId: string) =>
+    apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/unlink/${groupId}`, { method: 'DELETE' }),
+
   // ─── Admin Invitations (CEO only) ──────────────────
   createInvitation: (email: string, branchId: string) =>
     apiRequest('/admin/invitations', {
