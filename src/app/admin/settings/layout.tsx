@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Calendar, Settings as SettingsIcon, ArrowLeft } from 'lucide-react';
+import { Calendar, BookOpen, ArrowLeft } from 'lucide-react';
 
 const settingItems = [
   { href: '/admin/settings/academic-years', icon: Calendar, label: 'Academic Years' },
+  { href: '/admin/settings/subjects', icon: BookOpen, label: 'Subjects' },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
