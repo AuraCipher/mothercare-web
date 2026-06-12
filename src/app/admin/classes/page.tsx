@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, BookOpen, Link2, X, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, BookOpen, Link2, X, Check, Edit3 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -42,6 +42,16 @@ export default function ClassesPage() {
   const [enableSections, setEnableSections] = useState(false);
   const [sectionList, setSectionList] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
+
+  // Edit modal
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editClassName, setEditClassName] = useState('');
+  const [editArrangement, setEditArrangement] = useState('');
+  const [editSections, setEditSections] = useState<any[]>([]); // existing sections being edited
+  const [editNewSections, setEditNewSections] = useState<string[]>([]);
+  const [editSectionInput, setEditSectionInput] = useState('');
 
   // Confirm modal
   const [confirm, setConfirm] = useState<{
@@ -135,6 +145,50 @@ export default function ClassesPage() {
     setEnableSections(false);
     setSectionList([]);
     setSectionInput('');
+  };
+
+  // ─── Edit ──────────────────────────────────────────
+
+  const openEdit = (name: string) => {
+    const classSections = grouped[name];
+    if (!classSections || classSections.length === 0) return;
+    setEditClassName(name);
+    setEditArrangement(String(classSections[0].displayOrder));
+    setEditSections(classSections);
+    setEditNewSections([]);
+    setEditSectionInput('');
+    setEditError('');
+    setShowEditForm(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editClassName.trim() || !editArrangement) {
+      setEditError('Class name and arrangement are required');
+      return;
+    }
+    const order = parseInt(editArrangement, 10);
+    if (isNaN(order)) { setEditError('Invalid arrangement number'); return; }
+    setEditing(true);
+    try {
+      // Update existing sections
+      for (const sec of editSections) {
+        await api.updateSection(branchId, sec.id, {
+          name: editClassName.trim(),
+          displayOrder: order,
+          section: sec.section || undefined,
+        });
+      }
+      // Create new sections
+      for (const s of editNewSections) {
+        await api.createSection(branchId, ayId, { name: editClassName.trim(), section: s, displayOrder: order });
+      }
+      setShowEditForm(false);
+      showToast('success', 'Class updated');
+      const res = await api.getSections(branchId, ayId);
+      setSections(res.data || []);
+    } catch (e: any) {
+      setEditError(e.message || 'Failed to update');
+    } finally { setEditing(false); }
   };
 
   const promptDelete = (id: string, name: string) => {
@@ -340,9 +394,14 @@ export default function ClassesPage() {
                       {sectionsForClass.length} section{sectionsForClass.length > 1 ? 's' : ''}
                     </span>
                     {!isReadOnly && (
-                      <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
-                        <Trash2 size={13} />
-                      </button>
+                      <>
+                        <button onClick={() => openEdit(name)} className="rounded p-1 text-warm-muted/40 hover:text-warm-cream transition-colors" title="Edit class">
+                          <Edit3 size={12} />
+                        </button>
+                        <button onClick={() => promptDelete(sectionsForClass[0].id, name)} className="text-warm-muted/40 hover:text-red transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -368,6 +427,73 @@ export default function ClassesPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Edit Class Modal ──────────────────────────── */}
+      {showEditForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowEditForm(false)}>
+          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Edit Class</h2>
+              <button onClick={() => setShowEditForm(false)} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-warm-muted">Class Name</label>
+                  <input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="e.g. Class 1" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-warm-muted">Arrangement</label>
+                  <input type="number" value={editArrangement} onChange={(e) => setEditArrangement(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
+                </div>
+              </div>
+              {editSections.length > 0 && (
+                <div>
+                  <label className="mb-1 block text-xs text-warm-muted">Existing Sections</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {editSections.map((s) => (
+                      <span key={s.id} className="inline-flex items-center gap-1 rounded-md border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-xs text-warm-accent">
+                        {s.section || '(no section)'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Add New Sections</label>
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {editNewSections.map((s, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 rounded-md border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-xs text-warm-accent">
+                      {s}
+                      <button onClick={() => setEditNewSections(editNewSections.filter((_, j) => j !== i))} className="text-warm-accent/60 hover:text-warm-accent transition-colors">
+                        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <input value={editSectionInput} onChange={(e) => setEditSectionInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const tag = editSectionInput.trim();
+                      if (tag && !editNewSections.includes(tag)) setEditNewSections([...editNewSections, tag]);
+                      setEditSectionInput('');
+                    }
+                  }}
+                  placeholder="Type and press Enter to add"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+              </div>
+            </div>
+            {editError && <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2"><p className="text-xs text-red-400">{editError}</p></div>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setShowEditForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleUpdate} disabled={editing} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+                {editing ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
