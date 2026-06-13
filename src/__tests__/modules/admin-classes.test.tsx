@@ -75,8 +75,9 @@ describe('ClassesPage — rendering', () => {
 
   it('shows arrangement number', async () => {
     render(<ClassesPage />);
-    expect(await screen.findByText('Arr. 1')).toBeInTheDocument();
-    expect(await screen.findByText('Arr. 13')).toBeInTheDocument();
+    // Display order is used internally — no visible "Arr." label
+    expect(await screen.findByText('Playgroup')).toBeInTheDocument();
+    expect(await screen.findByText('Class 10')).toBeInTheDocument();
   });
 });
 

@@ -451,8 +451,7 @@ export default function ClassesPage() {
                     <GripVertical size={14} className="text-warm-muted/40" />
                     <div>
                       <span className="text-sm text-warm-cream">{name}</span>
-                      <span className="ml-2 text-[10px] text-warm-muted/60">Arr. {order}</span>
-                    </div>
+                      </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => openSubjectLink(name)} title="Link subjects"

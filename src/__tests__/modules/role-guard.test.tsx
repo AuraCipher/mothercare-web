@@ -30,7 +30,7 @@ vi.mock('@/lib/api', () => mockApi);
 vi.mock('lucide-react', () => ({
   LogOut: 'div', BookOpen: 'div', LayoutDashboard: 'div', Building2: 'div',
   Menu: 'div', X: 'div', ChevronDown: 'div', Check: 'div', MapPin: 'div',
-  Users: 'div', Key: 'div', GraduationCap: 'div', UserPlus: 'div', Settings: 'div',
+  Users: 'div', Key: 'div', GraduationCap: 'div', UserPlus: 'div', Settings: 'div', CalendarDays: 'div',
 }));
 
 import AdminLayout from '@/app/admin/layout';
