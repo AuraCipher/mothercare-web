@@ -17,6 +17,11 @@ vi.mock('@/lib/api', () => ({
     deleteTeacher: vi.fn(),
     deactivateTeacher: mockDeactivateTeacher,
     reactivateTeacher: mockReactivateTeacher,
+    createAssignment: vi.fn().mockResolvedValue({ success: true }),
+    deleteAssignment: vi.fn().mockResolvedValue({ success: true }),
+    getSections: vi.fn().mockResolvedValue({ success: true, data: [{ id: 'sec-1', name: 'Class 1', section: 'A', isActive: true }] }),
+    getSubjects: vi.fn().mockResolvedValue({ success: true, data: [{ id: 'subj-1', name: 'Mathematics', code: 'MATH' }] }),
+    getSectionSubjects: vi.fn().mockResolvedValue({ success: true, data: [] }),
   },
 }));
 
@@ -182,5 +187,87 @@ describe('TeacherDetailPage — loading & error', () => {
     render(<TeacherDetailPage />);
 
     expect(await screen.findByText('Failed to load')).toBeInTheDocument();
+  });
+});
+
+describe('TeacherDetailPage — assignment management', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('activeBranchId', 'branch-1');
+    localStorage.setItem('activeAYId', 'ay-1');
+    mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('activeBranchId');
+    localStorage.removeItem('activeAYId');
+  });
+
+  it('shows Add Assignment button', async () => {
+    render(<TeacherDetailPage />);
+    expect(await screen.findByText('Add Assignment')).toBeInTheDocument();
+  });
+
+  it('shows assignments table with subject names', async () => {
+    render(<TeacherDetailPage />);
+    const mathElements = await screen.findAllByText('Mathematics');
+    expect(mathElements.length).toBeGreaterThanOrEqual(1);
+    const engElements = await screen.findAllByText('English');
+    expect(engElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows Class Teacher badge for class teacher', async () => {
+    render(<TeacherDetailPage />);
+    const badges = await screen.findAllByText('Class Teacher');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows role text for non-class-teacher assignments', async () => {
+    render(<TeacherDetailPage />);
+    const texts = await screen.findAllByText('subject');
+    expect(texts.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows Edit button on each assignment row', async () => {
+    render(<TeacherDetailPage />);
+    const editBtns = await screen.findAllByTitle('Edit');
+    expect(editBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows Delete button on each assignment row', async () => {
+    render(<TeacherDetailPage />);
+    const deleteBtns = await screen.findAllByTitle('Delete');
+    expect(deleteBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('opens assignment modal when Add Assignment clicked', async () => {
+    render(<TeacherDetailPage />);
+    await userEvent.setup().click(await screen.findByText('Add Assignment'));
+    expect(await screen.findByText(/Class.*Section/)).toBeInTheDocument();
+    const subjectElements = await screen.findAllByText(/Subject/);
+    expect(subjectElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows role selector in assignment modal', async () => {
+    render(<TeacherDetailPage />);
+    await userEvent.setup().click(await screen.findByText('Add Assignment'));
+    expect(await screen.findByText('Primary')).toBeInTheDocument();
+    expect(await screen.findByText('Assistant')).toBeInTheDocument();
+    expect(await screen.findByText('HOD')).toBeInTheDocument();
+  });
+
+  it('shows Class Teacher checkbox in modal', async () => {
+    render(<TeacherDetailPage />);
+    await userEvent.setup().click(await screen.findByText('Add Assignment'));
+    expect(await screen.findByText(/only one per class/)).toBeInTheDocument();
+  });
+
+  it('shows empty state when no assignments exist', async () => {
+    mockGetTeacher.mockResolvedValue({
+      success: true,
+      data: { ...mockTeacherData, assignments: [] },
+    });
+    render(<TeacherDetailPage />);
+    expect(await screen.findByText(/No assignments yet/)).toBeInTheDocument();
   });
 });
