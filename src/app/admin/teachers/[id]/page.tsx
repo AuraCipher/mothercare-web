@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import {
   ArrowLeft, GraduationCap, BookOpen, MapPin, Calendar, DollarSign,
   Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
-  Eye, EyeOff, Send, Save, RefreshCw,
+  Eye, EyeOff, Send, Save, RefreshCw, Plus, Edit3, Trash2, X,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -37,6 +37,7 @@ interface Assignment {
   groupId: string;
   subjectId: string;
   isClassTeacher: boolean;
+  role?: string;
   group: { id: string; name: string; section: string | null };
   subject: { id: string; name: string; code: string | null };
   academicYear: { id: string };
@@ -63,6 +64,15 @@ export default function TeacherDetailPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(true);
+
+  // Assignment modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [editAssignId, setEditAssignId] = useState<string | null>(null);
+  const [sections, setSections] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [assignForm, setAssignForm] = useState({ sectionId: '', subjectId: '', role: 'primary', isClassTeacher: false });
+  const [savingAssign, setSavingAssign] = useState(false);
+  const [assignError, setAssignError] = useState('');
 
   // Admin password verification popup
   const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
@@ -202,6 +212,93 @@ export default function TeacherDetailPage() {
           loadData();
         } catch (e: any) {
           showToast('error', e.message || 'Failed to reactivate');
+        }
+      },
+    });
+  };
+
+  // ─── Assignment management ─────────────────────
+
+  const openAssignmentModal = async () => {
+    setEditAssignId(null);
+    setAssignForm({ sectionId: '', subjectId: '', role: 'primary', isClassTeacher: false });
+    setAssignError('');
+    setShowAssignModal(true);
+    const branchId = localStorage.getItem('activeBranchId');
+    const ayId = localStorage.getItem('activeAYId');
+    if (!branchId || !ayId) { setAssignError('No branch or academic year selected'); return; }
+    try {
+      const [secData, subjData] = await Promise.all([
+        api.getSections(branchId, ayId),
+        api.getSubjects(branchId, ayId),
+      ]);
+      setSections(secData.data || []);
+      setSubjects(subjData.data || []);
+    } catch {}
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!assignForm.sectionId || !assignForm.subjectId) {
+      setAssignError('Select a class and subject'); return;
+    }
+    const ayId = localStorage.getItem('activeAYId');
+    if (!ayId) { setAssignError('No academic year selected'); return; }
+    setSavingAssign(true);
+    try {
+      if (editAssignId) {
+        await api.updateAssignment(editAssignId, { isClassTeacher: assignForm.isClassTeacher });
+        showToast('success', 'Assignment updated');
+      } else {
+        await api.createAssignment({
+          academicYearId: ayId,
+          teacherId: data!.userId,
+          groupId: assignForm.sectionId,
+          subjectId: assignForm.subjectId,
+          isClassTeacher: assignForm.isClassTeacher,
+          role: assignForm.role,
+        });
+        showToast('success', 'Assignment added');
+      }
+      setShowAssignModal(false);
+      setEditAssignId(null);
+      loadData();
+    } catch (e: any) {
+      setAssignError(e.message || 'Failed to save assignment');
+    } finally { setSavingAssign(false); }
+  };
+
+  const openEditAssignment = async (a: Assignment) => {
+    setEditAssignId(a.id);
+    setAssignForm({ sectionId: a.groupId, subjectId: a.subjectId, role: a.role || 'primary', isClassTeacher: a.isClassTeacher });
+    setAssignError('');
+    setShowAssignModal(true);
+    const branchId = localStorage.getItem('activeBranchId');
+    const ayId = localStorage.getItem('activeAYId');
+    if (!branchId || !ayId) return;
+    try {
+      const [secData, subjData] = await Promise.all([
+        api.getSections(branchId, ayId),
+        api.getSubjects(branchId, ayId),
+      ]);
+      setSections(secData.data || []);
+      setSubjects(subjData.data || []);
+    } catch {}
+  };
+
+  const handleDeleteAssignment = (a: Assignment) => {
+    setConfirm({
+      open: true,
+      title: 'Remove Assignment?',
+      message: `Remove "${a.subject.name}" from ${a.group.name}${a.group.section ? ` — ${a.group.section}` : ''}?`,
+      variant: 'danger',
+      confirmLabel: 'Remove',
+      action: async () => {
+        try {
+          await api.deleteAssignment(a.id);
+          showToast('success', 'Assignment removed');
+          loadData();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to remove');
         }
       },
     });
@@ -383,6 +480,10 @@ export default function TeacherDetailPage() {
       <section className="mb-10">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-medium text-warm-cream">Assignments</h2>
+          <button onClick={openAssignmentModal}
+            className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+            <Plus size={13} /> Add Assignment
+          </button>
         </div>
 
         {data.assignments.length === 0 ? (
@@ -399,6 +500,7 @@ export default function TeacherDetailPage() {
                   <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Group</th>
                   <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Section</th>
                   <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Role</th>
+                  <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -408,13 +510,23 @@ export default function TeacherDetailPage() {
                     <td className="px-4 py-3 text-sm text-warm-cream">{a.group.name}</td>
                     <td className="px-4 py-3 text-sm text-warm-muted">{a.group.section || '—'}</td>
                     <td className="px-4 py-3">
-                      {a.isClassTeacher ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2 py-0.5 text-[10px] text-warm-accent">
-                          Class Teacher
-                        </span>
-                      ) : (
-                        <span className="text-xs text-warm-muted">Subject Teacher</span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {a.isClassTeacher ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2 py-0.5 text-[10px] text-warm-accent">Class Teacher</span>
+                        ) : (
+                          <span className="text-xs text-warm-muted capitalize">{a.role || 'subject'}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditAssignment(a)} title="Edit" className="rounded p-1 text-warm-muted hover:text-warm-cream transition-colors">
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteAssignment(a)} title="Delete" className="rounded p-1 text-warm-muted hover:text-red transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -445,6 +557,65 @@ export default function TeacherDetailPage() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* ── Add Assignment Modal ────────────────────────── */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAssignModal(false)}>
+          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">{editAssignId ? 'Edit Assignment' : 'Add Assignment'}</h2>
+              <button onClick={() => { setShowAssignModal(false); setEditAssignId(null); }} className="text-warm-muted hover:text-warm-cream transition-colors"><X size={16} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Class / Section *</label>
+                <select value={assignForm.sectionId} onChange={(e) => setAssignForm(p => ({ ...p, sectionId: e.target.value }))}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                  <option value="">— Select —</option>
+                  {sections.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Subject *</label>
+                <select value={assignForm.subjectId} onChange={(e) => setAssignForm(p => ({ ...p, subjectId: e.target.value }))}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                  <option value="">— Select —</option>
+                  {subjects.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Role</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-xs text-warm-cream cursor-pointer">
+                    <input type="radio" name="role" value="primary" checked={assignForm.role === 'primary'} onChange={(e) => setAssignForm(p => ({ ...p, role: e.target.value }))} className="h-3 w-3 text-warm-accent" /> Primary
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-warm-cream cursor-pointer">
+                    <input type="radio" name="role" value="assistant" checked={assignForm.role === 'assistant'} onChange={(e) => setAssignForm(p => ({ ...p, role: e.target.value }))} className="h-3 w-3 text-warm-accent" /> Assistant
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-warm-cream cursor-pointer">
+                    <input type="radio" name="role" value="hod" checked={assignForm.role === 'hod'} onChange={(e) => setAssignForm(p => ({ ...p, role: e.target.value }))} className="h-3 w-3 text-warm-accent" /> HOD
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="isClassTeacher" checked={assignForm.isClassTeacher} onChange={(e) => setAssignForm(p => ({ ...p, isClassTeacher: e.target.checked }))} className="h-3.5 w-3.5 rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                <label htmlFor="isClassTeacher" className="text-xs text-warm-muted">Class Teacher (only one per class)</label>
+              </div>
+            </div>
+            {assignError && <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2"><p className="text-xs text-red-400">{assignError}</p></div>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setShowAssignModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleSaveAssignment} disabled={savingAssign} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+                {savingAssign ? 'Saving…' : editAssignId ? 'Update' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Confirm modal (delete) */}

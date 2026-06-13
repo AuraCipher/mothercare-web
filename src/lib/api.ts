@@ -294,7 +294,7 @@ export const api = {
   getGroupAssignments: (groupId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/groups/${groupId}/assignments`),
 
-  createAssignment: (data: { academicYearId: string; teacherId: string; groupId: string; subjectId: string; isClassTeacher?: boolean }) =>
+  createAssignment: (data: { academicYearId: string; teacherId: string; groupId: string; subjectId: string; isClassTeacher?: boolean; role?: string }) =>
     apiRequest('/admin/assignments', {
       method: 'POST',
       body: JSON.stringify(data),
