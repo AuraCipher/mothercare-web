@@ -218,6 +218,16 @@ export const api = {
   unlinkSubjectGroup: (branchId: string, subjectId: string, groupId: string) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/unlink/${groupId}`, { method: 'DELETE' }),
 
+  // ─── Timetable Day Config ───────────────────────
+  getTimetableDays: (branchId: string, ayId: string, timetableGroup?: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/days${timetableGroup ? `?timetableGroup=${timetableGroup}` : ''}`),
+
+  setTimetableDays: (branchId: string, ayId: string, timetableGroup: string, days: { dayOfWeek: number; isActive: boolean }[]) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/days`, {
+      method: 'PUT',
+      body: JSON.stringify({ timetableGroup, days }),
+    }),
+
   // ─── Timetable Slots ────────────────────────────
   getTimetableSlots: (branchId: string, ayId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/slots`),

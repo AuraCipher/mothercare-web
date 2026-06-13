@@ -3,213 +3,191 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CalendarDays, BookOpen, Plus, Trash2, X, Save, Edit3 } from 'lucide-react';
+import { CalendarDays, FileText, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
-interface Section {
-  id: string; name: string; section: string | null; displayOrder: number; isActive: boolean;
-  _count?: { students: number; members: number; groupSubjects?: number; teacherAssignments?: number };
+interface TimetableGroup {
+  name: string;
+  type: 'timetable' | 'datesheet';
+  slotCount: number;
 }
 
-interface Slot {
-  id: string; dayOfWeek: number; lectureNumber: number; startTime: string; endTime: string;
-}
-
-const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAY_SHORT = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-export default function TimetablePage() {
+export default function TimetableManagePage() {
   const router = useRouter();
-  const [sections, setSections] = useState<Section[]>([]);
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [timetables, setTimetables] = useState<TimetableGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showSlotEditor, setShowSlotEditor] = useState(false);
-  const [branchId, setBranchId] = useState('');
-  const [ayId, setAyId] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createType, setCreateType] = useState<'timetable' | 'datesheet'>('timetable');
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
+  const loadGroups = async () => {
     const bId = localStorage.getItem('activeBranchId');
     const aId = localStorage.getItem('activeAYId');
-    if (!bId || !aId) {
-      setError('Select an academic year from the sidebar and press Go.');
-      setLoading(false); return;
-    }
-    setBranchId(bId);
-    setAyId(aId);
-    Promise.all([
-      api.getSections(bId, aId),
-      api.getTimetableSlots(bId, aId),
-    ]).then(([secData, slotData]) => {
-      setSections(secData.data || []);
-      setSlots(slotData.data || []);
-    }).catch(() => setError('Failed to load data'))
-    .finally(() => setLoading(false));
-  }, []);
-
-  // Already sorted by backend
-  const sorted = sections;
-
-  // ─── Slot Editor ────────────────────────────────
-
-  const [editSlots, setEditSlots] = useState<Slot[]>([]);
-  const [newSlotDay, setNewSlotDay] = useState(1);
-  const [newSlotStart, setNewSlotStart] = useState('08:00');
-  const [newSlotEnd, setNewSlotEnd] = useState('08:40');
-
-  const openSlotEditor = () => {
-    setEditSlots(slots.map(s => ({ ...s })));
-    setShowSlotEditor(true);
+    if (!bId || !aId) { setLoading(false); return; }
+    try {
+      const slotsRes = await api.getTimetableSlots(bId, aId);
+      const slots = slotsRes.data || [];
+      const groups: TimetableGroup[] = [];
+      const seen = new Set<string>();
+      for (const s of slots) {
+        const g = s.timetableGroup || 'default';
+        if (!seen.has(g)) {
+          seen.add(g);
+          groups.push({
+            name: g,
+            type: g.toLowerCase().includes('exam') || g.toLowerCase().includes('datesheet') ? 'datesheet' : 'timetable',
+            slotCount: slots.filter((x: any) => (x.timetableGroup || 'default') === g).length,
+          });
+        }
+      }
+      if (groups.length === 0) {
+        groups.push({ name: 'default', type: 'timetable', slotCount: 0 });
+      }
+      setTimetables(groups);
+    } catch {} finally { setLoading(false); }
   };
 
-  const addRow = async () => {
-    if (!branchId || !ayId) return;
+  useEffect(() => { loadGroups(); }, []);
+
+  const handleCreate = async () => {
+    if (!newName.trim()) { showToast('error', 'Name is required'); return; }
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (!bId || !aId) return;
+    setCreating(true);
     try {
-      await api.createTimetableSlot(branchId, ayId, { dayOfWeek: newSlotDay, startTime: newSlotStart, endTime: newSlotEnd });
-      const data = await api.getTimetableSlots(branchId, ayId);
-      setSlots(data.data || []);
-      setEditSlots(data.data?.map((s: any) => ({ ...s })) || []);
-      showToast('success', 'Lecture added');
+      const groupName = newName.trim().toLowerCase().replace(/\s+/g, '-');
+      // Create day config for the new group (all days active)
+      const allDays = [1,2,3,4,5,6].map(d => ({ dayOfWeek: d, isActive: true }));
+      await api.setTimetableDays(bId, aId, groupName, allDays);
+      showToast('success', `${createType === 'timetable' ? 'Timetable' : 'Datesheet'} created`);
+      setShowCreateModal(false);
+      setNewName('');
+      loadGroups();
     } catch (e: any) {
-      showToast('error', e.message || 'Failed to add');
-    }
+      showToast('error', e.message || 'Failed to create');
+    } finally { setCreating(false); }
   };
 
-  const deleteSlot = async (id: string) => {
-    if (!branchId) return;
-    try {
-      await api.deleteTimetableSlot(branchId, id);
-      setEditSlots(prev => prev.filter(s => s.id !== id));
-      setSlots(prev => prev.filter(s => s.id !== id));
-      showToast('success', 'Lecture removed');
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to delete');
-    }
+  const openCreate = (type: 'timetable' | 'datesheet') => {
+    setCreateType(type);
+    setNewName('');
+    setShowCreateModal(true);
   };
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="mb-1 text-xl font-light text-warm-cream">Timetable</h1>
-        <div className="grid grid-cols-5 gap-3 mt-8">
-          {Array.from({ length: 10 }).map((_, i) => (<div key={i} className="h-24 rounded-xl bg-warm-card animate-pulse" />))}
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="grid grid-cols-2 gap-8">
+          {[1,2].map(i => <div key={i} className="h-64 rounded-xl bg-warm-card animate-pulse" />)}
         </div>
       </main>
     );
   }
 
-  if (error) {
-    return (
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="mb-1 text-xl font-light text-warm-cream">Timetable</h1>
-        <p className="text-sm text-warm-muted">{error}</p>
-      </main>
-    );
-  }
+  const timetableList = timetables.filter(t => t.type === 'timetable');
+  const datesheetList = timetables.filter(t => t.type === 'datesheet');
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="mb-1 text-xl font-light text-warm-cream">Timetable</h1>
-          <p className="text-sm text-warm-muted">
-            {showSlotEditor
-              ? `${editSlots.length} lecture(s) · Click a section card to assign subjects/teachers`
-              : `${sorted.length} section(s) · ${slots.length} lecture(s) defined`}
-          </p>
-        </div>
-        <button onClick={showSlotEditor ? () => setShowSlotEditor(false) : openSlotEditor}
-          className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3.5 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-          {showSlotEditor ? <X size={14} /> : <Edit3 size={14} />}
-          {showSlotEditor ? 'Done Editing' : 'Edit Lectures'}
-        </button>
-      </div>
+    <main className="mx-auto max-w-5xl px-6 py-10">
+      <h1 className="mb-8 text-xl font-light text-warm-cream">Schedule Manager</h1>
 
-      {/* ── Slot Editor Mode ──────────────────────── */}
-      {showSlotEditor ? (
-        <div>
-          <div className="overflow-x-auto rounded-xl border border-warm-card-border">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-warm-card-border bg-warm-card/50">
-                  <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Day</th>
-                  <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Lecture</th>
-                  <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Start</th>
-                  <th className="px-4 py-3 text-[10px] font-medium tracking-wider text-warm-muted uppercase">End</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {editSlots.map(slot => (
-                  <tr key={slot.id} className="border-b border-warm-card-border hover:bg-warm-card/30">
-                    <td className="px-4 py-3 text-sm text-warm-cream">{DAY_NAMES[slot.dayOfWeek]}</td>
-                    <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
-                    <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime}</td>
-                    <td className="px-4 py-3 text-sm text-warm-cream">{slot.endTime}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => deleteSlot(slot.id)} className="rounded p-1 text-warm-muted hover:text-red transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Add row */}
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
-            <div>
-              <label className="mb-1 block text-[10px] text-warm-muted">Day</label>
-              <select value={newSlotDay} onChange={(e) => setNewSlotDay(Number(e.target.value))}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-                {[1,2,3,4,5,6].map(d => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
-              </select>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        {/* ── Time Tables Column ────────────────────── */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <CalendarDays size={18} className="text-warm-accent" />
+              <h2 className="text-sm font-medium text-warm-cream">Time Tables</h2>
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] text-warm-muted">Start</label>
-              <input type="time" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
-            </div>
-            <div>
-              <label className="mb-1 block text-[10px] text-warm-muted">End</label>
-              <input type="time" value={newSlotEnd} onChange={(e) => setNewSlotEnd(e.target.value)}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
-            </div>
-            <button onClick={addRow}
-              className="flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-              <Plus size={13} /> Add Lecture
+            <button onClick={() => openCreate('timetable')}
+              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+              <Plus size={13} /> Add New
             </button>
           </div>
+
+          {timetableList.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center">
+              <p className="text-xs text-warm-muted">No timetables yet. Create one.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {timetableList.map(t => (
+                <button key={t.name} onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                  className="w-full flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card p-3 text-left hover:border-warm-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarDays size={15} className="text-warm-accent shrink-0" />
+                    <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                  </div>
+                  <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        /* ── Class/Section Grid ────────────────────── */
-        sorted.length === 0 ? (
-          <div className="rounded-xl border border-warm-card-border bg-warm-card p-12 text-center">
-            <CalendarDays size={40} className="mx-auto mb-4 text-warm-muted" />
-            <p className="text-sm text-warm-muted">No classes yet.</p>
+
+        {/* ── Date Sheets Column ────────────────────── */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <FileText size={18} className="text-warm-accent" />
+              <h2 className="text-sm font-medium text-warm-cream">Date Sheets</h2>
+            </div>
+            <button onClick={() => openCreate('datesheet')}
+              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+              <Plus size={13} /> Add New
+            </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {sorted.map(sec => (
-              <div key={sec.id}
-                onClick={() => router.push(`/admin/timetable/${sec.id}`)}
-                className="rounded-xl border border-warm-card-border bg-warm-card p-3 cursor-pointer hover:border-warm-accent/40 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <BookOpen size={13} className="text-warm-accent shrink-0" />
-                  <span className="text-sm font-medium text-warm-cream truncate">{sec.name}</span>
-                </div>
-                {sec.section && (
-                  <p className="text-xs text-warm-accent/80 mb-1">Section — {sec.section}</p>
-                )}
-                <p className="text-[10px] text-warm-muted">
-                  {sec._count?.students !== undefined ? `${sec._count.students} student${sec._count.students !== 1 ? 's' : ''}` : ''}
-                </p>
-              </div>
-            ))}
+
+          {datesheetList.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center">
+              <p className="text-xs text-warm-muted">No datesheets yet. Create one.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {datesheetList.map(t => (
+                <button key={t.name} onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                  className="w-full flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card p-3 text-left hover:border-warm-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText size={15} className="text-warm-accent shrink-0" />
+                    <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                  </div>
+                  <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Create Modal ───────────────────────────── */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowCreateModal(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">
+                New {createType === 'timetable' ? 'Time Table' : 'Date Sheet'}
+              </h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
+            </div>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Regular, Friday, Exam 2025"
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              autoFocus
+            />
+            <p className="mt-2 text-[10px] text-warm-muted/60">Give it a name. You can set up days and lectures later.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={handleCreate} disabled={creating} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
+                {creating ? 'Creating…' : `Create ${createType === 'timetable' ? 'Timetable' : 'Datesheet'}`}
+              </button>
+            </div>
           </div>
-        )
+        </div>
       )}
     </main>
   );
