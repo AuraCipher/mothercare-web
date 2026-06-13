@@ -218,6 +218,31 @@ export const api = {
   unlinkSubjectGroup: (branchId: string, subjectId: string, groupId: string) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/unlink/${groupId}`, { method: 'DELETE' }),
 
+  // ─── Timetable Slots ────────────────────────────
+  getTimetableSlots: (branchId: string, ayId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/slots`),
+
+  createTimetableSlot: (branchId: string, ayId: string, data: { dayOfWeek: number; startTime: string; endTime: string }) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/slots`, {
+      method: 'POST', body: JSON.stringify(data),
+    }),
+
+  updateTimetableSlot: (branchId: string, id: string, data: { startTime?: string; endTime?: string; dayOfWeek?: number }) =>
+    apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, {
+      method: 'PUT', body: JSON.stringify(data),
+    }),
+
+  deleteTimetableSlot: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, { method: 'DELETE' }),
+
+  getSectionTimetable: (branchId: string, sectionId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),
+
+  upsertTimetableEntry: (branchId: string, sectionId: string, slotId: string, data: { subjectId?: string | null; teacherId?: string | null }) =>
+    apiRequest(`/admin/branches/${branchId}/sections/${sectionId}/timetable/${slotId}`, {
+      method: 'PUT', body: JSON.stringify(data),
+    }),
+
   // ─── Admin Invitations (CEO only) ──────────────────
   createInvitation: (email: string, branchId: string) =>
     apiRequest('/admin/invitations', {
