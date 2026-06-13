@@ -179,7 +179,7 @@ export default function TimetableManagePage() {
                 const isActive = t.activeDays > 0;
                 return (
                   <div key={t.id} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
-                    <button onClick={() => router.push(`/admin/timetable/grid?id=${t.id}`)}
+                    <button onClick={() => router.push(`/admin/timetable/datesheet/${t.id}`)}
                       className="flex-1 flex items-center gap-2 p-3 text-left">
                       <FileText size={15} className="text-warm-accent shrink-0" />
                       <div className="min-w-0">

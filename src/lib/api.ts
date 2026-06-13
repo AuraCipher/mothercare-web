@@ -248,7 +248,7 @@ export const api = {
   getTimetableSlots: (branchId: string, timetableId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/timetables/${timetableId}/slots`),
 
-  createTimetableSlot: (branchId: string, timetableId: string, data: { dayOfWeek: number; startTime: string; endTime: string }) =>
+  createTimetableSlot: (branchId: string, timetableId: string, data: { dayOfWeek?: number | null; startTime: string; endTime: string }) =>
     apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/slots`, {
       method: 'POST', body: JSON.stringify(data),
     }),
