@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CalendarDays, FileText, Plus, X } from 'lucide-react';
+import { CalendarDays, FileText, Plus, X, Trash2 } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface TimetableGroup {
   name: string;
@@ -20,6 +21,9 @@ export default function TimetableManagePage() {
   const [createType, setCreateType] = useState<'timetable' | 'datesheet'>('timetable');
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [confirm, setConfirm] = useState<{ open: boolean; title: string; message: string; variant: 'danger' | 'warning' | 'default'; confirmLabel: string; action: () => Promise<void> }>(
+    { open: false, title: '', message: '', variant: 'danger', confirmLabel: 'Confirm', action: async () => {} }
+  );
 
   const loadGroups = async () => {
     const bId = localStorage.getItem('activeBranchId');
@@ -49,6 +53,30 @@ export default function TimetableManagePage() {
   };
 
   useEffect(() => { loadGroups(); }, []);
+
+  const handleDelete = (group: TimetableGroup) => {
+    setConfirm({
+      open: true,
+      title: `Delete "${group.name}"?`,
+      message: group.slotCount > 0
+        ? `This timetable has ${group.slotCount} slot(s). It will be deleted permanently if no section entries depend on it.`
+        : `This timetable is empty and will be deleted permanently.`,
+      variant: 'danger',
+      confirmLabel: 'Delete',
+      action: async () => {
+        const bId = localStorage.getItem('activeBranchId');
+        const aId = localStorage.getItem('activeAYId');
+        if (!bId || !aId) return;
+        try {
+          await api.deleteTimetableGroup(bId, aId, group.name);
+          showToast('success', `"${group.name}" deleted`);
+          loadGroups();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to delete');
+        }
+      },
+    });
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) { showToast('error', 'Name is required'); return; }
@@ -114,15 +142,21 @@ export default function TimetableManagePage() {
           ) : (
             <div className="space-y-2">
               {timetableList.map(t => (
-                <button key={t.name} onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
-                  className="w-full flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card p-3 text-left hover:border-warm-accent/40 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
+                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                    className="flex-1 flex items-center gap-2 p-3 text-left"
+                  >
                     <CalendarDays size={15} className="text-warm-accent shrink-0" />
                     <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                  </button>
+                  <div className="flex items-center gap-1 pr-2">
+                    <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete timetable">
+                      <Trash2 size={12} />
+                    </button>
                   </div>
-                  <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -148,15 +182,21 @@ export default function TimetableManagePage() {
           ) : (
             <div className="space-y-2">
               {datesheetList.map(t => (
-                <button key={t.name} onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
-                  className="w-full flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card p-3 text-left hover:border-warm-accent/40 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
+                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                    className="flex-1 flex items-center gap-2 p-3 text-left"
+                  >
                     <FileText size={15} className="text-warm-accent shrink-0" />
                     <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                  </button>
+                  <div className="flex items-center gap-1 pr-2">
+                    <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete">
+                      <Trash2 size={12} />
+                    </button>
                   </div>
-                  <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -189,6 +229,16 @@ export default function TimetableManagePage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmLabel={confirm.confirmLabel}
+        onConfirm={async () => { await confirm.action(); setConfirm(prev => ({ ...prev, open: false })); }}
+        onCancel={() => setConfirm(prev => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

@@ -245,6 +245,9 @@ export const api = {
   deleteTimetableSlot: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, { method: 'DELETE' }),
 
+  deleteTimetableGroup: (branchId: string, ayId: string, group: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups/${group}`, { method: 'DELETE' }),
+
   getSectionTimetable: (branchId: string, sectionId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),
 
