@@ -14,7 +14,7 @@ interface Section {
   displayOrder: number;
   capacity: number;
   isActive: boolean;
-  _count?: { members: number; students: number };
+  _count?: { members: number; students: number; groupSubjects?: number; teacherAssignments?: number };
 }
 
 export default function ClassesPage() {
@@ -217,18 +217,23 @@ export default function ClassesPage() {
   // Delete an entire class (all sections under this class name)
   const promptDeleteClass = (className: string) => {
     const classSections = sections.filter(s => s.name === className);
-    const deps = classSections.filter(s => (s._count?.students ?? 0) > 0);
-    const totalSubjects = classSections.reduce((sum, s) => sum + (s._count?.subjectLinks ?? 0), 0);
+    const hasStudents = classSections.some(s => (s._count?.students ?? 0) > 0);
+    const hasLinks = classSections.some(s => (s._count?.groupSubjects ?? 0) > 0 || (s._count?.teacherAssignments ?? 0) > 0);
 
-    if (deps.length > 0 || totalSubjects > 0) {
-      showToast('error', `Cannot delete "${className}": sections have students or subject links. Remove dependencies first.`);
+    if (hasStudents || hasLinks) {
+      let msg = `"${className}" has sections with `;
+      const issues = [];
+      if (hasStudents) issues.push('enrolled students');
+      if (hasLinks) issues.push('subject links or teacher assignments');
+      msg += issues.join(' and ') + '. Open each section and remove all links first, then delete.';
+      showToast('error', msg);
       return;
     }
 
     setConfirm({
       open: true,
       title: `Delete Entire Class "${className}"?`,
-      message: `This will delete all ${classSections.length} section(s) under "${className}". This cannot be undone.`,
+      message: `This will permanently delete all ${classSections.length} section(s) under "${className}". This cannot be undone.`,
       variant: 'danger',
       confirmLabel: `Delete All ${classSections.length} Sections`,
       action: async () => {
@@ -294,13 +299,25 @@ export default function ClassesPage() {
     try {
       for (const sec of linkSections) {
         const selectedIds = sectionSubjectMap[sec.id] || new Set();
-        // Link each selected subject to this section
+        // Get currently linked subjects from backend
+        const currentLinked = await api.getSectionSubjects(branchId, sec.id);
+        const currentIds = new Set((currentLinked.data || []).map((s: any) => s.id));
+
+        // Unlink subjects that were unchecked
+        for (const currId of currentIds) {
+          if (!selectedIds.has(currId)) {
+            await api.unlinkSubjectGroup(branchId, currId, sec.id).catch(() => {});
+          }
+        }
+        // Link newly checked subjects
         for (const subjectId of selectedIds) {
-          await api.linkSubjectGroups(branchId, subjectId, [sec.id]).catch(() => {});
+          if (!currentIds.has(subjectId)) {
+            await api.linkSubjectGroups(branchId, subjectId, [sec.id]).catch(() => {});
+          }
         }
       }
       setLinkClassName(null);
-      showToast('success', 'Subjects linked');
+      showToast('success', 'Subjects updated');
     } catch (e: any) {
       showToast('error', e.message || 'Failed to update');
     } finally { setSavingLinks(false); }
