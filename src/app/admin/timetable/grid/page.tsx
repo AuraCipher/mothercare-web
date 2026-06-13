@@ -35,7 +35,6 @@ function TimetableGridInner() {
   const [branchId, setBranchId] = useState('');
   const [ayId, setAyId] = useState('');
   const [dayConfigs, setDayConfigs] = useState<DayConfig[]>([]);
-  const [newSlotDay, setNewSlotDay] = useState(1);
   const [newSlotStart, setNewSlotStart] = useState('08:00');
   const [newSlotEnd, setNewSlotEnd] = useState('08:40');
 
@@ -73,12 +72,14 @@ function TimetableGridInner() {
   };
 
   const addRow = async () => {
-    if (!branchId || !ayId) return;
+    if (!branchId || !ayId || activeDays.size === 0) { showToast('error', 'No active days selected. Toggle days above.'); return; }
     try {
-      await api.createTimetableSlot(branchId, ayId, { dayOfWeek: newSlotDay, startTime: newSlotStart, endTime: newSlotEnd, timetableGroup });
+      for (const day of activeDays) {
+        await api.createTimetableSlot(branchId, ayId, { dayOfWeek: day, startTime: newSlotStart, endTime: newSlotEnd, timetableGroup });
+      }
       const data = await api.getTimetableSlots(branchId, ayId);
       setSlots((data.data || []).filter((s: any) => (s.timetableGroup || 'default') === timetableGroup));
-      showToast('success', 'Lecture added');
+      showToast('success', `Lecture added for ${activeDays.size} day(s)`);
     } catch (e: any) { showToast('error', e.message || 'Failed to add'); }
   };
 
@@ -135,7 +136,6 @@ function TimetableGridInner() {
           <div className="overflow-x-auto rounded-xl border border-warm-card-border">
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b border-warm-card-border bg-warm-card/50">
-                <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Day</th>
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Lecture</th>
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Start</th>
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">End</th>
@@ -144,7 +144,6 @@ function TimetableGridInner() {
               <tbody>
                 {filteredSlots.map(slot => (
                   <tr key={slot.id} className="border-b border-warm-card-border hover:bg-warm-card/30">
-                    <td className="px-4 py-3 text-sm text-warm-cream">{DAY_NAMES[slot.dayOfWeek]}</td>
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime}</td>
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.endTime}</td>
@@ -155,12 +154,6 @@ function TimetableGridInner() {
             </table>
           </div>
           <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
-            <div><label className="mb-1 block text-[10px] text-warm-muted">Day</label>
-              <select value={newSlotDay} onChange={(e) => setNewSlotDay(Number(e.target.value))}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-                {ALL_DAYS.map(d => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
-              </select>
-            </div>
             <div><label className="mb-1 block text-[10px] text-warm-muted">Start</label>
               <input type="time" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)}
                 className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />

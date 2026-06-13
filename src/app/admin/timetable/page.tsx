@@ -3,16 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CalendarDays, FileText, Plus, X, Trash2, Edit3 } from 'lucide-react';
+import { CalendarDays, FileText, Plus, X, Trash2, Edit3, MoreVertical, Power, PowerOff } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
 interface TimetableGroup {
-  name: string;       // display name (without prefix)
-  storedName: string; // actual stored name (with prefix, for API calls)
+  name: string;
+  storedName: string;
   type: 'timetable' | 'datesheet';
   slotCount: number;
+  activeDays: number;
 }
+const ALL_DAYS = [1, 2, 3, 4, 5, 6];
 
 export default function TimetableManagePage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function TimetableManagePage() {
   const [createType, setCreateType] = useState<'timetable' | 'datesheet'>('timetable');
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [renameGroup, setRenameGroup] = useState<TimetableGroup | null>(null);
   const [renameName, setRenameName] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -35,17 +38,32 @@ export default function TimetableManagePage() {
     if (!bId || !aId) { setLoading(false); return; }
     try {
       const res = await api.getTimetableGroups(bId, aId);
-      const groups: TimetableGroup[] = (res.data || []).map(g => ({
+      const groups: TimetableGroup[] = (res.data || []).map((g: any) => ({
         storedName: g.name,
         name: g.name.replace(/^datesheet-/i, ''),
         type: g.name.toLowerCase().includes('datesheet') || g.name.toLowerCase().includes('exam') ? 'datesheet' : 'timetable',
         slotCount: g.slotCount,
+        activeDays: g.activeDays || 0,
       }));
       setTimetables(groups);
     } catch {} finally { setLoading(false); }
   };
 
   useEffect(() => { loadGroups(); }, []);
+
+  const toggleActive = async (group: TimetableGroup, activate: boolean) => {
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (!bId || !aId) return;
+    const days = ALL_DAYS.map(d => ({ dayOfWeek: d, isActive: activate }));
+    try {
+      await api.setTimetableDays(bId, aId, group.storedName, days);
+      showToast('success', `"${group.name}" ${activate ? 'activated' : 'deactivated'}`);
+      loadGroups();
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to update');
+    }
+  };
 
   const handleRename = async () => {
     if (!renameGroup || !renameName.trim()) return;
@@ -153,27 +171,47 @@ export default function TimetableManagePage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {timetableList.map(t => (
-                <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
+              {timetableList.map(t => {
+                const isActive = t.activeDays > 0;
+                return (
+                <div key={t.name} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
                   <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
                     className="flex-1 flex items-center gap-2 p-3 text-left"
                   >
                     <CalendarDays size={15} className="text-warm-accent shrink-0" />
-                    <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                    <div className="min-w-0">
+                      <span className="text-sm text-warm-cream capitalize block truncate">{t.name.replace(/-/g, ' ')}</span>
+                      <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </button>
-                  <div className="flex items-center gap-1 pr-2">
-                    <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setRenameGroup(t); setRenameName(t.name); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="Rename">
-                      <Edit3 size={11} />
+                  <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                  <div className="relative pr-2">
+                    <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.storedName ? null : t.storedName); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream transition-colors">
+                      <MoreVertical size={13} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete">
-                      <Trash2 size={12} />
-                    </button>
+                    {dropdownOpen === t.storedName && (
+                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl right-0" onClick={() => setDropdownOpen(null)}>
+                        <button onClick={() => { setRenameGroup(t); setRenameName(t.name); }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50 transition-colors">
+                          <Edit3 size={12} /> Rename
+                        </button>
+                        <button onClick={() => toggleActive(t, !isActive)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50 transition-colors">
+                          {isActive ? <PowerOff size={12} /> : <Power size={12} />}
+                          {isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onClick={() => handleDelete(t)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50 transition-colors">
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
@@ -197,27 +235,42 @@ export default function TimetableManagePage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {datesheetList.map(t => (
-                <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
+              {datesheetList.map(t => {
+                const isActive = t.activeDays > 0;
+                return (
+                <div key={t.name} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
                   <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
                     className="flex-1 flex items-center gap-2 p-3 text-left"
                   >
                     <FileText size={15} className="text-warm-accent shrink-0" />
-                    <span className="text-sm text-warm-cream capitalize">{t.name.replace(/-/g, ' ')}</span>
+                    <div className="min-w-0">
+                      <span className="text-sm text-warm-cream capitalize block truncate">{t.name.replace(/-/g, ' ')}</span>
+                      <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </button>
-                  <div className="flex items-center gap-1 pr-2">
-                    <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setRenameGroup(t); setRenameName(t.name); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="Rename">
-                      <Edit3 size={11} />
+                  <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                  <div className="relative pr-2">
+                    <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.storedName ? null : t.storedName); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream transition-colors">
+                      <MoreVertical size={13} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete">
-                      <Trash2 size={12} />
-                    </button>
+                    {dropdownOpen === t.storedName && (
+                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl right-0" onClick={() => setDropdownOpen(null)}>
+                        <button onClick={() => { setRenameGroup(t); setRenameName(t.name); }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">Rename</button>
+                        <button onClick={() => toggleActive(t, !isActive)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">
+                          {isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onClick={() => handleDelete(t)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50">Delete</button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
