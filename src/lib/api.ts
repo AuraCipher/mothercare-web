@@ -249,6 +249,11 @@ export const api = {
   deleteTimetableSlot: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, { method: 'DELETE' }),
 
+  renameTimetableGroup: (branchId: string, ayId: string, group: string, newName: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups/${group}/rename`, {
+      method: 'PUT', body: JSON.stringify({ newName }),
+    }),
+
   deleteTimetableGroup: (branchId: string, ayId: string, group: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups/${group}`, { method: 'DELETE' }),
 

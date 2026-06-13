@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CalendarDays, FileText, Plus, X, Trash2 } from 'lucide-react';
+import { CalendarDays, FileText, Plus, X, Trash2, Edit3 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -22,6 +22,9 @@ export default function TimetableManagePage() {
   const [createType, setCreateType] = useState<'timetable' | 'datesheet'>('timetable');
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [renameGroup, setRenameGroup] = useState<TimetableGroup | null>(null);
+  const [renameName, setRenameName] = useState('');
+  const [renaming, setRenaming] = useState(false);
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; message: string; variant: 'danger' | 'warning' | 'default'; confirmLabel: string; action: () => Promise<void> }>(
     { open: false, title: '', message: '', variant: 'danger', confirmLabel: 'Confirm', action: async () => {} }
   );
@@ -43,6 +46,24 @@ export default function TimetableManagePage() {
   };
 
   useEffect(() => { loadGroups(); }, []);
+
+  const handleRename = async () => {
+    if (!renameGroup || !renameName.trim()) return;
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (!bId || !aId) return;
+    setRenaming(true);
+    try {
+      const newStoredName = renameGroup.type === 'datesheet' && !renameName.trim().toLowerCase().includes('datesheet')
+        ? `datesheet-${renameName.trim().toLowerCase().replace(/\s+/g, '-')}` : renameName.trim().toLowerCase().replace(/\s+/g, '-');
+      await api.renameTimetableGroup(bId, aId, renameGroup.storedName, newStoredName);
+      setRenameGroup(null);
+      showToast('success', `Renamed to "${renameName.trim()}"`);
+      loadGroups();
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to rename');
+    } finally { setRenaming(false); }
+  };
 
   const handleDelete = (group: TimetableGroup) => {
     setConfirm({
@@ -142,8 +163,12 @@ export default function TimetableManagePage() {
                   </button>
                   <div className="flex items-center gap-1 pr-2">
                     <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setRenameGroup(t); setRenameName(t.name); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="Rename">
+                      <Edit3 size={11} />
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete timetable">
+                      className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -182,6 +207,10 @@ export default function TimetableManagePage() {
                   </button>
                   <div className="flex items-center gap-1 pr-2">
                     <span className="text-[10px] text-warm-muted">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setRenameGroup(t); setRenameName(t.name); }}
+                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors" title="Rename">
+                      <Edit3 size={11} />
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
                       className="rounded p-1.5 text-warm-muted hover:text-red hover:bg-warm-card-border/30 transition-colors" title="Delete">
                       <Trash2 size={12} />
@@ -215,6 +244,29 @@ export default function TimetableManagePage() {
               <button onClick={() => setShowCreateModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
               <button onClick={handleCreate} disabled={creating} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
                 {creating ? 'Creating…' : `Create ${createType === 'timetable' ? 'Timetable' : 'Datesheet'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rename Modal ───────────────────────────── */}
+      {renameGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setRenameGroup(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Rename "{renameGroup.name}"</h2>
+              <button onClick={() => setRenameGroup(null)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
+            </div>
+            <input value={renameName} onChange={(e) => setRenameName(e.target.value)}
+              placeholder="New name"
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && handleRename()} autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setRenameGroup(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={handleRename} disabled={renaming} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
+                {renaming ? 'Renaming…' : 'Rename'}
               </button>
             </div>
           </div>
