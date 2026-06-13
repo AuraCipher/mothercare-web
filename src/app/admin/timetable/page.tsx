@@ -8,7 +8,8 @@ import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
 interface TimetableGroup {
-  name: string;
+  name: string;       // display name (without prefix)
+  storedName: string; // actual stored name (with prefix, for API calls)
   type: 'timetable' | 'datesheet';
   slotCount: number;
 }
@@ -30,24 +31,13 @@ export default function TimetableManagePage() {
     const aId = localStorage.getItem('activeAYId');
     if (!bId || !aId) { setLoading(false); return; }
     try {
-      const slotsRes = await api.getTimetableSlots(bId, aId);
-      const slots = slotsRes.data || [];
-      const groups: TimetableGroup[] = [];
-      const seen = new Set<string>();
-      for (const s of slots) {
-        const g = s.timetableGroup || 'default';
-        if (!seen.has(g)) {
-          seen.add(g);
-          groups.push({
-            name: g,
-            type: g.toLowerCase().includes('exam') || g.toLowerCase().includes('datesheet') ? 'datesheet' : 'timetable',
-            slotCount: slots.filter((x: any) => (x.timetableGroup || 'default') === g).length,
-          });
-        }
-      }
-      if (groups.length === 0) {
-        groups.push({ name: 'default', type: 'timetable', slotCount: 0 });
-      }
+      const res = await api.getTimetableGroups(bId, aId);
+      const groups: TimetableGroup[] = (res.data || []).map(g => ({
+        storedName: g.name,
+        name: g.name.replace(/^datesheet-/i, ''),
+        type: g.name.toLowerCase().includes('datesheet') || g.name.toLowerCase().includes('exam') ? 'datesheet' : 'timetable',
+        slotCount: g.slotCount,
+      }));
       setTimetables(groups);
     } catch {} finally { setLoading(false); }
   };
@@ -68,7 +58,7 @@ export default function TimetableManagePage() {
         const aId = localStorage.getItem('activeAYId');
         if (!bId || !aId) return;
         try {
-          await api.deleteTimetableGroup(bId, aId, group.name);
+          await api.deleteTimetableGroup(bId, aId, group.storedName);
           showToast('success', `"${group.name}" deleted`);
           loadGroups();
         } catch (e: any) {
@@ -85,8 +75,9 @@ export default function TimetableManagePage() {
     if (!bId || !aId) return;
     setCreating(true);
     try {
-      const groupName = newName.trim().toLowerCase().replace(/\s+/g, '-');
-      // Create day config for the new group (all days active)
+      const rawName = newName.trim().toLowerCase().replace(/\s+/g, '-');
+      // Prefix datesheets so categorization catches them regardless of name
+      const groupName = createType === 'datesheet' && !rawName.includes('datesheet') ? `datesheet-${rawName}` : rawName;
       const allDays = [1,2,3,4,5,6].map(d => ({ dayOfWeek: d, isActive: true }));
       await api.setTimetableDays(bId, aId, groupName, allDays);
       showToast('success', `${createType === 'timetable' ? 'Timetable' : 'Datesheet'} created`);
@@ -143,7 +134,7 @@ export default function TimetableManagePage() {
             <div className="space-y-2">
               {timetableList.map(t => (
                 <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
-                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
                     className="flex-1 flex items-center gap-2 p-3 text-left"
                   >
                     <CalendarDays size={15} className="text-warm-accent shrink-0" />
@@ -183,7 +174,7 @@ export default function TimetableManagePage() {
             <div className="space-y-2">
               {datesheetList.map(t => (
                 <div key={t.name} className="flex items-center rounded-lg border border-warm-card-border bg-warm-card overflow-hidden hover:border-warm-accent/40 transition-colors">
-                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.name}`)}
+                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
                     className="flex-1 flex items-center gap-2 p-3 text-left"
                   >
                     <FileText size={15} className="text-warm-accent shrink-0" />
