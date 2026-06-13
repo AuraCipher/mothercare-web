@@ -218,44 +218,43 @@ export const api = {
   unlinkSubjectGroup: (branchId: string, subjectId: string, groupId: string) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/unlink/${groupId}`, { method: 'DELETE' }),
 
-  // ─── Timetable Groups ───────────────────────────
-  getTimetableGroups: (branchId: string, ayId: string) =>
-    apiRequest<{ success: boolean; data: { name: string; slotCount: number }[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups`),
+  // ─── Timetables (ID-based) ─────────────────────
+  getTimetables: (branchId: string, ayId: string) =>
+    apiRequest<{ success: boolean; data: { id: string; name: string; type: string; slotCount: number; activeDays: number }[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetables`),
 
-  // ─── Timetable Day Config ───────────────────────
-  getTimetableDays: (branchId: string, ayId: string, timetableGroup?: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/days${timetableGroup ? `?timetableGroup=${timetableGroup}` : ''}`),
-
-  setTimetableDays: (branchId: string, ayId: string, timetableGroup: string, days: { dayOfWeek: number; isActive: boolean }[]) =>
-    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/days`, {
-      method: 'PUT',
-      body: JSON.stringify({ timetableGroup, days }),
-    }),
-
-  // ─── Timetable Slots ────────────────────────────
-  getTimetableSlots: (branchId: string, ayId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/slots`),
-
-  createTimetableSlot: (branchId: string, ayId: string, data: { dayOfWeek: number; startTime: string; endTime: string }) =>
-    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/slots`, {
+  createTimetable: (branchId: string, ayId: string, data: { name: string; type?: string }) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetables`, {
       method: 'POST', body: JSON.stringify(data),
     }),
 
-  updateTimetableSlot: (branchId: string, id: string, data: { startTime?: string; endTime?: string; dayOfWeek?: number }) =>
-    apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, {
-      method: 'PUT', body: JSON.stringify(data),
-    }),
-
-  deleteTimetableSlot: (branchId: string, id: string) =>
-    apiRequest(`/admin/branches/${branchId}/timetable/slots/${id}`, { method: 'DELETE' }),
-
-  renameTimetableGroup: (branchId: string, ayId: string, group: string, newName: string) =>
-    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups/${group}/rename`, {
+  renameTimetable: (branchId: string, id: string, newName: string) =>
+    apiRequest(`/admin/branches/${branchId}/timetables/${id}/rename`, {
       method: 'PUT', body: JSON.stringify({ newName }),
     }),
 
-  deleteTimetableGroup: (branchId: string, ayId: string, group: string) =>
-    apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/timetable/groups/${group}`, { method: 'DELETE' }),
+  deleteTimetable: (branchId: string, id: string) =>
+    apiRequest(`/admin/branches/${branchId}/timetables/${id}`, { method: 'DELETE' }),
+
+  // ─── Timetable Day Config (per timetable ID) ────
+  getTimetableDays: (branchId: string, timetableId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/timetables/${timetableId}/days`),
+
+  setTimetableDays: (branchId: string, timetableId: string, days: { dayOfWeek: number; isActive: boolean }[]) =>
+    apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/days`, {
+      method: 'PUT', body: JSON.stringify({ days }),
+    }),
+
+  // ─── Timetable Slots (per timetable ID) ──────────
+  getTimetableSlots: (branchId: string, timetableId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/timetables/${timetableId}/slots`),
+
+  createTimetableSlot: (branchId: string, timetableId: string, data: { dayOfWeek: number; startTime: string; endTime: string }) =>
+    apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/slots`, {
+      method: 'POST', body: JSON.stringify(data),
+    }),
+
+  deleteTimetableSlot: (branchId: string, timetableId: string, slotId: string) =>
+    apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/slots/${slotId}`, { method: 'DELETE' }),
 
   getSectionTimetable: (branchId: string, sectionId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),

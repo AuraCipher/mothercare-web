@@ -7,105 +7,35 @@ import { CalendarDays, FileText, Plus, X, Trash2, Edit3, MoreVertical, Power, Po
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
-interface TimetableGroup {
-  name: string;
-  storedName: string;
-  type: 'timetable' | 'datesheet';
-  slotCount: number;
-  activeDays: number;
+interface TimetableItem {
+  id: string; name: string; type: string; slotCount: number; activeDays: number;
 }
-const ALL_DAYS = [1, 2, 3, 4, 5, 6];
 
 export default function TimetableManagePage() {
   const router = useRouter();
-  const [timetables, setTimetables] = useState<TimetableGroup[]>([]);
+  const [items, setItems] = useState<TimetableItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createType, setCreateType] = useState<'timetable' | 'datesheet'>('timetable');
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [renameGroup, setRenameGroup] = useState<TimetableGroup | null>(null);
+  const [renameTarget, setRenameTarget] = useState<TimetableItem | null>(null);
   const [renameName, setRenameName] = useState('');
   const [renaming, setRenaming] = useState(false);
-  const [confirm, setConfirm] = useState<{ open: boolean; title: string; message: string; variant: 'danger' | 'warning' | 'default'; confirmLabel: string; action: () => Promise<void> }>(
-    { open: false, title: '', message: '', variant: 'danger', confirmLabel: 'Confirm', action: async () => {} }
-  );
+  const [confirm, setConfirm] = useState<any>({ open: false });
 
-  const loadGroups = async () => {
+  const loadItems = async () => {
     const bId = localStorage.getItem('activeBranchId');
     const aId = localStorage.getItem('activeAYId');
     if (!bId || !aId) { setLoading(false); return; }
     try {
-      const res = await api.getTimetableGroups(bId, aId);
-      const groups: TimetableGroup[] = (res.data || []).map((g: any) => ({
-        storedName: g.name,
-        name: g.name.replace(/^datesheet-/i, ''),
-        type: g.name.toLowerCase().includes('datesheet') || g.name.toLowerCase().includes('exam') ? 'datesheet' : 'timetable',
-        slotCount: g.slotCount,
-        activeDays: g.activeDays || 0,
-      }));
-      setTimetables(groups);
+      const res = await api.getTimetables(bId, aId);
+      setItems(res.data || []);
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadGroups(); }, []);
-
-  const toggleActive = async (group: TimetableGroup, activate: boolean) => {
-    const bId = localStorage.getItem('activeBranchId');
-    const aId = localStorage.getItem('activeAYId');
-    if (!bId || !aId) return;
-    const days = ALL_DAYS.map(d => ({ dayOfWeek: d, isActive: activate }));
-    try {
-      await api.setTimetableDays(bId, aId, group.storedName, days);
-      showToast('success', `"${group.name}" ${activate ? 'activated' : 'deactivated'}`);
-      loadGroups();
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to update');
-    }
-  };
-
-  const handleRename = async () => {
-    if (!renameGroup || !renameName.trim()) return;
-    const bId = localStorage.getItem('activeBranchId');
-    const aId = localStorage.getItem('activeAYId');
-    if (!bId || !aId) return;
-    setRenaming(true);
-    try {
-      const newStoredName = renameGroup.type === 'datesheet' && !renameName.trim().toLowerCase().includes('datesheet')
-        ? `datesheet-${renameName.trim().toLowerCase().replace(/\s+/g, '-')}` : renameName.trim().toLowerCase().replace(/\s+/g, '-');
-      await api.renameTimetableGroup(bId, aId, renameGroup.storedName, newStoredName);
-      setRenameGroup(null);
-      showToast('success', `Renamed to "${renameName.trim()}"`);
-      loadGroups();
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to rename');
-    } finally { setRenaming(false); }
-  };
-
-  const handleDelete = (group: TimetableGroup) => {
-    setConfirm({
-      open: true,
-      title: `Delete "${group.name}"?`,
-      message: group.slotCount > 0
-        ? `This timetable has ${group.slotCount} slot(s). It will be deleted permanently if no section entries depend on it.`
-        : `This timetable is empty and will be deleted permanently.`,
-      variant: 'danger',
-      confirmLabel: 'Delete',
-      action: async () => {
-        const bId = localStorage.getItem('activeBranchId');
-        const aId = localStorage.getItem('activeAYId');
-        if (!bId || !aId) return;
-        try {
-          await api.deleteTimetableGroup(bId, aId, group.storedName);
-          showToast('success', `"${group.name}" deleted`);
-          loadGroups();
-        } catch (e: any) {
-          showToast('error', e.message || 'Failed to delete');
-        }
-      },
-    });
-  };
+  useEffect(() => { loadItems(); }, []);
 
   const handleCreate = async () => {
     if (!newName.trim()) { showToast('error', 'Name is required'); return; }
@@ -114,210 +44,209 @@ export default function TimetableManagePage() {
     if (!bId || !aId) return;
     setCreating(true);
     try {
-      const rawName = newName.trim().toLowerCase().replace(/\s+/g, '-');
-      // Prefix datesheets so categorization catches them regardless of name
-      const groupName = createType === 'datesheet' && !rawName.includes('datesheet') ? `datesheet-${rawName}` : rawName;
-      const allDays = [1,2,3,4,5,6].map(d => ({ dayOfWeek: d, isActive: true }));
-      await api.setTimetableDays(bId, aId, groupName, allDays);
+      await api.createTimetable(bId, aId, { name: newName.trim(), type: createType });
       showToast('success', `${createType === 'timetable' ? 'Timetable' : 'Datesheet'} created`);
-      setShowCreateModal(false);
-      setNewName('');
-      loadGroups();
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to create');
-    } finally { setCreating(false); }
+      setShowCreateModal(false); setNewName('');
+      loadItems();
+    } catch (e: any) { showToast('error', e.message || 'Failed to create'); }
+    finally { setCreating(false); }
   };
 
-  const openCreate = (type: 'timetable' | 'datesheet') => {
-    setCreateType(type);
-    setNewName('');
-    setShowCreateModal(true);
+  const handleRename = async () => {
+    if (!renameTarget || !renameName.trim()) return;
+    const bId = localStorage.getItem('activeBranchId');
+    if (!bId) return;
+    setRenaming(true);
+    try {
+      await api.renameTimetable(bId, renameTarget.id, renameName.trim());
+      setRenameTarget(null);
+      showToast('success', `Renamed to "${renameName.trim()}"`);
+      loadItems();
+    } catch (e: any) { showToast('error', e.message || 'Failed to rename'); }
+    finally { setRenaming(false); }
   };
+
+  const handleDelete = (item: TimetableItem) => {
+    setConfirm({
+      open: true,
+      title: `Delete "${item.name}"?`,
+      message: item.slotCount > 0 ? `This has ${item.slotCount} slot(s). Will be deleted if no entries depend on it.` : 'Empty timetable. Will be deleted permanently.',
+      variant: 'danger',
+      confirmLabel: 'Delete',
+      action: async () => {
+        const bId = localStorage.getItem('activeBranchId');
+        if (!bId) return;
+        try {
+          await api.deleteTimetable(bId, item.id);
+          showToast('success', `"${item.name}" deleted`);
+          loadItems();
+        } catch (e: any) { showToast('error', e.message || 'Failed to delete'); }
+      },
+    });
+  };
+
+  const toggleActive = async (item: TimetableItem, activate: boolean) => {
+    const bId = localStorage.getItem('activeBranchId');
+    if (!bId) return;
+    const days = [1,2,3,4,5,6].map(d => ({ dayOfWeek: d, isActive: activate }));
+    try {
+      await api.setTimetableDays(bId, item.id, days);
+      showToast('success', `"${item.name}" ${activate ? 'activated' : 'deactivated'}`);
+      loadItems();
+    } catch (e: any) { showToast('error', e.message || 'Failed to update'); }
+  };
+
+  const timetables = items.filter(i => i.type === 'timetable');
+  const datesheets = items.filter(i => i.type === 'datesheet');
 
   if (loading) {
-    return (
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <div className="grid grid-cols-2 gap-8">
-          {[1,2].map(i => <div key={i} className="h-64 rounded-xl bg-warm-card animate-pulse" />)}
-        </div>
-      </main>
-    );
+    return <main className="mx-auto max-w-5xl px-6 py-10"><div className="grid grid-cols-2 gap-8">{[1,2].map(i => <div key={i} className="h-64 rounded-xl bg-warm-card animate-pulse" />)}</div></main>;
   }
-
-  const timetableList = timetables.filter(t => t.type === 'timetable');
-  const datesheetList = timetables.filter(t => t.type === 'datesheet');
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <h1 className="mb-8 text-xl font-light text-warm-cream">Schedule Manager</h1>
-
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {/* ── Time Tables Column ────────────────────── */}
+        {/* Time Tables */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <CalendarDays size={18} className="text-warm-accent" />
               <h2 className="text-sm font-medium text-warm-cream">Time Tables</h2>
             </div>
-            <button onClick={() => openCreate('timetable')}
-              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+            <button onClick={() => { setCreateType('timetable'); setNewName(''); setShowCreateModal(true); }}
+              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
               <Plus size={13} /> Add New
             </button>
           </div>
-
-          {timetableList.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center">
-              <p className="text-xs text-warm-muted">No timetables yet. Create one.</p>
-            </div>
+          {timetables.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center"><p className="text-xs text-warm-muted">No timetables yet.</p></div>
           ) : (
             <div className="space-y-2">
-              {timetableList.map(t => {
+              {timetables.map(t => {
                 const isActive = t.activeDays > 0;
                 return (
-                <div key={t.name} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
-                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
-                    className="flex-1 flex items-center gap-2 p-3 text-left"
-                  >
-                    <CalendarDays size={15} className="text-warm-accent shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-sm text-warm-cream capitalize block truncate">{t.name.replace(/-/g, ' ')}</span>
-                      <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </button>
-                  <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                  <div className="relative pr-2">
-                    <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.storedName ? null : t.storedName); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream transition-colors">
-                      <MoreVertical size={13} />
-                    </button>
-                    {dropdownOpen === t.storedName && (
-                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl right-0" onClick={() => setDropdownOpen(null)}>
-                        <button onClick={() => { setRenameGroup(t); setRenameName(t.name); }}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50 transition-colors">
-                          <Edit3 size={12} /> Rename
-                        </button>
-                        <button onClick={() => toggleActive(t, !isActive)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50 transition-colors">
-                          {isActive ? <PowerOff size={12} /> : <Power size={12} />}
-                          {isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button onClick={() => handleDelete(t)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50 transition-colors">
-                          <Trash2 size={12} /> Delete
-                        </button>
+                  <div key={t.id} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
+                    <button onClick={() => router.push(`/admin/timetable/grid?id=${t.id}`)}
+                      className="flex-1 flex items-center gap-2 p-3 text-left">
+                      <CalendarDays size={15} className="text-warm-accent shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm text-warm-cream capitalize block truncate">{t.name}</span>
+                        <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>{isActive ? 'Active' : 'Inactive'}</span>
                       </div>
-                    )}
+                    </button>
+                    <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <div className="relative pr-2">
+                      <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.id ? null : t.id); }}
+                        className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
+                      {dropdownOpen === t.id && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                          <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
+                          <button onClick={() => toggleActive(t, !isActive)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">
+                            {isActive ? <PowerOff size={12} /> : <Power size={12} />} {isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button onClick={() => handleDelete(t)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50"><Trash2 size={12} /> Delete</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );})}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* ── Date Sheets Column ────────────────────── */}
+        {/* Date Sheets */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <FileText size={18} className="text-warm-accent" />
               <h2 className="text-sm font-medium text-warm-cream">Date Sheets</h2>
             </div>
-            <button onClick={() => openCreate('datesheet')}
-              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+            <button onClick={() => { setCreateType('datesheet'); setNewName(''); setShowCreateModal(true); }}
+              className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
               <Plus size={13} /> Add New
             </button>
           </div>
-
-          {datesheetList.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center">
-              <p className="text-xs text-warm-muted">No datesheets yet. Create one.</p>
-            </div>
+          {datesheets.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-warm-card-border p-8 text-center"><p className="text-xs text-warm-muted">No datesheets yet.</p></div>
           ) : (
             <div className="space-y-2">
-              {datesheetList.map(t => {
+              {datesheets.map(t => {
                 const isActive = t.activeDays > 0;
                 return (
-                <div key={t.name} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
-                  <button onClick={() => router.push(`/admin/timetable/grid?group=${t.storedName}`)}
-                    className="flex-1 flex items-center gap-2 p-3 text-left"
-                  >
-                    <FileText size={15} className="text-warm-accent shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-sm text-warm-cream capitalize block truncate">{t.name.replace(/-/g, ' ')}</span>
-                      <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </button>
-                  <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
-                  <div className="relative pr-2">
-                    <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.storedName ? null : t.storedName); }}
-                      className="rounded p-1.5 text-warm-muted hover:text-warm-cream transition-colors">
-                      <MoreVertical size={13} />
-                    </button>
-                    {dropdownOpen === t.storedName && (
-                      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl right-0" onClick={() => setDropdownOpen(null)}>
-                        <button onClick={() => { setRenameGroup(t); setRenameName(t.name); }}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">Rename</button>
-                        <button onClick={() => toggleActive(t, !isActive)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">
-                          {isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button onClick={() => handleDelete(t)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50">Delete</button>
+                  <div key={t.id} className="relative flex items-center rounded-lg border border-warm-card-border bg-warm-card hover:border-warm-accent/40 transition-colors">
+                    <button onClick={() => router.push(`/admin/timetable/grid?id=${t.id}`)}
+                      className="flex-1 flex items-center gap-2 p-3 text-left">
+                      <FileText size={15} className="text-warm-accent shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm text-warm-cream capitalize block truncate">{t.name}</span>
+                        <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-warm-muted/50'}`}>{isActive ? 'Active' : 'Inactive'}</span>
                       </div>
-                    )}
+                    </button>
+                    <span className="text-[10px] text-warm-muted shrink-0">{t.slotCount} slot{t.slotCount !== 1 ? 's' : ''}</span>
+                    <div className="relative pr-2">
+                      <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.id ? null : t.id); }}
+                        className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
+                      {dropdownOpen === t.id && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                          <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
+                          <button onClick={() => toggleActive(t, !isActive)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50">
+                            {isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button onClick={() => handleDelete(t)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-red hover:bg-warm-card/50"><Trash2 size={12} /> Delete</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );})}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Create Modal ───────────────────────────── */}
+      {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowCreateModal(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-xl border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-warm-cream">
-                New {createType === 'timetable' ? 'Time Table' : 'Date Sheet'}
-              </h2>
+              <h2 className="text-sm font-medium text-warm-cream">New {createType === 'timetable' ? 'Timetable' : 'Date Sheet'}</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
             </div>
             <input value={newName} onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Regular, Friday, Exam 2025"
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              autoFocus
-            />
-            <p className="mt-2 text-[10px] text-warm-muted/60">Give it a name. You can set up days and lectures later.</p>
+              className="w-full rounded-lg border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()} autoFocus />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setShowCreateModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
               <button onClick={handleCreate} disabled={creating} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
-                {creating ? 'Creating…' : `Create ${createType === 'timetable' ? 'Timetable' : 'Datesheet'}`}
+                {creating ? 'Creating…' : `Create`}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Rename Modal ───────────────────────────── */}
-      {renameGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setRenameGroup(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      {/* Rename Modal */}
+      {renameTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setRenameTarget(null)}>
+          <div className="w-full max-w-sm rounded-xl border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-warm-cream">Rename "{renameGroup.name}"</h2>
-              <button onClick={() => setRenameGroup(null)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
+              <h2 className="text-sm font-medium text-warm-cream">Rename "{renameTarget.name}"</h2>
+              <button onClick={() => setRenameTarget(null)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
             </div>
             <input value={renameName} onChange={(e) => setRenameName(e.target.value)}
-              placeholder="New name"
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
-              onKeyDown={(e) => e.key === 'Enter' && handleRename()} autoFocus
-            />
+              className="w-full rounded-lg border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"
+              onKeyDown={(e) => e.key === 'Enter' && handleRename()} autoFocus />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setRenameGroup(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={() => setRenameTarget(null)} className="rounded-lg border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
               <button onClick={handleRename} disabled={renaming} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
                 {renaming ? 'Renaming…' : 'Rename'}
               </button>
@@ -332,8 +261,8 @@ export default function TimetableManagePage() {
         message={confirm.message}
         variant={confirm.variant}
         confirmLabel={confirm.confirmLabel}
-        onConfirm={async () => { await confirm.action(); setConfirm(prev => ({ ...prev, open: false })); }}
-        onCancel={() => setConfirm(prev => ({ ...prev, open: false }))}
+        onConfirm={async () => { await confirm.action(); setConfirm({ open: false }); }}
+        onCancel={() => setConfirm({ open: false })}
       />
     </main>
   );
