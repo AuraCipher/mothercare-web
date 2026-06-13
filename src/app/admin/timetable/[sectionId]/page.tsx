@@ -16,7 +16,6 @@ interface Entry {
   teacher: { id: string; name: string } | null;
 }
 
-const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function SectionTimetableInner() {
   const router = useRouter();
@@ -58,11 +57,6 @@ function SectionTimetableInner() {
     </main>;
   }
 
-  const groupedSlots: Record<number, Slot[]> = {};
-  for (const day of [1,2,3,4,5,6]) {
-    groupedSlots[day] = slots.filter(s => s.dayOfWeek === null || s.dayOfWeek === day);
-  }
-
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <button onClick={() => router.push(`/admin/timetable/grid?id=${timetableId}`)} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
@@ -82,53 +76,42 @@ function SectionTimetableInner() {
           <p className="text-sm text-warm-muted">No lectures defined for this timetable.</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {[1,2,3,4,5,6].map(day => {
-            const daySlots = groupedSlots[day] || [];
-            if (daySlots.length === 0) return null;
-            return (
-              <div key={day}>
-                <h2 className="mb-3 text-sm font-medium text-warm-cream">{DAY_NAMES[day]}</h2>
-                <div className="overflow-hidden rounded-xl border border-warm-card-border">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-warm-card-border bg-warm-card/50">
-                        <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Lecture</th>
-                        <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Time</th>
-                        <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Subject</th>
-                        <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Teacher</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {daySlots.map(slot => {
-                        const entry = getEntry(slot.id);
-                        return (
-                          <tr key={slot.id} className="border-b border-warm-card-border last:border-0 hover:bg-warm-card/30">
-                            <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
-                            <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime} — {slot.endTime}</td>
-                            <td className="px-4 py-3 text-sm text-warm-cream">
-                              {entry?.subject ? (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-warm-accent/10 px-2 py-0.5 text-[11px] text-warm-accent">
-                                  <BookOpen size={10} /> {entry.subject.name}
-                                </span>
-                              ) : <span className="text-xs text-warm-muted">—</span>}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-warm-cream">
-                              {entry?.teacher ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-warm-cream">
-                                  <GraduationCap size={11} className="text-warm-accent" /> {entry.teacher.name}
-                                </span>
-                              ) : <span className="text-xs text-warm-muted">—</span>}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+        <div className="overflow-hidden rounded-xl border border-warm-card-border">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-warm-card-border bg-warm-card/50">
+                <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Lecture</th>
+                <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Time</th>
+                <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Subject</th>
+                <th className="px-4 py-2.5 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Teacher</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slots.map(slot => {
+                const entry = getEntry(slot.id);
+                return (
+                  <tr key={slot.id} className="border-b border-warm-card-border last:border-0 hover:bg-warm-card/30">
+                    <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
+                    <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime} — {slot.endTime}</td>
+                    <td className="px-4 py-3 text-sm text-warm-cream">
+                      {entry?.subject ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-warm-accent/10 px-2 py-0.5 text-[11px] text-warm-accent">
+                          <BookOpen size={10} /> {entry.subject.name}
+                        </span>
+                      ) : <span className="text-xs text-warm-muted">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-warm-cream">
+                      {entry?.teacher ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-warm-cream">
+                          <GraduationCap size={11} className="text-warm-accent" /> {entry.teacher.name}
+                        </span>
+                      ) : <span className="text-xs text-warm-muted">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </main>
