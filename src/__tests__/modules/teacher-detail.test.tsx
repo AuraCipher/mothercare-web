@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '../helpers/test-utils';
+import { render, screen, waitFor } from '../helpers/test-utils';
 import userEvent from '@testing-library/user-event';
 
 const mockGetTeacher = vi.hoisted(() => vi.fn());
+const mockGetTeacherTimetables = vi.hoisted(() => vi.fn());
 const mockDeactivateTeacher = vi.hoisted(() => vi.fn());
 const mockReactivateTeacher = vi.hoisted(() => vi.fn());
 
@@ -14,6 +15,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/api', () => ({
   api: {
     getTeacher: mockGetTeacher,
+    getTeacherTimetables: mockGetTeacherTimetables,
     deleteTeacher: vi.fn(),
     deactivateTeacher: mockDeactivateTeacher,
     reactivateTeacher: mockReactivateTeacher,
@@ -67,6 +69,7 @@ describe('TeacherDetailPage — rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
   it('renders teacher name', async () => {
@@ -123,6 +126,7 @@ describe('TeacherDetailPage — rendering', () => {
 describe('TeacherDetailPage — assignments section', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
   it('shows schedule cards for each assignment', async () => {
@@ -146,6 +150,7 @@ describe('TeacherDetailPage — assignments section', () => {
 describe('TeacherDetailPage — deactivate/reactivate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
   it('shows deactivate prompt for active teacher', async () => {
@@ -174,6 +179,7 @@ describe('TeacherDetailPage — deactivate/reactivate', () => {
 describe('TeacherDetailPage — loading & error', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
   it('shows loading skeleton', () => {
@@ -269,5 +275,75 @@ describe('TeacherDetailPage — assignment management', () => {
     });
     render(<TeacherDetailPage />);
     expect(await screen.findByText(/No assignments yet/)).toBeInTheDocument();
+  });
+});
+
+describe('TeacherDetailPage — teacher timetables', () => {
+  const mockTimetableData = [
+    {
+      id: 'tt-1', name: 'Regular', type: 'timetable',
+      entries: [
+        { lectureNumber: 1, startTime: '08:00', endTime: '08:40', dayOfWeek: null, groupName: 'Class 1', groupSection: 'A', subjectName: 'Math', subjectCode: 'MATH' },
+        { lectureNumber: 2, startTime: '08:40', endTime: '09:20', dayOfWeek: null, groupName: 'Class 2', groupSection: 'B', subjectName: 'Science', subjectCode: null },
+      ],
+    },
+    {
+      id: 'tt-2', name: 'Exam Schedule', type: 'datesheet',
+      entries: [
+        { lectureNumber: 1, startTime: '09:00', endTime: '12:00', dayOfWeek: 1, groupName: 'Class 1', groupSection: 'A', subjectName: 'Math', subjectCode: 'MATH' },
+      ],
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('activeBranchId', 'branch-1');
+    mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: mockTimetableData });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('activeBranchId');
+  });
+
+  it('renders Timetables section heading', async () => {
+    render(<TeacherDetailPage />);
+    expect(await screen.findByText('Timetables')).toBeInTheDocument();
+  });
+
+  it('renders timetable card with name label', async () => {
+    render(<TeacherDetailPage />);
+    expect(await screen.findByText('Regular')).toBeInTheDocument();
+    expect(await screen.findByText('Exam Schedule')).toBeInTheDocument();
+  });
+
+  it('renders class names in timetable cards', async () => {
+    render(<TeacherDetailPage />);
+    const class1a = await screen.findAllByText('Class 1 — A');
+    expect(class1a.length).toBe(2); // appears in both Regular and Exam Schedule
+    expect(await screen.findByText('Class 2 — B')).toBeInTheDocument();
+  });
+
+  it('renders timing values with lecture numbers', async () => {
+    render(<TeacherDetailPage />);
+    const l1s = await screen.findAllByText('L1');
+    expect(l1s.length).toBe(2); // appears in both cards
+    expect(await screen.findByText('L2')).toBeInTheDocument();
+  });
+
+  it('renders Column headers', async () => {
+    render(<TeacherDetailPage />);
+    const classHeaders = await screen.findAllByText('Class');
+    expect(classHeaders.length).toBeGreaterThanOrEqual(1);
+    const timingHeaders = await screen.findAllByText('Timing');
+    expect(timingHeaders.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does NOT show timetable section when no data', async () => {
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
+    render(<TeacherDetailPage />);
+    await waitFor(() => {
+      expect(screen.queryByText('Timetables')).not.toBeInTheDocument();
+    });
   });
 });

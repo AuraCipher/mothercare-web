@@ -7,6 +7,7 @@ import {
   ArrowLeft, GraduationCap, BookOpen, MapPin, Calendar, DollarSign,
   Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
   Eye, EyeOff, Send, Save, RefreshCw, Plus, Edit3, Trash2, X,
+  CalendarDays, Clock,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -58,6 +59,10 @@ export default function TeacherDetailPage() {
     variant: 'danger' | 'warning' | 'default';
     confirmLabel: string; action: () => Promise<void>;
   }>({ open: false, title: '', message: '', variant: 'danger', confirmLabel: 'Confirm', action: async () => {} });
+
+  // Teacher timetables
+  const [teacherTimetables, setTeacherTimetables] = useState<any[]>([]);
+  const [loadingTt, setLoadingTt] = useState(false);
 
   // Password management
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -176,6 +181,18 @@ export default function TeacherDetailPage() {
   };
 
   useEffect(() => { loadData(); }, [id]);
+
+  // Fetch teacher timetables when teacher data is available
+  useEffect(() => {
+    if (!data?.id) return;
+    const bId = localStorage.getItem('activeBranchId');
+    if (!bId) return;
+    setLoadingTt(true);
+    api.getTeacherTimetables(bId, data.id)
+      .then(d => { if (d.success) setTeacherTimetables(d.data); })
+      .catch(() => {})
+      .finally(() => setLoadingTt(false));
+  }, [data?.id]);
 
   const handleDeactivate = () => {
     if (!data) return;
@@ -553,6 +570,41 @@ export default function TeacherDetailPage() {
                 <p className="text-xs text-warm-muted">
                   {a.group.name}{a.group.section ? ` · ${a.group.section}` : ''}
                 </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Timetables — shows timetable entries where teacher is tagged */}
+      {teacherTimetables.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-4 text-sm font-medium text-warm-cream">Timetables</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {teacherTimetables.map((tt: any) => (
+              <div key={tt.id} className="rounded-xl border border-warm-card-border bg-warm-card p-4">
+                <h3 className="mb-3 text-xs font-semibold text-warm-accent uppercase tracking-wider">{tt.name}</h3>
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-warm-card-border">
+                      <th className="pb-1.5 pr-2 text-[10px] uppercase text-warm-muted">Class</th>
+                      <th className="pb-1.5 text-[10px] uppercase text-warm-muted">Timing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tt.entries.map((entry: any, i: number) => (
+                      <tr key={i} className="border-b border-warm-card-border/50 last:border-0">
+                        <td className="py-1.5 pr-2 text-warm-cream">
+                          {entry.groupName}{entry.groupSection ? ` — ${entry.groupSection}` : ''}
+                        </td>
+                        <td className="py-1.5 text-warm-cream text-[11px]">
+                          <span className="text-warm-accent/70">L{entry.lectureNumber}</span>{' '}
+                          {entry.startTime} — {entry.endTime}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ))}
           </div>

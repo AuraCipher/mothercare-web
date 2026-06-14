@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ArrowLeft, BookOpen, Plus, Trash2, CalendarDays, Edit3, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import TimeInput from '@/components/time-input';
 
 interface Slot {
   id: string; dayOfWeek: number; lectureNumber: number; startTime: string; endTime: string;
@@ -26,6 +27,8 @@ export default function DatesheetPage() {
   const [addDay, setAddDay] = useState(1);
   const [addStart, setAddStart] = useState('09:00');
   const [addEnd, setAddEnd] = useState('12:00');
+  const dsStartRef = useRef<HTMLInputElement>(null);
+  const dsEndRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!branchId || !datesheetId) return;
@@ -45,8 +48,20 @@ export default function DatesheetPage() {
     } catch {} finally { setLoading(false); }
   };
 
+  const isValidTimeRange = (s: string, e: string) => {
+    if (s === e) return false;
+    const [sh] = s.split(':').map(Number);
+    const [eh] = e.split(':').map(Number);
+    if (sh === 12 && eh < 12) return true;
+    return s < e;
+  };
+
   const addSlot = async () => {
     if (!branchId || !datesheetId) return;
+    if (!isValidTimeRange(addStart, addEnd)) {
+      showToast('error', 'End time must be after start time');
+      return;
+    }
     try {
       await api.createTimetableSlot(branchId, datesheetId, { dayOfWeek: addDay, startTime: addStart, endTime: addEnd });
       const data = await api.getTimetableSlots(branchId, datesheetId);
@@ -132,13 +147,14 @@ export default function DatesheetPage() {
               </div>
               <div>
                 <label className="mb-1 block text-[10px] text-warm-muted">Start</label>
-                <input type="time" value={addStart} onChange={(e) => setAddStart(e.target.value)}
-                  className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+                <TimeInput ref={dsStartRef} value={addStart} onChange={setAddStart}
+                  onComplete={() => dsEndRef.current?.focus()}
+                  className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent placeholder:text-warm-muted/40 w-[5.5rem]" />
               </div>
               <div>
                 <label className="mb-1 block text-[10px] text-warm-muted">End</label>
-                <input type="time" value={addEnd} onChange={(e) => setAddEnd(e.target.value)}
-                  className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+                <TimeInput ref={dsEndRef} value={addEnd} onChange={setAddEnd}
+                  className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent placeholder:text-warm-muted/40 w-[5.5rem]" />
               </div>
               <button onClick={addSlot} className="flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
                 <Plus size={13} /> Add Paper

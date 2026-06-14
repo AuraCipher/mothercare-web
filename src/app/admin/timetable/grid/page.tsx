@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { CalendarDays, BookOpen, Plus, Trash2, X, Edit3, ArrowLeft } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import TimeInput from '@/components/time-input';
 
 interface Slot {
   id: string; dayOfWeek: number | null; lectureNumber: number; startTime: string; endTime: string;
@@ -26,6 +27,8 @@ function TimetableGridInner() {
   const [branchId, setBranchId] = useState('');
   const [newSlotStart, setNewSlotStart] = useState('08:00');
   const [newSlotEnd, setNewSlotEnd] = useState('08:40');
+  const startTimeRef = useRef<HTMLInputElement>(null);
+  const endTimeRef = useRef<HTMLInputElement>(null);
 
   const activeDays = new Set(dayConfigs.filter((d: any) => d.isActive).map((d: any) => d.dayOfWeek));
 
@@ -57,8 +60,21 @@ function TimetableGridInner() {
     await api.setTimetableDays(branchId, timetableId, newConfigs.map((d: any) => ({ dayOfWeek: d.dayOfWeek, isActive: d.isActive }))).catch(() => {});
   };
 
+  const isValidTimeRange = (s: string, e: string) => {
+    if (s === e) return false;
+    const [sh] = s.split(':').map(Number);
+    const [eh] = e.split(':').map(Number);
+    // 12-hour cycle: 12→1 is forward, but string "12" > "01" fails
+    if (sh === 12 && eh < 12) return true;
+    return s < e;
+  };
+
   const addRow = async () => {
     if (!branchId || !timetableId) { showToast('error', 'No timetable selected'); return; }
+    if (!isValidTimeRange(newSlotStart, newSlotEnd)) {
+      showToast('error', 'End time must be after start time');
+      return;
+    }
     try {
       await api.createTimetableSlot(branchId, timetableId, { startTime: newSlotStart, endTime: newSlotEnd });
       const data = await api.getTimetableSlots(branchId, timetableId);
@@ -136,12 +152,13 @@ function TimetableGridInner() {
           </div>
           <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
             <div><label className="mb-1 block text-[10px] text-warm-muted">Start</label>
-              <input type="time" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+              <TimeInput ref={startTimeRef} value={newSlotStart} onChange={setNewSlotStart}
+                onComplete={() => endTimeRef.current?.focus()}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent placeholder:text-warm-muted/40 w-[5.5rem]" />
             </div>
             <div><label className="mb-1 block text-[10px] text-warm-muted">End</label>
-              <input type="time" value={newSlotEnd} onChange={(e) => setNewSlotEnd(e.target.value)}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+              <TimeInput ref={endTimeRef} value={newSlotEnd} onChange={setNewSlotEnd}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent placeholder:text-warm-muted/40 w-[5.5rem]" />
             </div>
             <button onClick={addRow} className="flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
               <Plus size={13} /> Add Lecture

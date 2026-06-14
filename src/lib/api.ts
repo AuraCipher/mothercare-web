@@ -264,6 +264,9 @@ export const api = {
       method: 'PUT', body: JSON.stringify(data),
     }),
 
+  getTeacherTimetables: (branchId: string, teacherId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/teachers/${teacherId}/timetables`),
+
   // ─── Admin Invitations (CEO only) ──────────────────
   createInvitation: (email: string, branchId: string) =>
     apiRequest('/admin/invitations', {
