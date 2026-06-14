@@ -259,7 +259,7 @@ export const api = {
   getSectionTimetable: (branchId: string, sectionId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),
 
-  upsertTimetableEntry: (branchId: string, sectionId: string, slotId: string, data: { subjectId?: string | null; teacherId?: string | null }) =>
+  upsertTimetableEntry: (branchId: string, sectionId: string, slotId: string, data: { subjectId?: string | null; teacherId?: string | null; note?: string | null }) =>
     apiRequest(`/admin/branches/${branchId}/sections/${sectionId}/timetable/${slotId}`, {
       method: 'PUT', body: JSON.stringify(data),
     }),
