@@ -116,7 +116,7 @@ function TimetableGridInner() {
         <div>
           <div className="overflow-x-auto rounded-xl border border-warm-card-border">
             <table className="w-full text-left text-sm">
-              <thead><tr className="border-b bg-warm-card/50">
+              <thead><tr className="border-b border-warm-card-border bg-warm-card/50">
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Lecture</th>
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Start</th>
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">End</th>
@@ -124,7 +124,7 @@ function TimetableGridInner() {
               </tr></thead>
               <tbody>
                 {filteredSlots.map(slot => (
-                  <tr key={slot.id} className="border-b last:border-0 hover:bg-warm-card/30">
+                  <tr key={slot.id} className="border-b border-warm-card-border last:border-0 hover:bg-warm-card/30">
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime}</td>
                     <td className="px-4 py-3 text-sm text-warm-cream">{slot.endTime}</td>
@@ -137,11 +137,11 @@ function TimetableGridInner() {
           <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
             <div><label className="mb-1 block text-[10px] text-warm-muted">Start</label>
               <input type="time" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)}
-                className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
             </div>
             <div><label className="mb-1 block text-[10px] text-warm-muted">End</label>
               <input type="time" value={newSlotEnd} onChange={(e) => setNewSlotEnd(e.target.value)}
-                className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
             </div>
             <button onClick={addRow} className="flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
               <Plus size={13} /> Add Lecture

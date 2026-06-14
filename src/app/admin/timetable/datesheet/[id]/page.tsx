@@ -90,7 +90,7 @@ export default function DatesheetPage() {
         <div className="overflow-x-auto rounded-xl border border-warm-card-border mb-6">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b bg-warm-card/50">
+              <tr className="border-b border-warm-card-border bg-warm-card/50">
                 <th className="px-4 py-2.5 text-[10px] uppercase text-warm-muted">Day</th>
                 <th className="px-4 py-2.5 text-[10px] uppercase text-warm-muted">Paper #</th>
                 <th className="px-4 py-2.5 text-[10px] uppercase text-warm-muted">Time</th>
@@ -100,12 +100,12 @@ export default function DatesheetPage() {
             </thead>
             <tbody>
               {sortedSlots.map(slot => (
-                <tr key={slot.id} className="border-b last:border-0 hover:bg-warm-card/30">
+                <tr key={slot.id} className="border-b border-warm-card-border last:border-0 hover:bg-warm-card/30">
                   <td className="px-4 py-3 text-sm text-warm-cream">{DAY_NAMES[slot.dayOfWeek]}</td>
                   <td className="px-4 py-3 text-sm text-warm-cream">{slot.lectureNumber}</td>
                   <td className="px-4 py-3 text-sm text-warm-cream">{slot.startTime} — {slot.endTime}</td>
                   <td className="px-4 py-3 text-sm text-warm-cream">
-                    <select value="" onChange={(e) => {}} className="rounded border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream outline-none focus:border-warm-accent">
+                    <select value="" onChange={(e) => {}} className="rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream outline-none focus:border-warm-accent">
                       <option value="">—</option>
                       {subjects.map((s: any) => (
                         <option key={s.id} value={s.id}>{s.name} ({s.code || ''})</option>
@@ -127,19 +127,19 @@ export default function DatesheetPage() {
           <div>
             <label className="mb-1 block text-[10px] text-warm-muted">Day</label>
             <select value={addDay} onChange={(e) => setAddDay(Number(e.target.value))}
-              className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
               {[1,2,3,4,5,6].map(d => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-[10px] text-warm-muted">Start</label>
             <input type="time" value={addStart} onChange={(e) => setAddStart(e.target.value)}
-              className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
           </div>
           <div>
             <label className="mb-1 block text-[10px] text-warm-muted">End</label>
             <input type="time" value={addEnd} onChange={(e) => setAddEnd(e.target.value)}
-              className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
           </div>
           <button onClick={addSlot} className="flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
             <Plus size={13} /> Add Paper
