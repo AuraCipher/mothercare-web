@@ -140,7 +140,7 @@ export default function TimetableManagePage() {
                       <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.id ? null : t.id); }}
                         className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
                       {dropdownOpen === t.id && (
-                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
                           <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
                           <button onClick={() => toggleActive(t, !isActive)}
@@ -192,7 +192,7 @@ export default function TimetableManagePage() {
                       <button onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === t.id ? null : t.id); }}
                         className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
                       {dropdownOpen === t.id && (
-                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                        <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
                           <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
                           <button onClick={() => toggleActive(t, !isActive)}
@@ -215,7 +215,7 @@ export default function TimetableManagePage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowCreateModal(false)}>
-          <div className="w-full max-w-sm rounded-xl border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-warm-cream">New {createType === 'timetable' ? 'Timetable' : 'Date Sheet'}</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
@@ -225,7 +225,7 @@ export default function TimetableManagePage() {
               className="w-full rounded-lg border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()} autoFocus />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setShowCreateModal(false)} className="rounded-lg border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
               <button onClick={handleCreate} disabled={creating} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
                 {creating ? 'Creating…' : `Create`}
               </button>
@@ -237,7 +237,7 @@ export default function TimetableManagePage() {
       {/* Rename Modal */}
       {renameTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setRenameTarget(null)}>
-          <div className="w-full max-w-sm rounded-xl border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-warm-cream">Rename "{renameTarget.name}"</h2>
               <button onClick={() => setRenameTarget(null)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
@@ -246,7 +246,7 @@ export default function TimetableManagePage() {
               className="w-full rounded-lg border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"
               onKeyDown={(e) => e.key === 'Enter' && handleRename()} autoFocus />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setRenameTarget(null)} className="rounded-lg border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={() => setRenameTarget(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
               <button onClick={handleRename} disabled={renaming} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50">
                 {renaming ? 'Renaming…' : 'Rename'}
               </button>

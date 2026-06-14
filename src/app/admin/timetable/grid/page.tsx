@@ -105,7 +105,7 @@ function TimetableGridInner() {
           const isOn = config?.isActive ?? true;
           return (
             <button key={day} onClick={() => toggleDay(day)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isOn ? 'bg-warm-accent text-[#1a1614]' : 'bg-warm-card border text-warm-muted/40 line-through hover:text-warm-muted'}`}>
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isOn ? 'bg-warm-accent text-[#1a1614]' : 'bg-warm-card border border-warm-card-border text-warm-muted/40 line-through hover:text-warm-muted'}`}>
               {DAY_NAMES[day]}
             </button>
           );
@@ -114,7 +114,7 @@ function TimetableGridInner() {
 
       {showSlotEditor ? (
         <div>
-          <div className="overflow-x-auto rounded-xl border">
+          <div className="overflow-x-auto rounded-xl border border-warm-card-border">
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b bg-warm-card/50">
                 <th className="px-4 py-3 text-[10px] uppercase text-warm-muted">Lecture</th>
@@ -134,7 +134,7 @@ function TimetableGridInner() {
               </tbody>
             </table>
           </div>
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border bg-warm-card p-4">
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
             <div><label className="mb-1 block text-[10px] text-warm-muted">Start</label>
               <input type="time" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)}
                 className="rounded-lg border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent [color-scheme:dark]" />
@@ -150,12 +150,12 @@ function TimetableGridInner() {
         </div>
       ) : (
         sections.length === 0 ? (
-          <div className="rounded-xl border p-12 text-center"><CalendarDays size={40} className="mx-auto mb-4 text-warm-muted" /><p className="text-sm text-warm-muted">No classes yet.</p></div>
+          <div className="rounded-xl border border-warm-card-border bg-warm-card p-12 text-center"><CalendarDays size={40} className="mx-auto mb-4 text-warm-muted" /><p className="text-sm text-warm-muted">No classes yet.</p></div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {sections.map((sec: any) => (
               <div key={sec.id} onClick={() => router.push(`/admin/timetable/${sec.id}?id=${timetableId}`)}
-                className="rounded-xl border bg-warm-card p-3 cursor-pointer hover:border-warm-accent/40 transition-colors">
+                className="rounded-xl border border-warm-card-border bg-warm-card p-3 cursor-pointer hover:border-warm-accent/40 transition-colors">
                 <div className="flex items-center gap-2 mb-2"><BookOpen size={13} className="text-warm-accent shrink-0" /><span className="text-sm font-medium text-warm-cream truncate">{sec.name}</span></div>
                 {sec.section && <p className="text-xs text-warm-accent/80 mb-1">Section — {sec.section}</p>}
                 <p className="text-[10px] text-warm-muted">{sec._count?.students || 0} students</p>

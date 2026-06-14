@@ -82,12 +82,12 @@ export default function DatesheetPage() {
       <h1 className="mb-8 text-xl font-light text-warm-cream">Date Sheet</h1>
 
       {sortedSlots.length === 0 ? (
-        <div className="rounded-xl border p-10 text-center mb-6">
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center mb-6">
           <BookOpen size={28} className="mx-auto mb-3 text-warm-muted" />
           <p className="text-sm text-warm-muted">No papers yet. Add one below.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border mb-6">
+        <div className="overflow-x-auto rounded-xl border border-warm-card-border mb-6">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b bg-warm-card/50">
@@ -121,7 +121,7 @@ export default function DatesheetPage() {
       )}
 
       {/* Add Paper Form */}
-      <div className="rounded-xl border bg-warm-card p-4">
+      <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
         <h3 className="mb-3 text-xs font-medium text-warm-cream">Add Paper</h3>
         <div className="flex flex-wrap items-end gap-3">
           <div>
