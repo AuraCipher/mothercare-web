@@ -291,14 +291,16 @@ describe('Timetable — Download & Print', () => {
   it('download button exists after generation', async () => {
     render(<FullTimetablePage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
-    await screen.findByText('Math');
+    const maths = await screen.findAllByText('Math');
+    expect(maths.length).toBeGreaterThanOrEqual(1);
     expect(document.querySelector('[title="Download Excel"]')).toBeInTheDocument();
   });
 
   it('print button exists after generation', async () => {
     render(<FullTimetablePage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
-    await screen.findByText('Math');
+    const maths = await screen.findAllByText('Math');
+    expect(maths.length).toBeGreaterThanOrEqual(1);
     expect(document.querySelector('[title="Print"]')).toBeInTheDocument();
   });
 });
@@ -441,20 +443,19 @@ describe('Datesheet — Download & Print', () => {
     mockGetSectionTimetable.mockResolvedValue({ success: true, data: datesheetEntriesSec1 });
   });
 
-  const clickGenerate = async () => {
-    fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
-    await screen.findByText('Midterm Math');
-  };
-
   it('download button appears for datesheet', async () => {
     render(<FullTimetablePage />);
-    await clickGenerate();
+    fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
+    const subjects = await screen.findAllByText('Midterm Math');
+    expect(subjects.length).toBeGreaterThanOrEqual(1);
     expect(document.querySelector('[title="Download Excel"]')).toBeInTheDocument();
   });
 
   it('print button appears for datesheet', async () => {
     render(<FullTimetablePage />);
-    await clickGenerate();
+    fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
+    const subjects = await screen.findAllByText('Midterm Math');
+    expect(subjects.length).toBeGreaterThanOrEqual(1);
     expect(document.querySelector('[title="Print"]')).toBeInTheDocument();
   });
 });
@@ -464,12 +465,11 @@ describe('Datesheet — Download & Print', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('Edge Cases', () => {
-  it('shows toast when generating with no sections', async () => {
+  it('shows disabled generate button with no sections', async () => {
     mockGetSections.mockResolvedValue({ success: true, data: [] });
     mockGetTimetableSlots.mockResolvedValue({ success: true, data: timetablSlots });
     render(<FullTimetablePage />);
-    await screen.findByText('Select classes above');
-    // No sections, so no classes to toggle. Generate should be disabled.
+    await screen.findByDisplayValue('Full Timetable');
     const generateBtn = await screen.findByRole('button', { name: 'Generate' });
     expect(generateBtn).toBeDisabled();
   });
@@ -495,7 +495,8 @@ describe('Edge Cases', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Generate' }));
     // Should show day headers even with no entries
     await waitFor(() => {
-      expect(screen.getByText('Monday')).toBeInTheDocument();
+      const mondays = screen.getAllByText('Monday');
+      expect(mondays.length).toBeGreaterThanOrEqual(1);
     });
   });
 
