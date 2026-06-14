@@ -24,6 +24,11 @@ interface TeacherProfile {
   dateOfBirth: string | null;
   gender: string | null;
   bloodGroup: string | null;
+  fatherName: string | null;
+  cardId: string | null;
+  severeDisease: string | null;
+  experience: string | null;
+  bio: string | null;
   createdAt: string;
   user: {
     id: string; name: string; email: string | null; phone: string | null;
@@ -73,6 +78,7 @@ export default function TeachersPage() {
     employeeId: '', qualification: '', specialization: '',
     joiningDate: '', salary: '', phone: '', emergencyContact: '',
     address: '', dateOfBirth: '', gender: '', bloodGroup: '',
+    fatherName: '', cardId: '', severeDisease: '', experience: '', bio: '',
   });
 
   // Edit modal
@@ -84,6 +90,7 @@ export default function TeachersPage() {
     employeeId: '', qualification: '', specialization: '',
     joiningDate: '', salary: '', phone: '', emergencyContact: '',
     address: '', dateOfBirth: '', gender: '', bloodGroup: '',
+    fatherName: '', cardId: '', severeDisease: '', experience: '', bio: '',
   });
 
   // Delete confirm
@@ -119,7 +126,7 @@ export default function TeachersPage() {
   // ─── Create ──────────────────────────────────────────
 
   const resetCreateForm = () => {
-    setCf({ name: '', email: '', username: '', employeeId: '', qualification: '', specialization: '', joiningDate: '', salary: '', phone: '', emergencyContact: '', address: '', dateOfBirth: '', gender: '', bloodGroup: '' });
+    setCf({ name: '', email: '', username: '', employeeId: '', qualification: '', specialization: '', joiningDate: '', salary: '', phone: '', emergencyContact: '', address: '', dateOfBirth: '', gender: '', bloodGroup: '', fatherName: '', cardId: '', severeDisease: '', experience: '', bio: '' });
     setCreateError('');
   };
 
@@ -157,6 +164,11 @@ export default function TeachersPage() {
         dateOfBirth: cf.dateOfBirth || undefined,
         gender: cf.gender || undefined,
         bloodGroup: cf.bloodGroup || undefined,
+        fatherName: cf.fatherName || undefined,
+        cardId: cf.cardId || undefined,
+        severeDisease: cf.severeDisease || undefined,
+        experience: cf.experience || undefined,
+        bio: cf.bio || undefined,
       });
       setShowCreate(false);
       resetCreateForm();
@@ -190,6 +202,11 @@ export default function TeachersPage() {
       dateOfBirth: t.dateOfBirth ? t.dateOfBirth.substring(0, 10) : '',
       gender: t.gender || '',
       bloodGroup: t.bloodGroup || '',
+      fatherName: t.fatherName || '',
+      cardId: t.cardId || '',
+      severeDisease: t.severeDisease || '',
+      experience: t.experience || '',
+      bio: t.bio || '',
     });
     setEditError('');
     setShowEdit(true);
@@ -211,6 +228,11 @@ export default function TeachersPage() {
         dateOfBirth: ef.dateOfBirth || undefined,
         gender: ef.gender || undefined,
         bloodGroup: ef.bloodGroup || undefined,
+        fatherName: ef.fatherName || undefined,
+        cardId: ef.cardId || undefined,
+        severeDisease: ef.severeDisease || undefined,
+        experience: ef.experience || undefined,
+        bio: ef.bio || undefined,
       });
       setShowEdit(false);
       showToast('success', 'Teacher profile updated');
@@ -468,14 +490,8 @@ export default function TeachersPage() {
                 <Field label="Employee ID">
                   <Input value={cf.employeeId} onChange={(v) => setCf(p => ({ ...p, employeeId: v }))} placeholder="e.g. TCH-001" />
                 </Field>
-                <Field label="Gender">
-                  <select value={cf.gender} onChange={(e) => setCf(p => ({ ...p, gender: e.target.value }))}
-                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-                    <option value="">— Select —</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                <Field label="Father Name">
+                  <Input value={cf.fatherName} onChange={(v) => setCf(p => ({ ...p, fatherName: v }))} placeholder="e.g. Muhammad" />
                 </Field>
               </div>
 
@@ -517,7 +533,30 @@ export default function TeachersPage() {
                 <Field label="Blood Group">
                   <Input value={cf.bloodGroup} onChange={(v) => setCf(p => ({ ...p, bloodGroup: v }))} placeholder="e.g. A+" />
                 </Field>
+                <Field label="Card ID">
+                  <Input value={cf.cardId} onChange={(v) => setCf(p => ({ ...p, cardId: v }))} placeholder="National ID card number" />
+                </Field>
+                <Field label="Severe Disease">
+                  <Input value={cf.severeDisease} onChange={(v) => setCf(p => ({ ...p, severeDisease: v }))} placeholder="Any severe medical condition" />
+                </Field>
+                <Field label="Gender">
+                  <select value={cf.gender} onChange={(e) => setCf(p => ({ ...p, gender: e.target.value }))}
+                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                    <option value="">— Select —</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </Field>
+                <Field label="Experience">
+                  <Input value={cf.experience} onChange={(v) => setCf(p => ({ ...p, experience: v }))} placeholder="e.g. 5 years" />
+                </Field>
               </div>
+
+              <Field label="Bio">
+                <textarea value={cf.bio} onChange={(e) => setCf(p => ({ ...p, bio: e.target.value }))} placeholder="Short summary about the teacher" rows={3}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors resize-none" />
+              </Field>
             </div>
 
             {createError && <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2"><p className="text-xs text-red-400">{createError}</p></div>}
@@ -548,14 +587,8 @@ export default function TeachersPage() {
                 <Field label="Employee ID">
                   <Input value={ef.employeeId} onChange={(v) => setEf(p => ({ ...p, employeeId: v }))} />
                 </Field>
-                <Field label="Gender">
-                  <select value={ef.gender} onChange={(e) => setEf(p => ({ ...p, gender: e.target.value }))}
-                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-                    <option value="">— Select —</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                <Field label="Father Name">
+                  <Input value={ef.fatherName} onChange={(v) => setEf(p => ({ ...p, fatherName: v }))} placeholder="e.g. Muhammad" />
                 </Field>
               </div>
 
@@ -597,7 +630,30 @@ export default function TeachersPage() {
                 <Field label="Blood Group">
                   <Input value={ef.bloodGroup} onChange={(v) => setEf(p => ({ ...p, bloodGroup: v }))} />
                 </Field>
+                <Field label="Card ID">
+                  <Input value={ef.cardId} onChange={(v) => setEf(p => ({ ...p, cardId: v }))} placeholder="National ID card number" />
+                </Field>
+                <Field label="Severe Disease">
+                  <Input value={ef.severeDisease} onChange={(v) => setEf(p => ({ ...p, severeDisease: v }))} placeholder="Any severe medical condition" />
+                </Field>
+                <Field label="Gender">
+                  <select value={ef.gender} onChange={(e) => setEf(p => ({ ...p, gender: e.target.value }))}
+                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                    <option value="">— Select —</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </Field>
+                <Field label="Experience">
+                  <Input value={ef.experience} onChange={(v) => setEf(p => ({ ...p, experience: v }))} placeholder="e.g. 5 years" />
+                </Field>
               </div>
+
+              <Field label="Bio">
+                <textarea value={ef.bio} onChange={(e) => setEf(p => ({ ...p, bio: e.target.value }))} placeholder="Short summary about the teacher" rows={3}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors resize-none" />
+              </Field>
             </div>
 
             {editError && <div className="mt-3 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-2"><p className="text-xs text-red-400">{editError}</p></div>}

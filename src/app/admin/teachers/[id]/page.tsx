@@ -7,7 +7,7 @@ import {
   ArrowLeft, GraduationCap, BookOpen, MapPin, Calendar, DollarSign,
   Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
   Eye, EyeOff, Send, Save, RefreshCw, Plus, Edit3, Trash2, X,
-  CalendarDays, Clock,
+  CalendarDays, Clock, CreditCard, Briefcase, FileText,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -15,6 +15,7 @@ import ConfirmModal from '@/components/confirm-modal';
 interface TeacherDetail {
   id: string;
   userId: string;
+  fatherName: string | null;
   employeeId: string | null;
   qualification: string | null;
   specialization: string | null;
@@ -26,6 +27,10 @@ interface TeacherDetail {
   dateOfBirth: string | null;
   gender: string | null;
   bloodGroup: string | null;
+  cardId: string | null;
+  severeDisease: string | null;
+  experience: string | null;
+  bio: string | null;
   createdAt: string;
   user: { id: string; name: string; email: string | null; phone: string | null; username: string | null; role: string; status: string };
   assignments: Assignment[];
@@ -409,6 +414,7 @@ export default function TeacherDetailPage() {
           <DetailCard icon={Mail} label="Email" value={user.email || '—'} />
           <DetailCard icon={Phone} label="Phone" value={user.phone || data.phone || '—'} />
           <DetailCard icon={Award} label="Employee ID" value={data.employeeId || '—'} />
+          <DetailCard icon={User} label="Father Name" value={data.fatherName || '—'} />
           <DetailCard icon={Award} label="Qualification" value={data.qualification || '—'} />
           <DetailCard icon={BookOpen} label="Specialization" value={data.specialization || '—'} />
           <DetailCard icon={Calendar} label="Joining Date" value={data.joiningDate ? new Date(data.joiningDate).toLocaleDateString() : '—'} />
@@ -418,6 +424,10 @@ export default function TeacherDetailPage() {
           <DetailCard icon={User} label="Gender" value={data.gender ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1) : '—'} />
           <DetailCard icon={Heart} label="Blood Group" value={data.bloodGroup || '—'} />
           <DetailCard icon={Phone} label="Emergency Contact" value={data.emergencyContact || '—'} />
+          <DetailCard icon={CreditCard} label="Card ID" value={data.cardId || '—'} />
+          <DetailCard icon={AlertTriangle} label="Severe Disease" value={data.severeDisease || '—'} />
+          <DetailCard icon={Briefcase} label="Experience" value={data.experience || '—'} />
+          <DetailCard icon={FileText} label="Bio" value={data.bio || '—'} />
         </div>
       </section>
 

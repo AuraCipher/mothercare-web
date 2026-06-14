@@ -305,6 +305,7 @@ export const api = {
     employeeId?: string; qualification?: string; specialization?: string;
     joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
+    fatherName?: string; cardId?: string; severeDisease?: string; experience?: string; bio?: string;
   }) =>
     apiRequest('/admin/teachers', {
       method: 'POST',
@@ -315,6 +316,7 @@ export const api = {
     employeeId?: string; qualification?: string; specialization?: string;
     joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
+    fatherName?: string; cardId?: string; severeDisease?: string; experience?: string; bio?: string;
   }) =>
     apiRequest(`/admin/teachers/${id}`, {
       method: 'PUT',
