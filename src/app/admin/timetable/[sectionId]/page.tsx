@@ -23,6 +23,7 @@ function SectionTimetableInner() {
   const searchParams = useSearchParams();
   const sectionId = params.sectionId as string;
   const timetableId = searchParams.get('id') || '';
+  const src = searchParams.get('src') || '';
 
   const [branchId] = useState(() => localStorage.getItem('activeBranchId') || '');
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -43,10 +44,12 @@ function SectionTimetableInner() {
       api.getTimetableSlots(branchId, timetableId),
       api.getSectionTimetable(branchId, sectionId),
     ]).then(([_, slotData, entryData]) => {
-      setSlots(slotData.data || []);
+      const allSlots = slotData.data || [];
+      // Filter: datesheets show only specific-day slots, timetables show only all-days slots
+      setSlots(src === 'datesheet' ? allSlots.filter((s: any) => s.dayOfWeek !== null) : allSlots.filter((s: any) => s.dayOfWeek === null));
       setEntries(entryData.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [sectionId, timetableId]);
+  }, [sectionId, timetableId, src]);
 
   const getEntry = (slotId: string) => entries.find(e => e.slotId === slotId);
 
@@ -59,8 +62,8 @@ function SectionTimetableInner() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <button onClick={() => router.push(`/admin/timetable/grid?id=${timetableId}`)} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-        <ArrowLeft size={13} /> Back to Timetable
+      <button onClick={() => router.push(src === 'datesheet' ? `/admin/timetable/datesheet/${timetableId}` : `/admin/timetable/grid?id=${timetableId}`)} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+        <ArrowLeft size={13} /> Back
       </button>
 
       <div className="mb-8">

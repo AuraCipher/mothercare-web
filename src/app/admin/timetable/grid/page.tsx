@@ -154,7 +154,7 @@ function TimetableGridInner() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {sections.map((sec: any) => (
-              <div key={sec.id} onClick={() => router.push(`/admin/timetable/${sec.id}?id=${timetableId}`)}
+              <div key={sec.id} onClick={() => router.push(`/admin/timetable/${sec.id}?id=${timetableId}&src=timetable`)}
                 className="rounded-xl border border-warm-card-border bg-warm-card p-3 cursor-pointer hover:border-warm-accent/40 transition-colors">
                 <div className="flex items-center gap-2 mb-2"><BookOpen size={13} className="text-warm-accent shrink-0" /><span className="text-sm font-medium text-warm-cream truncate">{sec.name}</span></div>
                 {sec.section && <p className="text-xs text-warm-accent/80 mb-1">Section — {sec.section}</p>}
