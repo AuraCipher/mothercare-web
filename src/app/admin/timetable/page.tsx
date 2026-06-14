@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CalendarDays, FileText, Plus, X, Trash2, Edit3, MoreVertical, Power, PowerOff } from 'lucide-react';
+import { CalendarDays, FileText, Plus, X, Trash2, Edit3, MoreVertical, Power, PowerOff, LayoutGrid } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -141,6 +141,8 @@ export default function TimetableManagePage() {
                         className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
                       {dropdownOpen === t.id && (
                         <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                          <button onClick={() => router.push(`/admin/timetable/full/${t.id}`)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><LayoutGrid size={12} /> Full View</button>
                           <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
                           <button onClick={() => toggleActive(t, !isActive)}
@@ -193,6 +195,8 @@ export default function TimetableManagePage() {
                         className="rounded p-1.5 text-warm-muted hover:text-warm-cream"><MoreVertical size={13} /></button>
                       {dropdownOpen === t.id && (
                         <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl" onClick={() => setDropdownOpen(null)}>
+                          <button onClick={() => router.push(`/admin/timetable/full/${t.id}`)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><LayoutGrid size={12} /> Full View</button>
                           <button onClick={() => { setRenameTarget(t); setRenameName(t.name); }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream hover:bg-warm-card/50"><Edit3 size={12} /> Rename</button>
                           <button onClick={() => toggleActive(t, !isActive)}
