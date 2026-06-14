@@ -45,6 +45,7 @@ const mockTeacherData = {
   specialization: 'Mathematics', joiningDate: '2024-01-15T00:00:00.000Z', salary: '55000',
   phone: '1234567890', emergencyContact: '0987654321', address: '123 School St, Islamabad',
   dateOfBirth: '1985-06-15T00:00:00.000Z', gender: 'female', bloodGroup: 'A+',
+  fatherName: 'Muhammad', cardId: '12345-6789012-3', severeDisease: 'Asthma', experience: '5 years', bio: 'Experienced math teacher',
   createdAt: '2024-01-15T00:00:00.000Z',
   user: { id: 'u-1', name: 'Ms. Sarah', email: 'sarah@school.com', phone: null, role: 'teacher', status: 'active' },
   assignments: [
@@ -120,6 +121,20 @@ describe('TeacherDetailPage — rendering', () => {
   it('shows back button', async () => {
     render(<TeacherDetailPage />);
     expect(await screen.findByText('Back to Teachers')).toBeInTheDocument();
+  });
+
+  it('renders new teacher fields (fatherName, cardId, severeDisease, experience, bio)', async () => {
+    render(<TeacherDetailPage />);
+    expect(await screen.findByText('Father Name')).toBeInTheDocument();
+    expect(screen.getByText('Muhammad')).toBeInTheDocument();  // fatherName value
+    expect(screen.getByText('Card ID')).toBeInTheDocument();
+    expect(screen.getByText('12345-6789012-3')).toBeInTheDocument();  // cardId
+    expect(screen.getByText('Severe Disease')).toBeInTheDocument();
+    expect(screen.getByText('Asthma')).toBeInTheDocument();  // severeDisease
+    expect(screen.getByText('Experience')).toBeInTheDocument();
+    expect(screen.getByText('5 years')).toBeInTheDocument();  // experience
+    expect(screen.getByText('Bio')).toBeInTheDocument();
+    expect(screen.getByText('Experienced math teacher')).toBeInTheDocument();  // bio
   });
 });
 
