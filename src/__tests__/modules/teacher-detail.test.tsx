@@ -47,7 +47,7 @@ const mockTeacherData = {
   dateOfBirth: '1985-06-15T00:00:00.000Z', gender: 'female', bloodGroup: 'A+',
   fatherName: 'Muhammad', cardId: '12345-6789012-3', severeDisease: 'Asthma', experience: '5 years', bio: 'Experienced math teacher',
   createdAt: '2024-01-15T00:00:00.000Z',
-  user: { id: 'u-1', name: 'Ms. Sarah', email: 'sarah@school.com', phone: null, role: 'teacher', status: 'active' },
+  user: { id: 'u-1', name: 'Ms. Sarah', email: 'sarah@school.com', phone: null, role: 'teacher', status: 'active', profilePhotoId: null },
   assignments: [
     {
       id: 'assign-1', academicYearId: 'ay-1', teacherId: 'u-1', groupId: 'g-1', subjectId: 's-1',
