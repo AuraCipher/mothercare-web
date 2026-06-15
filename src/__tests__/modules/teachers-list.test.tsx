@@ -172,6 +172,55 @@ describe('TeachersPage — create modal', () => {
     expect(screen.getByText('Salary')).toBeInTheDocument();
     expect(screen.getByText('Blood Group')).toBeInTheDocument();
   });
+
+  it('shows new fields in create modal (Father Name, Card ID, Severe Disease, Experience, Bio)', async () => {
+    render(<TeachersPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByText('Add Teacher'));
+
+    expect(await screen.findByText('Father Name')).toBeInTheDocument();
+    expect(screen.getByText('Card ID')).toBeInTheDocument();
+    expect(screen.getByText('Severe Disease')).toBeInTheDocument();
+    expect(screen.getByText('Experience')).toBeInTheDocument();
+    expect(screen.getByText('Bio')).toBeInTheDocument();
+  });
+});
+
+describe('TeachersPage — edit modal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTeachers.mockResolvedValue({
+      success: true,
+      data: mockTeachers,
+      meta: { page: 1, limit: 20, total: 2, totalPages: 1 },
+    });
+  });
+
+  it('opens edit modal with pre-filled fields', async () => {
+    render(<TeachersPage />);
+    const user = userEvent.setup();
+
+    const editBtns = await screen.findAllByTitle('Edit teacher');
+    await user.click(editBtns[0]);
+
+    expect(await screen.findByText('Edit Teacher Profile')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('TCH-001')).toBeInTheDocument(); // employeeId
+    expect(screen.getByDisplayValue('M.Sc. Mathematics')).toBeInTheDocument(); // qualification
+  });
+
+  it('shows new fields in edit modal (Card ID, Severe Disease, Experience, Bio)', async () => {
+    render(<TeachersPage />);
+    const user = userEvent.setup();
+
+    const editBtns = await screen.findAllByTitle('Edit teacher');
+    await user.click(editBtns[0]);
+
+    expect(await screen.findByText('Edit Teacher Profile')).toBeInTheDocument();
+    expect(screen.getByText('Card ID')).toBeInTheDocument();
+    expect(screen.getByText('Severe Disease')).toBeInTheDocument();
+    expect(screen.getByText('Experience')).toBeInTheDocument();
+    expect(screen.getByText('Bio')).toBeInTheDocument();
+  });
 });
 
 describe('TeachersPage — delete', () => {

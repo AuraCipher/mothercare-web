@@ -12,27 +12,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // If already logged in, redirect to the correct dashboard directly
+  // If already logged in, redirect instantly using JWT payload (no API call)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const meRes = await api.me();
-        if (cancelled || !meRes.success) return;
-        const role = meRes.user?.role;
-        if (role === 'super_admin') {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.role === 'super_admin') {
           router.replace('/ceo');
         } else {
           router.replace('/admin');
         }
-      } catch {
-        // Token invalid — let them use the login form
+        return; // redirect issued — no need to verify
       }
-    })();
-    return () => { cancelled = true; };
+    } catch {
+      // Corrupt token — let them use the login form
+    }
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
