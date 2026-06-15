@@ -15,6 +15,8 @@ const mockStudent = {
   nationality: 'Pakistani',
   address: 'House #12, Street 5, F-8/3, Islamabad',
   phone: '+92 300 1234567',
+  studentEmail: 'ali.hassan@email.com',
+  studentWhatsapp: '+92 300 1234567',
   bformCnic: '61101-9876543-1',
   previousSchool: 'Islamabad Public School',
   previousClass: 'Class 4',
@@ -102,11 +104,11 @@ export default function MockStudentProfile() {
           <DetailCard icon={Award} label="Religion" value={mockStudent.religion} />
           <DetailCard icon={Award} label="Nationality" value={mockStudent.nationality} />
           <DetailCard icon={Phone} label="Phone" value={mockStudent.phone} />
+          <DetailCard icon={Mail} label="Email" value={mockStudent.studentEmail} />
+          <DetailCard icon={Phone} label="WhatsApp" value={mockStudent.studentWhatsapp} />
           <DetailCard icon={MapPin} label="Address" value={mockStudent.address} />
           <DetailCard icon={BookOpen} label="Admission No." value={mockStudent.admissionNumber} />
           <DetailCard icon={CreditCard} label="B-Form / CNIC" value={mockStudent.bformCnic || '—'} />
-          <DetailCard icon={BookOpen} label="Previous School" value={mockStudent.previousSchool || '—'} />
-          <DetailCard icon={BookOpen} label="Subjects" value={mockStudent.subjects.join(', ')} />
         </div>
       </section>
 

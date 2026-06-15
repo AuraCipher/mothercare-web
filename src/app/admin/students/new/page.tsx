@@ -1,0 +1,218 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
+import { ArrowLeft, Upload } from 'lucide-react';
+import { showToast } from '@/components/toast';
+import FileUpload from '@/components/file-upload';
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-warm-muted">{label}{required && ' *'}</label>
+      {children}
+    </div>
+  );
+}
+
+function Input({ value, onChange, placeholder, type = 'text', step }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; step?: string;
+}) {
+  return (
+    <input type={type} value={value} onChange={(e) => onChange(e.target.value)} step={step}
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+  );
+}
+
+export default function NewStudentPage() {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [sections, setSections] = useState<any[]>([]);
+  const [form, setForm] = useState({
+    name: '', gender: '', dateOfBirth: '', bloodGroup: '', religion: '', nationality: 'Pakistani',
+    motherTongue: '', bformCnic: '', phone: '', studentEmail: '', studentWhatsapp: '',
+    address: '', city: '', postalCode: '',
+    previousSchool: '', previousClass: '', tcNumber: '', referredBy: '',
+    groupId: '', profilePhotoId: '',
+  });
+
+  useEffect(() => {
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (bId && aId) {
+      api.getSections(bId, aId).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
+    }
+  }, []);
+
+  const set = (key: string) => (val: string) => setForm(p => ({ ...p, [key]: val }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) { showToast('error', 'Student name is required'); return; }
+    setSaving(true);
+    try {
+      const res = await api.createStudent({
+        name: form.name.trim(), gender: form.gender || undefined,
+        dateOfBirth: form.dateOfBirth || undefined, bloodGroup: form.bloodGroup || undefined,
+        religion: form.religion || undefined, nationality: form.nationality || 'Pakistani',
+        motherTongue: form.motherTongue || undefined, bformCnic: form.bformCnic || undefined,
+        phone: form.phone || undefined, studentEmail: form.studentEmail || undefined,
+        studentWhatsapp: form.studentWhatsapp || undefined,
+        address: form.address || undefined, city: form.city || undefined,
+        postalCode: form.postalCode || undefined,
+        previousSchool: form.previousSchool || undefined, previousClass: form.previousClass || undefined,
+        tcNumber: form.tcNumber || undefined, referredBy: form.referredBy || undefined,
+        groupId: form.groupId || undefined, profilePhotoId: form.profilePhotoId || undefined,
+      });
+      if (res.success) {
+        showToast('success', 'Student created');
+        router.push(`/admin/students/${res.data.id}`);
+      }
+    } catch (e: any) { showToast('error', e.message || 'Failed to create'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <button onClick={() => router.push('/admin/students')} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+        <ArrowLeft size={13} /> Back to Students
+      </button>
+
+      <h1 className="mb-8 text-xl font-light text-warm-cream">Add New Student</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* Photo */}
+        <div>
+          <p className="mb-2 text-xs text-warm-muted">Profile Photo</p>
+          <FileUpload value={form.profilePhotoId} onChange={set('profilePhotoId')} label="Upload Photo" />
+        </div>
+
+        {/* Student Identity */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Student Identity</h2>
+          <div className="space-y-4">
+            <Field label="Full Name" required>
+              <Input value={form.name} onChange={set('name')} placeholder="e.g. Ali Hassan" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Gender">
+                <select value={form.gender} onChange={(e) => set('gender')(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                  <option value="">— Select —</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </Field>
+              <Field label="Date of Birth">
+                <Input type="date" value={form.dateOfBirth} onChange={set('dateOfBirth')} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Blood Group">
+                <Input value={form.bloodGroup} onChange={set('bloodGroup')} placeholder="e.g. B+" />
+              </Field>
+              <Field label="Religion">
+                <Input value={form.religion} onChange={set('religion')} placeholder="e.g. Islam" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nationality">
+                <Input value={form.nationality} onChange={set('nationality')} placeholder="e.g. Pakistani" />
+              </Field>
+              <Field label="Mother Tongue">
+                <Input value={form.motherTongue} onChange={set('motherTongue')} placeholder="e.g. Urdu" />
+              </Field>
+            </div>
+            <Field label="B-Form / CNIC">
+              <Input value={form.bformCnic} onChange={set('bformCnic')} placeholder="e.g. 61101-1234567-1" />
+            </Field>
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Contact Information</h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Phone">
+                <Input value={form.phone} onChange={set('phone')} placeholder="e.g. +92 300 1234567" />
+              </Field>
+              <Field label="Email">
+                <Input value={form.studentEmail} onChange={set('studentEmail')} placeholder="e.g. ali@email.com" />
+              </Field>
+            </div>
+            <Field label="WhatsApp">
+              <Input value={form.studentWhatsapp} onChange={set('studentWhatsapp')} placeholder="e.g. +92 300 1234567" />
+            </Field>
+            <Field label="Address">
+              <textarea value={form.address} onChange={(e) => set('address')(e.target.value)}
+                placeholder="Complete address"
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors resize-none" rows={2} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="City">
+                <Input value={form.city} onChange={set('city')} placeholder="e.g. Islamabad" />
+              </Field>
+              <Field label="Postal Code">
+                <Input value={form.postalCode} onChange={set('postalCode')} placeholder="e.g. 44000" />
+              </Field>
+            </div>
+          </div>
+        </div>
+
+        {/* Previous Education */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Previous Education</h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Previous School">
+                <Input value={form.previousSchool} onChange={set('previousSchool')} placeholder="e.g. Islamabad Public School" />
+              </Field>
+              <Field label="Previous Class">
+                <Input value={form.previousClass} onChange={set('previousClass')} placeholder="e.g. Class 4" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="TC Number">
+                <Input value={form.tcNumber} onChange={set('tcNumber')} placeholder="Transfer certificate no." />
+              </Field>
+              <Field label="Referred By">
+                <Input value={form.referredBy} onChange={set('referredBy')} placeholder="e.g. Mr. Ahmed" />
+              </Field>
+            </div>
+          </div>
+        </div>
+
+        {/* Class Assignment */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Class Assignment</h2>
+          <Field label="Class / Section">
+            <select value={form.groupId} onChange={(e) => set('groupId')(e.target.value)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+              <option value="">— Select Class —</option>
+              {sections.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        {/* Submit */}
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => router.push('/admin/students')}
+            className="rounded-lg border border-warm-card-border px-5 py-2.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}
+            className="rounded-lg bg-warm-accent px-5 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+            {saving ? 'Saving…' : 'Create Student'}
+          </button>
+        </div>
+      </form>
+    </main>
+  );
+}

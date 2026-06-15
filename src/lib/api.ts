@@ -169,6 +169,36 @@ export const api = {
   deleteGroup: (id: string) =>
     apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
 
+  // ─── Students ────────────────────────────────────────────
+  getStudents: (params?: { search?: string; groupId?: string; academicYearId?: string; page?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set('search', params.search);
+    if (params?.groupId) q.set('groupId', params.groupId);
+    if (params?.academicYearId) q.set('academicYearId', params.academicYearId);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/students${qs ? `?${qs}` : ''}`);
+  },
+
+  getStudent: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/students/${id}`),
+
+  createStudent: (data: {
+    name: string; gender?: string; dateOfBirth?: string; religion?: string;
+    nationality?: string; address?: string; city?: string; postalCode?: string;
+    phone?: string; bloodGroup?: string; bformCnic?: string; motherTongue?: string;
+    studentEmail?: string; studentWhatsapp?: string; previousSchool?: string;
+    previousClass?: string; tcNumber?: string; referredBy?: string;
+    groupId?: string; admissionNumber?: string; profilePhotoId?: string;
+  }) => apiRequest('/admin/students', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateStudent: (id: string, data: any) =>
+    apiRequest(`/admin/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteStudent: (id: string) =>
+    apiRequest(`/admin/students/${id}`, { method: 'DELETE' }),
+
   // ─── Users (for dropdowns) ──────────────────────────
   getUsers: (params?: { role?: string; search?: string }) => {
     const q = new URLSearchParams();
