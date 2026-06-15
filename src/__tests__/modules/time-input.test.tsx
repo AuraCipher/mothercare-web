@@ -62,4 +62,47 @@ describe('TimeInput', () => {
     fireEvent.change(input, { target: { value: '12' } });
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  it('limits input to 4 digits', () => {
+    const onChange = vi.fn();
+    render(<TimeInput value="" onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '12345' } });
+    expect(onChange).toHaveBeenCalledWith('12:34');
+  });
+
+  it('formats 1 digit without colon', () => {
+    const onChange = vi.fn();
+    render(<TimeInput value="" onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '1' } });
+    expect(onChange).toHaveBeenCalledWith('1');
+  });
+
+  it('handles non-numeric input', () => {
+    const onChange = vi.fn();
+    render(<TimeInput value="" onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'abcd' } });
+    expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('handles mixed input', () => {
+    const onChange = vi.fn();
+    render(<TimeInput value="" onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '1a2b3c' } });
+    expect(onChange).toHaveBeenCalledWith('12:3');
+  });
+
+  it('renders with custom placeholder', () => {
+    render(<TimeInput value="" onChange={() => {}} placeholder="Custom" />);
+    expect(screen.getByPlaceholderText('Custom')).toBeInTheDocument();
+  });
+
+  it('has inputMode numeric', () => {
+    render(<TimeInput value="" onChange={() => {}} />);
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveAttribute('inputMode', 'numeric');
+  });
 });
