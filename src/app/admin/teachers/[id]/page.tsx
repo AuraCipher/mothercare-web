@@ -4,11 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
-  ArrowLeft, GraduationCap, BookOpen, MapPin, Calendar, DollarSign,
+  ArrowLeft, BookOpen, MapPin, Calendar, DollarSign,
   Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
   Eye, EyeOff, Send, Save, RefreshCw, Plus, Edit3, Trash2, X,
   CalendarDays, Clock, CreditCard, Briefcase, FileText,
 } from 'lucide-react';
+import AvatarImage from '@/components/avatar-image';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -32,7 +33,7 @@ interface TeacherDetail {
   experience: string | null;
   bio: string | null;
   createdAt: string;
-  user: { id: string; name: string; email: string | null; phone: string | null; username: string | null; role: string; status: string };
+  user: { id: string; name: string; email: string | null; phone: string | null; username: string | null; role: string; status: string; profilePhotoId: string | null };
   assignments: Assignment[];
 }
 
@@ -366,44 +367,67 @@ export default function TeacherDetailPage() {
       </button>
 
       {/* Profile header */}
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-warm-accent/10">
-            <GraduationCap size={24} className="text-warm-accent" />
-          </div>
-          <div>
-            <h1 className="text-xl font-light text-warm-cream">{user.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-              {data.employeeId && (
-                <span className="text-xs text-warm-muted/60">{data.employeeId}</span>
-              )}
-              {data.qualification && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2 py-0.5 text-[10px] text-warm-accent">
-                  {data.qualification}
-                </span>
-              )}
-              <span className={`inline-flex items-center gap-1 text-xs ${
-                user.status === 'active' ? 'text-green-400' : 'text-warm-muted/50'
-              }`}>
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${user.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
-                {user.status}
+      <div className="mb-8 flex items-start justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-semibold text-warm-cream tracking-tight">{user.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+            {data.employeeId && (
+              <span className="text-sm text-warm-muted/70">{data.employeeId}</span>
+            )}
+            {data.qualification && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2.5 py-0.5 text-[11px] text-warm-accent">
+                {data.qualification}
               </span>
-            </div>
+            )}
+            <span className={`inline-flex items-center gap-1.5 text-xs ${
+              user.status === 'active' ? 'text-green-400' : 'text-warm-muted/50'
+            }`}>
+              <span className={`inline-block h-2 w-2 rounded-full ${user.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+              {user.status}
+            </span>
+          </div>
+          <div className="mt-3">
+            {user.status === 'active' ? (
+              <button onClick={handleDeactivate}
+                className="flex items-center gap-1.5 rounded-lg border border-red-900/30 bg-red-900/10 px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-900/20 transition-colors">
+                <AlertTriangle size={12} /> Deactivate
+              </button>
+            ) : (
+              <button onClick={handleReactivate}
+                className="flex items-center gap-1.5 rounded-lg border border-green-900/30 bg-green-900/10 px-3 py-1.5 text-[11px] text-green-400 hover:bg-green-900/20 transition-colors">
+                ↻ Reactivate
+              </button>
+            )}
           </div>
         </div>
-        {user.status === 'active' ? (
-          <button onClick={handleDeactivate}
-            className="flex items-center gap-1.5 rounded-lg border border-red-900/30 bg-red-900/10 px-4 py-2 text-xs text-red-400 hover:bg-red-900/20 transition-colors"
-          >
-            <AlertTriangle size={13} /> Deactivate
-          </button>
-        ) : (
-          <button onClick={handleReactivate}
-            className="flex items-center gap-1.5 rounded-lg border border-green-900/30 bg-green-900/10 px-4 py-2 text-xs text-green-400 hover:bg-green-900/20 transition-colors"
-          >
-            ↻ Reactivate
-          </button>
-        )}
+
+        {/* Passport-size photo — clickable to upload */}
+        <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById('photo-upload')?.click()}>
+          <AvatarImage fileId={user.profilePhotoId} className="w-28 h-32 rounded-xl object-cover border-2 border-warm-card-border" fallback={user.name?.charAt(0)} />
+          <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+            <span className="text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
+          </div>
+          <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const token = localStorage.getItem('token');
+              const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await fetch(`${API_URL}/api/upload`, {
+                method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
+              });
+              const result = await res.json();
+              if (!res.ok) throw new Error(result.message || 'Upload failed');
+              await api.updateTeacher(data.id, { profilePhotoId: result.data.id });
+              showToast('success', 'Photo updated');
+              loadData();
+            } catch (err: any) {
+              showToast('error', err.message || 'Failed to upload photo');
+            }
+          }} />
+        </div>
       </div>
 
       {/* Profile details grid */}
@@ -430,6 +454,8 @@ export default function TeacherDetailPage() {
           <DetailCard icon={FileText} label="Bio" value={data.bio || '—'} />
         </div>
       </section>
+
+
 
       {/* ════════════════════════════════════════════
           Password Management

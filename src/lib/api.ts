@@ -317,6 +317,7 @@ export const api = {
     joiningDate?: string; salary?: number; phone?: string; emergencyContact?: string;
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
     fatherName?: string; cardId?: string; severeDisease?: string; experience?: string; bio?: string;
+    profilePhotoId?: string;
   }) =>
     apiRequest(`/admin/teachers/${id}`, {
       method: 'PUT',
