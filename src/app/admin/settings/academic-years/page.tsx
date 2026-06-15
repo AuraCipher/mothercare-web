@@ -244,7 +244,7 @@ export default function AcademicYearsPage() {
           {years.map(ay => {
             const isBuild = ay.status === 'BUILD_STAGE';
             const isActive = ay.status === 'ACTIVE';
-            const isOnHold = ay.status === 'ON_HOLD';
+            const isOnHold = ay.status === ('ON_HOLD' as string);
             return (
               <div key={ay.id} className="flex items-center justify-between rounded-xl border border-warm-card-border bg-warm-card p-4">
                 <div className="flex items-center gap-3 min-w-0 flex-1">

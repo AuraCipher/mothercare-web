@@ -46,7 +46,7 @@ export default function NewStudentPage() {
     }
   }, []);
 
-  const set = (key: string) => (val: string) => setForm(p => ({ ...p, [key]: val }));
+  const set = (key: string) => (val: any) => setForm((p: any) => ({ ...p, [key]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -3,28 +3,41 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Users, GraduationCap, BookOpen, Search, ArrowLeft } from 'lucide-react';
+import { Plus, Users, GraduationCap, BookOpen, Search, Filter } from 'lucide-react';
 
 export default function StudentsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [groupId, setGroupId] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
+  const [sections, setSections] = useState<any[]>([]);
+
+  const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents({ search: search || undefined, limit: 50 });
+      const res = await api.getStudents({
+        search: search || undefined,
+        groupId: groupId || undefined,
+        rollNumber: rollNumber || undefined,
+        limit: 50,
+      });
       if (res.success) setStudents(res.data);
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadStudents(); }, []);
+  useEffect(() => { loadStudents(); }, [groupId, rollNumber]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadStudents();
-  };
+  // Load sections for filter dropdown
+  useEffect(() => {
+    if (branchId && ayId) {
+      api.getSections(branchId, ayId).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
+    }
+  }, []);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -34,10 +47,6 @@ export default function StudentsPage() {
           <h1 className="text-xl font-light text-warm-cream">Students</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/admin/students/mock')}
-            className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-            View Mock Profile
-          </button>
           <button onClick={() => router.push('/admin/students/new')}
             className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
             <Plus size={14} /> Add Student
@@ -45,15 +54,33 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="mb-6">
-        <div className="relative max-w-md">
+      {/* Filters */}
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or admission number..."
+            placeholder="Search by name or admission..."
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-9 pr-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
         </div>
-      </form>
+        <div className="min-w-[160px]">
+          <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+            <option value="">All Classes</option>
+            {sections.map((s: any) => (
+              <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-[130px]">
+          <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
+            placeholder="Roll no."
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+        </div>
+        <button onClick={loadStudents}
+          className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+          <Filter size={13} /> Filter
+        </button>
+      </div>
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

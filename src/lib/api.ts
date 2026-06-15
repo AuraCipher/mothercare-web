@@ -170,11 +170,12 @@ export const api = {
     apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
 
   // ─── Students ────────────────────────────────────────────
-  getStudents: (params?: { search?: string; groupId?: string; academicYearId?: string; page?: number; limit?: number }) => {
+  getStudents: (params?: { search?: string; groupId?: string; academicYearId?: string; rollNumber?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.search) q.set('search', params.search);
     if (params?.groupId) q.set('groupId', params.groupId);
     if (params?.academicYearId) q.set('academicYearId', params.academicYearId);
+    if (params?.rollNumber) q.set('rollNumber', params.rollNumber);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
     const qs = q.toString();

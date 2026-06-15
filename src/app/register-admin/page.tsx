@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
-export default function RegisterAdminPage() {
+function RegisterAdminInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -302,3 +302,4 @@ export default function RegisterAdminPage() {
     </div>
   );
 }
+export default function RegisterAdminPage() { return <Suspense><RegisterAdminInner /></Suspense>; }

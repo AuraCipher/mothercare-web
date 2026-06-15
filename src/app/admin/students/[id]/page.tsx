@@ -197,27 +197,11 @@ export default function StudentDetailPage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium text-warm-cream">Emergency Contacts</h2>
-          <button onClick={() => setShowEcForm(!showEcForm)}
-            className="flex items-center gap-1 rounded-lg border border-warm-card-border px-3 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-            <Plus size={12} /> {showEcForm ? 'Cancel' : 'Add'}
+          <button onClick={() => setShowEcForm(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
+            <Plus size={12} /> Add
           </button>
         </div>
-
-        {showEcForm && (
-          <div className="mb-4 rounded-xl border border-warm-card-border bg-warm-card p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <input value={ec.name} onChange={(e) => setEc(p => ({ ...p, name: e.target.value }))} placeholder="Name *"
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-              <input value={ec.relationship} onChange={(e) => setEc(p => ({ ...p, relationship: e.target.value }))} placeholder="Relationship"
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-              <input value={ec.phone} onChange={(e) => setEc(p => ({ ...p, phone: e.target.value }))} placeholder="Phone *"
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-              <input value={ec.whatsapp} onChange={(e) => setEc(p => ({ ...p, whatsapp: e.target.value }))} placeholder="WhatsApp"
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
-            </div>
-            <button onClick={handleAddEc} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
-          </div>
-        )}
 
         {s.emergencyContacts && s.emergencyContacts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -246,8 +230,8 @@ export default function StudentDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium text-warm-cream">Health & Medical</h2>
           <button onClick={openHealthForm}
-            className="flex items-center gap-1 rounded-lg border border-warm-card-border px-3 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-            {s.healthRecord ? 'Edit' : 'Add'}
+            className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
+            {s.healthRecord ? <><Edit3 size={11} /> Edit</> : <><Plus size={12} /> Add</>}
           </button>
         </div>
 
@@ -280,29 +264,29 @@ export default function StudentDetailPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label>
-                  <input value={hlth.bloodGroup || ''} onChange={(e) => setHlth(p => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={hlth.bloodGroup || ''} onChange={(e) => setHlth((p: any) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Chronic Disease</label>
-                  <select value={hlth.hasChronicDisease ? 'true' : 'false'} onChange={(e) => setHlth(p => ({ ...p, hasChronicDisease: e.target.value === 'true' }))}
+                  <select value={hlth.hasChronicDisease ? 'true' : 'false'} onChange={(e) => setHlth((p: any) => ({ ...p, hasChronicDisease: e.target.value === 'true' }))}
                     className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
                     <option value="false">No</option><option value="true">Yes</option>
                   </select></div>
               </div>
               <div><label className="mb-1 block text-xs text-warm-muted">Disease Details</label>
-                <textarea value={hlth.diseaseDetails || ''} onChange={(e) => setHlth(p => ({ ...p, diseaseDetails: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
+                <textarea value={hlth.diseaseDetails || ''} onChange={(e) => setHlth((p: any) => ({ ...p, diseaseDetails: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Allergies</label>
-                  <input value={hlth.allergies || ''} onChange={(e) => setHlth(p => ({ ...p, allergies: e.target.value }))} placeholder="e.g. Dust, Pollen" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={hlth.allergies || ''} onChange={(e) => setHlth((p: any) => ({ ...p, allergies: e.target.value }))} placeholder="e.g. Dust, Pollen" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Disability</label>
-                  <input value={hlth.disability || ''} onChange={(e) => setHlth(p => ({ ...p, disability: e.target.value }))} placeholder="If any" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={hlth.disability || ''} onChange={(e) => setHlth((p: any) => ({ ...p, disability: e.target.value }))} placeholder="If any" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Doctor Name</label>
-                  <input value={hlth.doctorName || ''} onChange={(e) => setHlth(p => ({ ...p, doctorName: e.target.value }))} placeholder="e.g. Dr. Ayesha" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={hlth.doctorName || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorName: e.target.value }))} placeholder="e.g. Dr. Ayesha" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Doctor Phone</label>
-                  <input value={hlth.doctorPhone || ''} onChange={(e) => setHlth(p => ({ ...p, doctorPhone: e.target.value }))} placeholder="+92 300 5556677" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={hlth.doctorPhone || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorPhone: e.target.value }))} placeholder="+92 300 5556677" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div><label className="mb-1 block text-xs text-warm-muted">Medical Notes</label>
-                <textarea value={hlth.medicalNotes || ''} onChange={(e) => setHlth(p => ({ ...p, medicalNotes: e.target.value }))} rows={3} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
+                <textarea value={hlth.medicalNotes || ''} onChange={(e) => setHlth((p: any) => ({ ...p, medicalNotes: e.target.value }))} rows={3} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setShowHlthForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
@@ -322,43 +306,43 @@ export default function StudentDetailPage() {
             </div>
             <div className="space-y-4">
               <div><label className="mb-1 block text-xs text-warm-muted">Full Name</label>
-                <input value={sf.name} onChange={(e) => setSf(p => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                <input placeholder="e.g. Ali Hassan" value={sf.name} onChange={(e) => setSf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Gender</label>
-                  <select value={sf.gender} onChange={(e) => setSf(p => ({ ...p, gender: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
+                  <select value={sf.gender} onChange={(e) => setSf((p: any) => ({ ...p, gender: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
                     <option value="">-- Select --</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
                   </select></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Date of Birth</label>
-                  <input type="date" value={sf.dateOfBirth || '"'} onChange={(e) => setSf(p => ({ ...p, dateOfBirth: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input type="date" value={sf.dateOfBirth || '"'} onChange={(e) => setSf((p: any) => ({ ...p, dateOfBirth: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label>
-                  <input value={sf.bloodGroup} onChange={(e) => setSf(p => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={sf.bloodGroup} onChange={(e) => setSf((p: any) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Religion</label>
-                  <input value={sf.religion} onChange={(e) => setSf(p => ({ ...p, religion: e.target.value }))} placeholder="e.g. Islam" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={sf.religion} onChange={(e) => setSf((p: any) => ({ ...p, religion: e.target.value }))} placeholder="e.g. Islam" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Phone</label>
-                  <input value={sf.phone} onChange={(e) => setSf(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. +92 300 1234567" value={sf.phone} onChange={(e) => setSf((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Email</label>
-                  <input value={sf.studentEmail} onChange={(e) => setSf(p => ({ ...p, studentEmail: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. ali@email.com" value={sf.studentEmail} onChange={(e) => setSf((p: any) => ({ ...p, studentEmail: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div><label className="mb-1 block text-xs text-warm-muted">Nationality</label>
-                <input value={sf.nationality} onChange={(e) => setSf(p => ({ ...p, nationality: e.target.value }))} placeholder="e.g. Pakistani" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                <input value={sf.nationality} onChange={(e) => setSf((p: any) => ({ ...p, nationality: e.target.value }))} placeholder="e.g. Pakistani" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label>
-                <input value={sf.studentWhatsapp} onChange={(e) => setSf(p => ({ ...p, studentWhatsapp: e.target.value }))} placeholder="e.g. +92 300 1234567" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                <input value={sf.studentWhatsapp} onChange={(e) => setSf((p: any) => ({ ...p, studentWhatsapp: e.target.value }))} placeholder="e.g. +92 300 1234567" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">City</label>
-                  <input value={sf.city} onChange={(e) => setSf(p => ({ ...p, city: e.target.value }))} placeholder="e.g. Islamabad" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={sf.city} onChange={(e) => setSf((p: any) => ({ ...p, city: e.target.value }))} placeholder="e.g. Islamabad" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">B-Form / CNIC</label>
-                  <input value={sf.bformCnic} onChange={(e) => setSf(p => ({ ...p, bformCnic: e.target.value }))} placeholder="e.g. 61101-1234567-1" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input value={sf.bformCnic} onChange={(e) => setSf((p: any) => ({ ...p, bformCnic: e.target.value }))} placeholder="e.g. 61101-1234567-1" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div><label className="mb-1 block text-xs text-warm-muted">Address</label>
-                <textarea value={sf.address} onChange={(e) => setSf(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
+                <textarea placeholder="Complete address" value={sf.address} onChange={(e) => setSf((p: any) => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setEditStudent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
-              <button onClick={handleSaveStudent} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save Changes</button>
+              <button onClick={handleSaveStudent} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button>
             </div>
           </div>
         </div>
@@ -375,33 +359,33 @@ export default function StudentDetailPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Name</label>
-                  <input value={pf.name} onChange={(e) => setPf(p => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. Muhammad Hassan" value={pf.name} onChange={(e) => setPf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Relation</label>
-                  <input value={pf.relation} onChange={(e) => setPf(p => ({ ...p, relation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. Father" value={pf.relation} onChange={(e) => setPf((p: any) => ({ ...p, relation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">CNIC</label>
-                  <input value={pf.cnicNumber} onChange={(e) => setPf(p => ({ ...p, cnicNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. 61101-1234567-1" value={pf.cnicNumber} onChange={(e) => setPf((p: any) => ({ ...p, cnicNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Occupation</label>
-                  <input value={pf.occupation} onChange={(e) => setPf(p => ({ ...p, occupation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. Business" value={pf.occupation} onChange={(e) => setPf((p: any) => ({ ...p, occupation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Employer</label>
-                  <input value={pf.employerName} onChange={(e) => setPf(p => ({ ...p, employerName: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. Employer name" value={pf.employerName} onChange={(e) => setPf((p: any) => ({ ...p, employerName: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Marital Status</label>
-                  <input value={pf.maritalStatus} onChange={(e) => setPf(p => ({ ...p, maritalStatus: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. Married" value={pf.maritalStatus} onChange={(e) => setPf((p: any) => ({ ...p, maritalStatus: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">Monthly Income</label>
-                  <input value={pf.monthlyIncome} onChange={(e) => setPf(p => ({ ...p, monthlyIncome: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. above_20k" value={pf.monthlyIncome} onChange={(e) => setPf((p: any) => ({ ...p, monthlyIncome: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Phone</label>
-                  <input value={pf.phone} onChange={(e) => setPf(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. +92 300 9876543" value={pf.phone} onChange={(e) => setPf((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label>
-                  <input value={pf.whatsapp} onChange={(e) => setPf(p => ({ ...p, whatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. +92 300 9876543" value={pf.whatsapp} onChange={(e) => setPf((p: any) => ({ ...p, whatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
                 <div><label className="mb-1 block text-xs text-warm-muted">Email</label>
-                  <input value={pf.email} onChange={(e) => setPf(p => ({ ...p, email: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                  <input placeholder="e.g. parent@email.com" value={pf.email} onChange={(e) => setPf((p: any) => ({ ...p, email: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
@@ -411,11 +395,42 @@ export default function StudentDetailPage() {
                   await apiRequest(`/admin/students/${id}/parent`, { method: 'PUT', body: JSON.stringify(pf) });
                   showToast('success', 'Parent updated'); setEditParent(false); loadData();
                 } catch (e: any) { showToast('error', e.message || 'Failed'); }
-              }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save Changes</button>
+              }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Emergency Contact modal */}
+      {showEcForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowEcForm(false)}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-warm-cream">Add Emergency Contact</h2>
+              <button onClick={() => setShowEcForm(false)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="mb-1 block text-xs text-warm-muted">Name *</label>
+                  <input value={ec.name} onChange={(e) => setEc((p: any) => ({ ...p, name: e.target.value }))} placeholder="e.g. Fatima Hassan" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                <div><label className="mb-1 block text-xs text-warm-muted">Relationship</label>
+                  <input value={ec.relationship} onChange={(e) => setEc((p: any) => ({ ...p, relationship: e.target.value }))} placeholder="e.g. Mother" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="mb-1 block text-xs text-warm-muted">Phone *</label>
+                  <input value={ec.phone} onChange={(e) => setEc((p: any) => ({ ...p, phone: e.target.value }))} placeholder="e.g. +92 300 1112223" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+                <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label>
+                  <input value={ec.whatsapp} onChange={(e) => setEc((p: any) => ({ ...p, whatsapp: e.target.value }))} placeholder="e.g. +92 300 1112223" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setShowEcForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+              <button onClick={handleAddEc} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </main>
   );
