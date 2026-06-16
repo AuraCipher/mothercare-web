@@ -192,6 +192,7 @@ export const api = {
     studentEmail?: string; studentWhatsapp?: string; previousSchool?: string;
     previousClass?: string; tcNumber?: string; referredBy?: string;
     groupId?: string; admissionNumber?: string; profilePhotoId?: string;
+    guardianName?: string; guardianRelation?: string;
   }) => apiRequest('/admin/students', { method: 'POST', body: JSON.stringify(data) }),
 
   updateStudent: (id: string, data: any) =>

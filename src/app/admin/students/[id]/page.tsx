@@ -159,6 +159,12 @@ export default function StudentDetailPage() {
           <DetailCard icon={MapPin} label="Address" value={[s.address, s.city].filter(Boolean).join(', ') || '—'} />
           <DetailCard icon={BookOpen} label="Admission No." value={s.admissionNumber || '—'} />
           <DetailCard icon={CreditCard} label="B-Form / CNIC" value={s.bformCnic || '—'} />
+          <DetailCard icon={Award} label="Mother Tongue" value={s.motherTongue || '—'} />
+          <DetailCard icon={BookOpen} label="Previous School" value={s.previousSchool || '—'} />
+          <DetailCard icon={BookOpen} label="Previous Class" value={s.previousClass || '—'} />
+          <DetailCard icon={BookOpen} label="TC Number" value={s.tcNumber || '—'} />
+          <DetailCard icon={User} label="Referred By" value={s.referredBy || '—'} />
+          <DetailCard icon={Calendar} label="Admission Date" value={s.admissionDate ? new Date(s.admissionDate).toLocaleDateString() : '—'} />
         </div>
       </section>
 

@@ -45,7 +45,8 @@ describe('NewStudentPage — rendering', () => {
   it('shows all section headers', async () => {
     render(<NewStudentPage />);
     expect(await screen.findByText('Student Identity')).toBeInTheDocument();
-    expect(await screen.findByText('Contact Information')).toBeInTheDocument();
+    expect(await screen.findByText('Parent / Guardian')).toBeInTheDocument();
+    expect(await screen.findByText('Student Address')).toBeInTheDocument();
     expect(await screen.findByText('Previous Education')).toBeInTheDocument();
     expect(await screen.findByText('Class Assignment')).toBeInTheDocument();
   });

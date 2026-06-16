@@ -36,6 +36,7 @@ export default function NewStudentPage() {
     address: '', city: '', postalCode: '',
     previousSchool: '', previousClass: '', tcNumber: '', referredBy: '',
     groupId: '', profilePhotoId: '',
+    guardianName: '', guardianRelation: '',
   });
 
   useEffect(() => {
@@ -65,6 +66,8 @@ export default function NewStudentPage() {
         previousSchool: form.previousSchool || undefined, previousClass: form.previousClass || undefined,
         tcNumber: form.tcNumber || undefined, referredBy: form.referredBy || undefined,
         groupId: form.groupId || undefined, profilePhotoId: form.profilePhotoId || undefined,
+        guardianName: form.guardianName || undefined,
+        guardianRelation: form.guardianRelation || undefined,
       });
       if (res.success) {
         showToast('success', 'Student created');
@@ -135,19 +138,39 @@ export default function NewStudentPage() {
 
         {/* Contact */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
-          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Contact Information</h2>
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Parent / Guardian</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Phone">
-                <Input value={form.phone} onChange={set('phone')} placeholder="e.g. +92 300 1234567" />
+              <Field label="Guardian Name" required>
+                <Input value={form.guardianName} onChange={set('guardianName')} placeholder="e.g. Muhammad Hassan" />
               </Field>
-              <Field label="Email">
-                <Input value={form.studentEmail} onChange={set('studentEmail')} placeholder="e.g. ali@email.com" />
+              <Field label="Relation">
+                <select value={form.guardianRelation} onChange={(e) => set('guardianRelation')(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+                  <option value="">— Select —</option>
+                  <option value="Father">Father</option>
+                  <option value="Mother">Mother</option>
+                  <option value="Guardian">Guardian</option>
+                </select>
               </Field>
             </div>
-            <Field label="WhatsApp">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Guardian Phone">
+                <Input value={form.phone} onChange={set('phone')} placeholder="e.g. +92 300 1234567" />
+              </Field>
+              <Field label="Guardian Email">
+                <Input value={form.studentEmail} onChange={set('studentEmail')} placeholder="e.g. parent@email.com" />
+              </Field>
+            </div>
+            <Field label="Guardian WhatsApp">
               <Input value={form.studentWhatsapp} onChange={set('studentWhatsapp')} placeholder="e.g. +92 300 1234567" />
             </Field>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Student Address</h2>
+          <div className="space-y-4">
             <Field label="Address">
               <textarea value={form.address} onChange={(e) => set('address')(e.target.value)}
                 placeholder="Complete address"
