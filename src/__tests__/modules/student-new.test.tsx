@@ -46,7 +46,7 @@ describe('NewStudentPage — rendering', () => {
     render(<NewStudentPage />);
     expect(await screen.findByText('Student Identity')).toBeInTheDocument();
     expect(await screen.findByText('Parent / Guardian')).toBeInTheDocument();
-    expect(await screen.findByText('Student Address')).toBeInTheDocument();
+    expect(await screen.findByText('Address')).toBeInTheDocument();
     expect(await screen.findByText('Previous Education')).toBeInTheDocument();
     expect(await screen.findByText('Class Assignment')).toBeInTheDocument();
   });

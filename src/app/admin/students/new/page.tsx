@@ -169,7 +169,7 @@ export default function NewStudentPage() {
         </div>
 
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
-          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Student Address</h2>
+          <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Address</h2>
           <div className="space-y-4">
             <Field label="Address">
               <textarea value={form.address} onChange={(e) => set('address')(e.target.value)}
