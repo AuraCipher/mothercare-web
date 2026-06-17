@@ -455,7 +455,10 @@ export default function ClassesPage() {
                     <GripVertical size={14} className="text-warm-muted/40" />
                     <div>
                       <span className="text-sm text-warm-cream">{name}</span>
-                      </div>
+                      <span className="ml-2 text-[10px] text-warm-muted/40">
+                        ({sectionsForClass.reduce((sum, s) => sum + (s._count?.students || 0), 0)} students)
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => openSubjectLink(name)} title="Link subjects"
