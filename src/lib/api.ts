@@ -187,7 +187,7 @@ export const api = {
 
   createStudent: (data: {
     name: string; gender?: string; dateOfBirth?: string; religion?: string;
-    nationality?: string; address?: string; city?: string; postalCode?: string;
+    nationality?: string; address?: string; city?: string; postalCode?: string; country?: string;
     phone?: string; bloodGroup?: string; bformCnic?: string; motherTongue?: string;
     studentEmail?: string; studentWhatsapp?: string; previousSchool?: string;
     previousClass?: string; tcNumber?: string; referredBy?: string;

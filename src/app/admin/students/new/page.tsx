@@ -33,7 +33,7 @@ export default function NewStudentPage() {
   const [form, setForm] = useState({
     name: '', gender: '', dateOfBirth: '', bloodGroup: '', religion: '', nationality: 'Pakistani',
     motherTongue: '', bformCnic: '', phone: '', studentEmail: '', studentWhatsapp: '',
-    address: '', city: '', postalCode: '',
+    address: '', city: '', postalCode: '', country: '',
     previousSchool: '', previousClass: '', tcNumber: '', referredBy: '',
     groupId: '', profilePhotoId: '',
     guardianName: '', guardianRelation: '',
@@ -62,7 +62,7 @@ export default function NewStudentPage() {
         phone: form.phone || undefined, studentEmail: form.studentEmail || undefined,
         studentWhatsapp: form.studentWhatsapp || undefined,
         address: form.address || undefined, city: form.city || undefined,
-        postalCode: form.postalCode || undefined,
+        postalCode: form.postalCode || undefined, country: form.country || undefined,
         previousSchool: form.previousSchool || undefined, previousClass: form.previousClass || undefined,
         tcNumber: form.tcNumber || undefined, referredBy: form.referredBy || undefined,
         groupId: form.groupId || undefined, profilePhotoId: form.profilePhotoId || undefined,
@@ -176,9 +176,12 @@ export default function NewStudentPage() {
                 placeholder="Complete address"
                 className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors resize-none" rows={2} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Field label="City">
                 <Input value={form.city} onChange={set('city')} placeholder="e.g. Islamabad" />
+              </Field>
+              <Field label="Country">
+                <Input value={form.country} onChange={set('country')} placeholder="e.g. Pakistan" />
               </Field>
               <Field label="Postal Code">
                 <Input value={form.postalCode} onChange={set('postalCode')} placeholder="e.g. 44000" />
