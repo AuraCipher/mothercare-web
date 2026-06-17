@@ -35,7 +35,24 @@ export default function StudentDetailPage() {
   // ── Modal / form state ──────────────────────────────────
   const [editStudent, setEditStudent] = useState(false);
   const [sf, setSf] = useState<any>({});
-  const openEditStudent = () => { const s = data; setSf({ name: s.name, gender: s.gender, dateOfBirth: s.dateOfBirth ? s.dateOfBirth.substring(0, 10) : '', bloodGroup: s.bloodGroup || '', religion: s.religion || '', nationality: s.nationality || '', bformCnic: s.bformCnic || '', motherTongue: s.motherTongue || '' }); setEditStudent(true); };
+  const [editSections, setEditSections] = useState<any[]>([]);
+  const openEditStudent = () => {
+    const s = data;
+    setSf({
+      name: s.name, gender: s.gender, bloodGroup: s.bloodGroup || '',
+      dateOfBirth: s.dateOfBirth ? s.dateOfBirth.substring(0, 10) : '',
+      religion: s.religion || '', nationality: s.nationality || '',
+      bformCnic: s.bformCnic || '', motherTongue: s.motherTongue || '',
+      rollNumber: s.rollNumber || '', admissionNumber: s.admissionNumber || '',
+      admissionDate: s.admissionDate ? s.admissionDate.substring(0, 10) : '',
+      groupId: s.groupId || '',
+    });
+    setEditStudent(true);
+    // Load sections for class selector
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (bId && aId) api.getSections(bId, aId).then(d => { if (d.success) setEditSections(d.data); }).catch(() => {});
+  };
 
   // ── Contact ──
   const [editContact, setEditContact] = useState(false);
@@ -208,12 +225,23 @@ export default function StudentDetailPage() {
             <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label><input value={sf.bloodGroup || ''} onChange={(e) => setSf((p: any) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Religion</label><input value={sf.religion || ''} onChange={(e) => setSf((p: any) => ({ ...p, religion: e.target.value }))} placeholder="e.g. Islam" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Nationality</label><input value={sf.nationality || ''} onChange={(e) => setSf((p: any) => ({ ...p, nationality: e.target.value }))} placeholder="e.g. Pakistani" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">Roll No</label><input value={sf.rollNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, rollNumber: e.target.value }))} placeholder="e.g. 012" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
             <div><label className="mb-1 block text-xs text-warm-muted">Mother Tongue</label><input value={sf.motherTongue || ''} onChange={(e) => setSf((p: any) => ({ ...p, motherTongue: e.target.value }))} placeholder="e.g. Urdu" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">B-Form / CNIC</label><input value={sf.bformCnic || ''} onChange={(e) => setSf((p: any) => ({ ...p, bformCnic: e.target.value }))} placeholder="e.g. 61101-..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">B-Form / CNIC</label><input value={sf.bformCnic || ''} onChange={(e) => setSf((p: any) => ({ ...p, bformCnic: e.target.value }))} placeholder="e.g. 61101-..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">Religion</label><input value={sf.religion || ''} onChange={(e) => setSf((p: any) => ({ ...p, religion: e.target.value }))} placeholder="e.g. Islam" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">Nationality</label><input value={sf.nationality || ''} onChange={(e) => setSf((p: any) => ({ ...p, nationality: e.target.value }))} placeholder="e.g. Pakistani" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">Admission Date</label><input type="date" value={sf.admissionDate || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionDate: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="mb-1 block text-xs text-warm-muted">Admission No.</label><input value={sf.admissionNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionNumber: e.target.value }))} placeholder="System generated" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            <div><label className="mb-1 block text-xs text-warm-muted">Class / Section</label>
+              <select value={sf.groupId || ''} onChange={(e) => setSf((p: any) => ({ ...p, groupId: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
+                <option value="">— Select —</option>
+                {editSections.map((sec: any) => <option key={sec.id} value={sec.id}>{sec.name}{sec.section ? ` — ${sec.section}` : ''}</option>)}
+              </select>
+            </div>
           </div>
           <div className="flex justify-end gap-2"><button onClick={() => setEditStudent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, sf, () => setEditStudent(false), 'Student updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
