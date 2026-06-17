@@ -46,7 +46,8 @@ describe('NewStudentPage — rendering', () => {
     render(<NewStudentPage />);
     expect(await screen.findByText('Student Identity')).toBeInTheDocument();
     expect(await screen.findByText('Parent / Guardian')).toBeInTheDocument();
-    expect(await screen.findByText('Address')).toBeInTheDocument();
+    const addresses = await screen.findAllByText('Address');
+    expect(addresses.length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText('Previous Education')).toBeInTheDocument();
     expect(await screen.findByText('Class Assignment')).toBeInTheDocument();
   });
@@ -64,6 +65,21 @@ describe('NewStudentPage — rendering', () => {
   it('shows class section dropdown', async () => {
     render(<NewStudentPage />);
     expect(await screen.findByText('Class / Section')).toBeInTheDocument();
+  });
+
+  it('shows guardian name field', async () => {
+    render(<NewStudentPage />);
+    expect(await screen.findByText('Guardian Name *')).toBeInTheDocument();
+  });
+
+  it('shows guardian phone field', async () => {
+    render(<NewStudentPage />);
+    expect(await screen.findByText('Guardian Phone')).toBeInTheDocument();
+  });
+
+  it('shows country field', async () => {
+    render(<NewStudentPage />);
+    expect(await screen.findByPlaceholderText('e.g. Pakistan')).toBeInTheDocument();
   });
 
   it('shows create button', async () => {
