@@ -97,6 +97,8 @@ export default function DocNav() {
       setUploads(prev => prev.filter(u => u.id !== id));
       showToast('error', e.message || 'Upload failed');
     }
+    // Reset file input so same file can be re-uploaded
+    if (inputRef.current) inputRef.current.value = '';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
