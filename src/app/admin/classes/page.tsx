@@ -184,6 +184,10 @@ export default function ClassesPage() {
       for (const s of editNewSections) {
         await api.createSection(branchId, ayId, { name: editClassName.trim(), section: s, displayOrder: order });
       }
+      // If transitioning from no-sections to named-sections, delete the orphan null-section
+      if (editSections.length === 1 && editSections[0].section === null && editNewSections.length > 0) {
+        await api.deleteSection(branchId, editSections[0].id).catch(() => {});
+      }
       setShowEditForm(false);
       showToast('success', 'Class updated');
       const res = await api.getSections(branchId, ayId);
