@@ -109,7 +109,33 @@ export default function StudentDetailPage() {
             <span className={`inline-flex items-center gap-1.5 text-xs ${s.status === 'ACTIVE' ? 'text-green-400' : 'text-warm-muted/50'}`}><span className={`inline-block h-2 w-2 rounded-full ${s.status === 'ACTIVE' ? 'bg-green-400' : 'bg-gray-500'}`} />{s.status}</span>
           </div>
         </div>
-        <AvatarImage fileId={s.profilePhotoId} className="w-28 h-32 rounded-xl object-cover border-2 border-warm-card-border shrink-0" fallback={s.name?.charAt(0)} />
+        {/* Passport-size photo — clickable to upload */}
+        <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById('student-photo-upload')?.click()}>
+          <AvatarImage fileId={s.profilePhotoId} className="w-28 h-32 rounded-xl object-cover border-2 border-warm-card-border" fallback={s.name?.charAt(0)} />
+          <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+            <span className="text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
+          </div>
+          <input id="student-photo-upload" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const token = localStorage.getItem('token');
+              const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await fetch(`${API_URL}/api/upload`, {
+                method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
+              });
+              const result = await res.json();
+              if (!res.ok) throw new Error(result.message || 'Upload failed');
+              await api.updateStudent(id, { profilePhotoId: result.data.id });
+              showToast('success', 'Photo updated');
+              loadData();
+            } catch (err: any) {
+              showToast('error', err.message || 'Failed to upload photo');
+            }
+          }} />
+        </div>
       </div>
 
       {/* ══════ 1: Student Information ══════ */}
@@ -161,7 +187,7 @@ export default function StudentDetailPage() {
             <Card icon={Phone} label="Phone" value={p.phone || '—'} />
             <Card icon={Phone} label="WhatsApp" value={p.whatsapp || '—'} />
             <Card icon={Mail} label="Email" value={p.email || '—'} />
-            <div className="col-span-3 mt-1"><span className="text-[10px] text-warm-muted uppercase">Marital Status</span><p className="text-sm text-warm-cream mt-0.5">{p.maritalStatus || '—'}</p></div>
+            <Card icon={Heart} label="Marital Status" value={p.maritalStatus || '—'} />
           </>}</div>;
         }) : null}
       </Section>

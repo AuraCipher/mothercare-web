@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '../helpers/test-utils';
+import { render, screen } from '../helpers/test-utils';
+import userEvent from '@testing-library/user-event';
 
 const mockGetStudent = vi.hoisted(() => vi.fn());
 const mockGetSectionSubjects = vi.hoisted(() => vi.fn());
@@ -190,5 +191,70 @@ describe('StudentDetailPage — conditional buttons', () => {
     mockGetStudent.mockRejectedValue(new Error('Not found'));
     render(<StudentDetailPage />);
     expect(await screen.findByText('Not found')).toBeInTheDocument();
+  });
+});
+
+describe('StudentDetailPage — section modals', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetStudent.mockResolvedValue({ success: true, data: baseStudent });
+    mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects });
+  });
+
+  it('opens student info edit modal', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[0]);
+    expect(await screen.findByText('Edit Student')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Ali Hassan')).toBeInTheDocument();
+  });
+
+  it('opens contact edit modal', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[1]);
+    expect(await screen.findByText('Student Contact')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('a@b.com')).toBeInTheDocument();
+  });
+
+  it('opens address edit modal [3]', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[3]);
+    expect(await screen.findByDisplayValue('Street 5')).toBeInTheDocument();
+  });
+
+  it('opens parent edit modal', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[2]);
+    expect(await screen.findByText('Save')).toBeInTheDocument(); // modal has Save button
+  });
+
+  it('opens health record modal [5]', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[5]);
+    expect(await screen.findByText('Save')).toBeInTheDocument();
+  });
+
+  it('opens previous education modal [6]', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[6]);
+    expect(await screen.findByText('Save')).toBeInTheDocument();
+  });
+
+  it('opens emergency contact modal', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[4]);
+    expect(await screen.findByText('Save')).toBeInTheDocument();
+  });
+
+  it('address edit changes propagate correctly', async () => {
+    render(<StudentDetailPage />);
+    await userEvent.setup().click((await screen.findAllByText('Edit'))[3]);
+    const input = await screen.findByDisplayValue('Street 5');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'New Address');
+    await userEvent.setup().click(await screen.findByText('Save'));
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      expect.stringContaining('/admin/students/s-1'),
+      expect.objectContaining({ method: 'PUT' })
+    );
   });
 });
