@@ -33,6 +33,7 @@ vi.mock('@/lib/api', () => ({
       data: [{ id: 'ay-1', status: 'ACTIVE' }],
     }),
     createSection: vi.fn().mockResolvedValue({ success: true }),
+    updateSection: vi.fn().mockResolvedValue({ success: true }),
     deleteSection: vi.fn().mockResolvedValue({ success: true }),
   },
 }));
@@ -309,6 +310,29 @@ describe('ClassesPage — edit modal', () => {
     expect(await screen.findByText('Existing Sections')).toBeInTheDocument();
   });
 });
+
+  it('deletes null-section when adding named sections', async () => {
+    const { api } = await import('@/lib/api');
+    (api.getSections as any).mockResolvedValue({
+      success: true,
+      data: [
+        { id: 'null-sec', name: 'Class 10', section: null, displayOrder: 13, isActive: true, _count: { students: 0 } },
+      ],
+    });
+    render(<ClassesPage />);
+    await userEvent.setup().click(await screen.findByTitle('Edit class'));
+    expect(await screen.findByText('Edit Class')).toBeInTheDocument();
+
+    const input = await screen.findByPlaceholderText('Type and press Enter to add');
+    await userEvent.setup().type(input, 'CS{Enter}');
+    await userEvent.setup().type(input, 'BIO{Enter}');
+
+    await userEvent.setup().click(await screen.findByText('Save Changes'));
+
+    // Wait for the async handleUpdate to complete
+    await new Promise(r => setTimeout(r, 100));
+    expect(api.deleteSection).toHaveBeenCalledWith('branch-1', 'null-sec');
+  });
 
 describe('ClassesPage — delete section', () => {
   beforeEach(() => {
