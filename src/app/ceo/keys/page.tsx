@@ -124,7 +124,7 @@ export default function CeoApiKeys() {
       showToast('success', 'API key created');
       // Reveal the full key (shown once)
       if (d.key) {
-        setRevealedKey({ name: createName.trim(), key: d.key });
+        setRevealedKey({ name: d.key.name || createName.trim(), key: d.key.key });
       }
       loadKeys();
     } catch (e: any) {

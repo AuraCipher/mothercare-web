@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
-  LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
+  FileText, LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays,
 } from 'lucide-react';
 
@@ -48,6 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loadingUser, setLoadingUser] = useState(true);
   const [authError, setAuthError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [branches, setBranches] = useState<BranchMember[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
@@ -228,6 +229,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           )}
           <span className="hidden text-xs text-warm-muted sm:block">{user?.name}</span>
+          {pathname.match(/^\/admin\/(students|teachers)\/[^\/]+$/) && (
+            <button onClick={() => setDrawerOpen(true)}
+              className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
+              title="Documents">
+              <FileText size={15} />
+            </button>
+          )}
           <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/30 bg-warm-accent/10 px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-warm-accent uppercase">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-warm-accent" />
             {user?.role?.replace('_', ' ') || 'user'}
@@ -366,6 +374,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </a>
           </div>
         </nav>
+      </div>
+
+      {/* Right drawer */}
+      <div className={`fixed inset-0 z-50 transition-all duration-300 ease-out ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+        <div className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ease-out ${drawerOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setDrawerOpen(false)} />
+        <div className={`absolute right-0 top-0 h-full w-80 bg-[#24201e] border-l border-warm-card-border shadow-2xl transition-transform duration-300 ease-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex items-center justify-between border-b border-warm-card-border px-5 py-4">
+            <h2 className="text-sm font-medium text-warm-cream">Documents</h2>
+            <button onClick={() => setDrawerOpen(false)} className="rounded-lg p-1 text-warm-muted hover:text-warm-cream transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="p-5 text-xs text-warm-muted">
+            <p>Document panel content goes here.</p>
+          </div>
+        </div>
       </div>
 
       {children}
