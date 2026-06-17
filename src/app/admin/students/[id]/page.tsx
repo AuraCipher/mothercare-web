@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, apiRequest } from '@/lib/api';
 import {
   ArrowLeft, User, Calendar, Heart, Phone, Mail, MapPin, BookOpen,
-  Award, CreditCard, FileText, AlertTriangle, Plus, Trash2, X, Edit3,
+  Award, CreditCard, FileText, AlertTriangle, Plus, X, Edit3,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
 import { showToast } from '@/components/toast';
@@ -62,7 +62,12 @@ export default function StudentDetailPage() {
   // ── Parent ──
   const [editParent, setEditParent] = useState(false);
   const [pf, setPf] = useState<any>({});
-  const openParent = (p: any) => { setPf({ name: p.user?.name || '', relation: p.relation || '', cnicNumber: p.cnicNumber || '', occupation: p.occupation || '', employerName: p.employerName || '', maritalStatus: p.maritalStatus || '', monthlyIncome: p.monthlyIncome || '', phone: p.phone || '', whatsapp: p.whatsapp || '', email: p.email || '' }); setEditParent(true); };
+  const openParent = (sp: any) => {
+    const p = sp?.parent || {};
+    const user = p?.user || {};
+    setPf({ name: user.name || sp?.name || '', relation: sp?.relation || p?.relation || '', cnicNumber: p?.cnicNumber || '', occupation: p?.occupation || '', employerName: p?.employerName || '', maritalStatus: p?.maritalStatus || '', monthlyIncome: p?.monthlyIncome || '', phone: p?.phone || '', whatsapp: p?.whatsapp || '', email: p?.email || '' });
+    setEditParent(true);
+  };
 
   // ── Address ──
   const [editAddress, setEditAddress] = useState(false);
@@ -72,6 +77,7 @@ export default function StudentDetailPage() {
   // ── Emergency Contact ──
   const [showEcForm, setShowEcForm] = useState(false);
   const [ec, setEc] = useState({ name: '', relationship: '', phone: '', whatsapp: '' });
+  const [editEcId, setEditEcId] = useState<string | null>(null);
 
   // ── Health ──
   const [showHlthForm, setShowHlthForm] = useState(false);
@@ -154,14 +160,12 @@ export default function StudentDetailPage() {
           <Card icon={BookOpen} label="Section" value={s.group?.section || '—'} />
           <Card icon={Award} label="Mother Tongue" value={s.motherTongue || '—'} />
         </div>
-        {subjects.length > 0 && (
-          <div className="mt-3 rounded-lg border border-warm-card-border bg-warm-card p-3 col-span-3">
-            <span className="text-[10px] tracking-wider text-warm-muted uppercase">Subjects</span>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {subjects.map((sub: any) => <span key={sub.id} className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2.5 py-0.5 text-[10px] text-warm-accent">{sub.name}{sub.code ? ` (${sub.code})` : ''}</span>)}
-            </div>
+        <div className="col-span-3 rounded-lg border border-warm-card-border bg-warm-card p-3 mt-3">
+          <span className="text-[10px] tracking-wider text-warm-muted uppercase">Subjects</span>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {subjects.length > 0 ? subjects.map((sub: any) => <span key={sub.id} className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2.5 py-0.5 text-[10px] text-warm-accent">{sub.name}{sub.code ? ` (${sub.code})` : ''}</span>) : <span className="text-xs text-warm-muted/50">—</span>}
           </div>
-        )}
+        </div>
       </Section>
 
       {/* ══════ 2: Student Contact ══════ */}
@@ -203,12 +207,13 @@ export default function StudentDetailPage() {
       </Section>
 
       {/* ══════ 5: Emergency Contact ══════ */}
-      <Section title="Emergency Contact" onEdit={() => setShowEcForm(true)} editLabel={ecList.length ? 'Edit' : 'Add'}>
-        {ecList.length > 0 ? ecList.map((e: any) => <div key={e.id} className="relative rounded-lg border border-warm-card-border bg-warm-card p-3">
-          <button onClick={async () => { try { await apiRequest(`/admin/students/${id}/emergency-contact/${e.id}`, { method: 'DELETE' }); showToast('success', 'Removed'); loadData(); } catch (ex: any) { showToast('error', ex.message); } }} className="absolute top-2 right-2 rounded p-0.5 text-warm-muted hover:text-red"><Trash2 size={12} /></button>
-          <p className="text-sm text-warm-cream">{e.name}</p>
-          <p className="text-xs text-warm-muted mt-0.5">{e.relationship} · {e.phone}{e.whatsapp ? ` · ${e.whatsapp}` : ''}</p>
-        </div>) : null}
+      <Section title="Emergency Contact" onEdit={() => { const existing = ecList[0]; if (existing) { setEditEcId(existing.id); setEc({ name: existing.name, relationship: existing.relationship || '', phone: existing.phone, whatsapp: existing.whatsapp || '' }); } else { setEditEcId(null); setEc({ name: '', relationship: '', phone: '', whatsapp: '' }); } setShowEcForm(true); }} editLabel={ecList.length ? 'Edit' : 'Add'}>
+        {ecList.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{[...ecList].reverse().map((e: any) => <React.Fragment key={e.id}>
+          <Card icon={User} label="Name" value={e.name || '—'} />
+          <Card icon={User} label="Relationship" value={e.relationship || '—'} />
+          <Card icon={Phone} label="Phone" value={e.phone || '—'} />
+          <Card icon={Phone} label="WhatsApp" value={e.whatsapp || '—'} />
+        </React.Fragment>)}</div> : null}
       </Section>
 
       {/* ══════ 6: Health & Medical ══════ */}
@@ -340,7 +345,7 @@ export default function StudentDetailPage() {
             <div><label className="mb-1 block text-xs text-warm-muted">Phone *</label><input value={ec.phone} onChange={(e) => setEc((p: any) => ({ ...p, phone: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
             <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={ec.whatsapp} onChange={(e) => setEc((p: any) => ({ ...p, whatsapp: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
           </div>
-          <div className="flex justify-end gap-2"><button onClick={() => setShowEcForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={async () => { if (!ec.name || !ec.phone) { showToast('error', 'Name and phone required'); return; } try { await apiRequest(`/admin/students/${id}/emergency-contact`, { method: 'POST', body: JSON.stringify(ec) }); showToast('success', 'Contact added'); setShowEcForm(false); setEc({ name: '', relationship: '', phone: '', whatsapp: '' }); loadData(); } catch (e: any) { showToast('error', e.message); } }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
+          <div className="flex justify-end gap-2"><button onClick={() => { setShowEcForm(false); setEditEcId(null); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={async () => { if (!ec.name || !ec.phone) { showToast('error', 'Name and phone required'); return; } try { if (editEcId) { await apiRequest(`/admin/students/${id}/emergency-contact/${editEcId}`, { method: 'PUT', body: JSON.stringify(ec) }); showToast('success', 'Contact updated'); } else { await apiRequest(`/admin/students/${id}/emergency-contact`, { method: 'POST', body: JSON.stringify(ec) }); showToast('success', 'Contact added'); } setShowEcForm(false); setEditEcId(null); setEc({ name: '', relationship: '', phone: '', whatsapp: '' }); loadData(); } catch (e: any) { showToast('error', e.message); } }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
       </Modal>
 
