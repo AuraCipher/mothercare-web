@@ -415,6 +415,7 @@ export default function TeacherDetailPage() {
               const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
               const formData = new FormData();
               formData.append('file', file);
+              formData.append('purpose', 'profile');
               const res = await fetch(`${API_URL}/api/upload`, {
                 method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
               });

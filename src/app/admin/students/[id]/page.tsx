@@ -8,6 +8,8 @@ import {
   Award, CreditCard, FileText, AlertTriangle, Plus, X, Edit3,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
+import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
+import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 
 export default function StudentDetailPage() {
@@ -129,6 +131,7 @@ export default function StudentDetailPage() {
               const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
               const formData = new FormData();
               formData.append('file', file);
+              formData.append('purpose', 'profile');
               const res = await fetch(`${API_URL}/api/upload`, {
                 method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
               });
