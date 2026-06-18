@@ -68,6 +68,7 @@ export default function DocNav() {
       const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('purpose', 'document');
 
       // Simulate progress up to 80% while upload is in flight
       let progress = 0;
