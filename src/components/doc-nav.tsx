@@ -2,8 +2,9 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { FileText, Plus, X, Download, Trash2 } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import DocActionMenu from '@/components/doc-action-menu';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -17,7 +18,7 @@ interface UploadItem {
   fileId?: string;
 }
 
-function DocCard({ icon, name, type, progress, showCheck, fileId, onDelete }: { icon: string; name: string; type: string; progress: number; showCheck?: boolean; fileId?: string; onDelete?: () => void }) {
+function DocCard({ icon, name, type, progress, showCheck, fileId, onDelete, onRename }: { icon: string; name: string; type: string; progress: number; showCheck?: boolean; fileId?: string; onDelete?: () => void; onRename?: (newName: string) => Promise<void> }) {
   return (
     <div className="rounded-xl border border-warm-card-border bg-warm-card p-4 group">
       <div className="flex items-start justify-between">
@@ -30,16 +31,9 @@ function DocCard({ icon, name, type, progress, showCheck, fileId, onDelete }: { 
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {showCheck && fileId ? (
-            <>
-              <button onClick={onDelete}
-                className="rounded p-1 text-warm-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100" title="Delete">
-                <Trash2 size={14} />
-              </button>
-              <a href={`${API_URL}/api/uploads/${fileId}`} target="_blank" rel="noopener noreferrer"
-                className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download">
-                <Download size={14} />
-              </a>
-            </>
+            <DocActionMenu fileId={fileId} fileName={name}
+              onRename={onRename || (async () => {})}
+              onDelete={onDelete || (() => {})} />
           ) : showCheck ? (
             <span className="text-green-400 text-xs font-medium">✓</span>
           ) : null}
@@ -58,7 +52,7 @@ function DocCard({ icon, name, type, progress, showCheck, fileId, onDelete }: { 
 export default function DocNav() {
   const pathname = usePathname();
   const profileMatch = pathname.match(/\/admin\/(students|teachers)\/([^/]+)/);
-  const entityType = profileMatch ? profileMatch[1] : null;
+  const entityType = profileMatch ? (profileMatch[1] === 'teachers' ? 'teacher' : 'student') : null;
   const entityId = profileMatch ? profileMatch[2] : null;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
@@ -141,6 +135,30 @@ export default function DocNav() {
     if (inputRef.current) inputRef.current.value = '';
   }, [entityType, entityId]);
 
+  const handleRename = useCallback(async (fileId: string, newName: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/uploads/${fileId}/rename`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalName: newName }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setUploads(prev => prev.map(u => u.fileId === fileId ? { ...u, name: result.data.originalName } : u));
+        showToast('success', 'File renamed');
+      } else {
+        const msg = await res.json().then(d => d.message).catch(() => 'Rename failed');
+        showToast('error', msg);
+        throw new Error(msg);
+      }
+    } catch {
+      showToast('error', 'Rename failed');
+      throw new Error('Rename failed');
+    }
+  }, []);
+
   const handleDelete = useCallback(async (fileId: string) => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -210,7 +228,9 @@ export default function DocNav() {
             {completedUploads.length > 0 && (
               <>
                 <p className="text-[10px] font-medium tracking-wider text-warm-muted uppercase">Uploaded</p>
-                {completedUploads.map(u => <DocCard key={u.id} icon={u.name.match(/\.(png|jpg|jpeg|webp)$/i) ? '🖼️' : '📄'} name={u.name} type={u.type} progress={100} showCheck fileId={u.fileId} onDelete={() => u.fileId && handleDelete(u.fileId)} />)}
+                {completedUploads.map(u => <DocCard key={u.id} icon={u.name.match(/\.(png|jpg|jpeg|webp)$/i) ? '🖼️' : '📄'} name={u.name} type={u.type} progress={100} showCheck fileId={u.fileId}
+                  onDelete={() => u.fileId && handleDelete(u.fileId)}
+                  onRename={(newName) => u.fileId ? handleRename(u.fileId, newName) : Promise.resolve()} />)}
               </>
             )}
 

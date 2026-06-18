@@ -46,15 +46,14 @@ export default function ProfileOptionMenu({ isOpen, onClose, items }: ProfileOpt
       {/* Backdrop for mobile — closes on tap */}
       <div className="fixed inset-0 z-40 sm:hidden" onClick={onClose} />
 
-      {/* Menu — bottom sheet on mobile, dropdown on desktop */}
+      {/* Menu — bottom sheet on mobile, absolutely positioned dropdown on md+ */}
       <div ref={menuRef}
-        className="absolute right-0 top-full mt-2 z-50 min-w-[180px] overflow-hidden rounded-xl border border-warm-card-border bg-[#2d2826] shadow-2xl
-                   sm:origin-top-right sm:animate-in sm:fade-in sm:zoom-in-95
-                   fixed bottom-0 left-0 right-0 sm:static sm:rounded-xl rounded-t-2xl rounded-b-none">
-        <div className="sm:hidden flex items-center justify-center pt-3 pb-1">
+        className="fixed bottom-0 left-0 right-0 z-50 min-w-[180px] overflow-hidden rounded-t-2xl border border-warm-card-border bg-[#2d2826] shadow-2xl
+                   md:absolute md:right-0 md:top-full md:mt-2 md:bottom-auto md:left-auto md:rounded-xl md:rounded-b-none">
+        <div className="flex items-center justify-center pt-3 pb-1 md:hidden">
           <div className="h-1 w-10 rounded-full bg-warm-muted/30" />
         </div>
-        <div className="py-1 sm:py-0">
+        <div className="py-1 md:py-0">
           {items.map((item, i) => (
             <button key={i} onClick={() => { item.onClick(); onClose(); }}
               className="flex w-full items-center gap-3 px-4 py-3 text-sm text-warm-cream hover:bg-warm-card transition-colors">
