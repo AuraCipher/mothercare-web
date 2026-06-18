@@ -10,6 +10,8 @@ import {
   CalendarDays, Clock, CreditCard, Briefcase, FileText,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
+import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
+import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -58,6 +60,9 @@ export default function TeacherDetailPage() {
   const [data, setData] = useState<TeacherDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Delete confirm
   const [confirm, setConfirm] = useState<{
@@ -401,13 +406,34 @@ export default function TeacherDetailPage() {
           </div>
         </div>
 
-        {/* Passport-size photo — clickable to upload */}
-        <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById('photo-upload')?.click()}>
-          <AvatarImage fileId={user.profilePhotoId} className="w-28 h-32 rounded-xl object-cover border-2 border-warm-card-border" fallback={user.name?.charAt(0)} />
-          <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-            <span className="text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
+        {/* Passport-size photo — clickable with context menu */}
+        <div className="relative shrink-0">
+          <div className="relative group cursor-pointer"
+            onClick={() => {
+              if (user.profilePhotoId) {
+                setMenuOpen(true);
+              } else {
+                photoInputRef.current?.click();
+              }
+            }}>
+            <AvatarImage fileId={user.profilePhotoId} className="w-28 h-32 rounded-xl object-cover border-2 border-warm-card-border" fallback={user.name?.charAt(0)} />
+            <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+              <span className="text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                {user.profilePhotoId ? 'Options' : 'Upload'}
+              </span>
+            </div>
           </div>
-          <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+
+          {/* Context menu when photo exists */}
+          {user.profilePhotoId && (
+            <ProfileOptionMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)}
+              items={[
+                viewPhotoItem(() => setLightboxOpen(true)),
+                uploadNewItem(() => photoInputRef.current?.click()),
+              ]} />
+          )}
+
+          <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
             try {
@@ -428,6 +454,11 @@ export default function TeacherDetailPage() {
               showToast('error', err.message || 'Failed to upload photo');
             }
           }} />
+
+          {/* Lightbox for viewing full-size */}
+          <Lightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)}
+            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/uploads/${user.profilePhotoId}`}
+            alt={user.name} />
         </div>
       </div>
 
