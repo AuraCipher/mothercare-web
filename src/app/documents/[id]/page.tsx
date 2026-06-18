@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/confirm-modal';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import * as XLSX from 'xlsx';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -21,7 +22,7 @@ interface FileMeta {
   createdAt: string;
 }
 
-type ViewerMode = 'loading' | 'image' | 'pdf' | 'markdown' | 'text' | 'video' | 'download' | 'error' | 'notfound';
+type ViewerMode = 'loading' | 'image' | 'pdf' | 'markdown' | 'text' | 'video' | 'excel' | 'download' | 'error' | 'notfound';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -53,8 +54,9 @@ function ImageViewer({ src, alt }: { src: string; alt: string }) {
 // ─── PDF Viewer ────────────────────────────────────────────────
 function PdfViewer({ src, name }: { src: string; name: string }) {
   return (
-    <embed src={src} type="application/pdf" className="h-[80vh] w-full rounded-lg border border-warm-card-border"
-      title={name} />
+    <div className="h-[80vh] w-full rounded-lg border border-warm-card-border overflow-hidden bg-white/5">
+      <iframe src={src} className="h-full w-full" title={name} />
+    </div>
   );
 }
 
@@ -129,6 +131,87 @@ function TextViewer({ content, language }: { content: string; language?: string 
   );
 }
 
+// ─── Excel Viewer ──────────────────────────────────────────────
+function ExcelViewer({ data }: { data: Uint8Array }) {
+  const [sheets, setSheets] = useState<{ name: string; rows: (string | number | boolean | null)[][] }[]>([]);
+  const [activeSheet, setActiveSheet] = useState(0);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    try {
+      const workbook = XLSX.read(data, { type: 'array' });
+      const parsed = workbook.SheetNames.map(name => {
+        const worksheet = workbook.Sheets[name];
+        const rows: (string | number | boolean | null)[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        return { name, rows };
+      });
+      setSheets(parsed);
+    } catch {
+      setError(true);
+    }
+  }, [data]);
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-warm-card-border bg-warm-card/30 p-8 text-center">
+        <p className="text-sm text-warm-muted">Could not parse this Excel file.</p>
+        <p className="mt-1 text-xs text-warm-muted/50">Try downloading the file instead.</p>
+      </div>
+    );
+  }
+
+  if (sheets.length === 0) return null;
+
+  const current = sheets[activeSheet];
+  const hasData = current?.rows?.length > 0 && current.rows.some(r => r.some(c => c !== ''));
+
+  return (
+    <div>
+      {/* Sheet tabs */}
+      {sheets.length > 1 && (
+        <div className="mb-4 flex gap-1 overflow-x-auto">
+          {sheets.map((s, i) => (
+            <button key={i} onClick={() => setActiveSheet(i)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                i === activeSheet
+                  ? 'bg-warm-accent text-[#1a1614] font-medium'
+                  : 'bg-warm-card/50 text-warm-muted hover:text-warm-cream'
+              }`}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="overflow-auto rounded-lg border border-warm-card-border max-h-[70vh]">
+        <table className="w-full border-collapse text-xs" style={{ background: '#fff' }}>
+          <tbody>
+            {current?.rows.map((row, ri) => (
+              <tr key={ri} className={ri === 0 ? 'bg-gray-50 font-semibold' : ri % 2 === 1 ? 'bg-white' : 'bg-gray-50/50'}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className="border border-gray-300 px-2 py-1 text-gray-800 whitespace-nowrap min-w-[60px] max-w-[300px] overflow-hidden text-ellipsis">
+                    {cell != null ? String(cell) : ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!hasData && (
+          <p className="text-xs text-gray-400 text-center py-8">This sheet appears to be empty.</p>
+        )}
+      </div>
+
+      {hasData && (
+        <p className="mt-1 text-[10px] text-gray-400 text-right">
+          {current.rows.length} rows · {Math.max(...current.rows.map(r => r.length))} columns
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Video Viewer ──────────────────────────────────────────────
 function VideoViewer({ src, name }: { src: string; name: string }) {
   return (
@@ -141,16 +224,32 @@ function VideoViewer({ src, name }: { src: string; name: string }) {
 // ─── Download Prompt ───────────────────────────────────────────
 function DownloadPrompt({ meta }: { meta: FileMeta }) {
   const typeLabel = meta.mimeType.split('/').pop()?.toUpperCase() || 'FILE';
+
+  const handleDownload = () => {
+    const token = localStorage.getItem('token');
+    fetch(`${API_URL}/api/uploads/${meta.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = meta.originalName || 'download';
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => showToast('error', 'Download failed'));
+  };
+
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-warm-card-border bg-warm-card/30 p-12 text-center">
       <FileText size={48} className="text-warm-muted/40 mb-4" />
       <p className="text-sm text-warm-cream font-medium mb-1">{meta.originalName}</p>
       <p className="text-xs text-warm-muted mb-6">{typeLabel} · {formatSize(meta.size)}</p>
       <p className="text-xs text-warm-muted/60 mb-4">Preview not available for this file type.</p>
-      <a href={`${API_URL}/api/uploads/${meta.id}`} target="_blank" rel="noopener noreferrer"
+      <button onClick={handleDownload}
         className="inline-flex items-center gap-2 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
         <Download size={14} /> Download
-      </a>
+      </button>
     </div>
   );
 }
@@ -167,6 +266,7 @@ export default function DocumentViewerPage() {
   const [meta, setMeta] = useState<FileMeta | null>(null);
   const [content, setContent] = useState<string | null>(null); // for text-based files
   const [blobUrl, setBlobUrl] = useState<string | null>(null); // for binary files
+  const [excelData, setExcelData] = useState<Uint8Array | null>(null); // for excel files
   const [mode, setMode] = useState<ViewerMode>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -208,6 +308,11 @@ export default function DocumentViewerPage() {
         const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
         const blob = await fileRes.blob();
         setBlobUrl(URL.createObjectURL(blob));
+      } else if (mime.startsWith('application/vnd.ms-excel') || mime.includes('spreadsheetml')) {
+        setMode('excel');
+        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const buf = await fileRes.arrayBuffer();
+        setExcelData(new Uint8Array(buf));
       } else {
         setMode('download');
       }
@@ -329,6 +434,10 @@ export default function DocumentViewerPage() {
 
         {mode === 'video' && blobUrl && meta && (
           <VideoViewer src={blobUrl} name={meta.originalName} />
+        )}
+
+        {mode === 'excel' && excelData && (
+          <ExcelViewer data={excelData} />
         )}
 
         {mode === 'download' && meta && (
