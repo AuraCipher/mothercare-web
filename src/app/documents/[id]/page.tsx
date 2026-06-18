@@ -368,7 +368,7 @@ export default function DocumentViewerPage() {
   return (
     <div className="min-h-screen bg-[#1a1614] text-warm-cream">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-warm-card-border px-6 py-3">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()}
             className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">

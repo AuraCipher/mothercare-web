@@ -201,6 +201,14 @@ export const api = {
   deleteStudent: (id: string) =>
     apiRequest(`/admin/students/${id}`, { method: 'DELETE' }),
 
+  generateStudentCredentials: (id: string) =>
+    apiRequest(`/admin/students/${id}/generate-credentials`, { method: 'PUT' }),
+
+  setStudentPassword: (id: string, password: string, adminPassword: string) =>
+    apiRequest(`/admin/students/${id}/set-password`, {
+      method: 'PUT', body: JSON.stringify({ password, adminPassword }),
+    }),
+
   // ─── Users (for dropdowns) ──────────────────────────
   getUsers: (params?: { role?: string; search?: string }) => {
     const q = new URLSearchParams();

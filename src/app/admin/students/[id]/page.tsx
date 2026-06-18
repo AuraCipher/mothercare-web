@@ -6,6 +6,7 @@ import { api, apiRequest } from '@/lib/api';
 import {
   ArrowLeft, User, Calendar, Heart, Phone, Mail, MapPin, BookOpen,
   Award, CreditCard, FileText, AlertTriangle, Plus, X, Edit3,
+  Key, Eye, EyeOff, Copy, Check, RefreshCw, Save,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
 import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
@@ -19,6 +20,16 @@ export default function StudentDetailPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Credential management
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPassError, setAdminPassError] = useState('');
+  const passwordInputRef = React.useRef<HTMLInputElement>(null);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -105,6 +116,71 @@ export default function StudentDetailPage() {
   const hasContact = s.phone || s.studentEmail || s.studentWhatsapp;
   const hasAddress = s.address || s.city || s.country || s.postalCode;
   const hasPrev = s.previousSchool || s.previousClass || s.tcNumber || s.referredBy;
+  const studentUser = s.user;
+
+  // ─── Password Management ─────────────────────────────────
+  const generatePassword = () => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const all = upper + lower + digits + special;
+    let pw = '';
+    pw += upper[Math.floor(Math.random() * upper.length)];
+    pw += lower[Math.floor(Math.random() * lower.length)];
+    pw += digits[Math.floor(Math.random() * digits.length)];
+    pw += special[Math.floor(Math.random() * special.length)];
+    for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
+    const arr = pw.split('');
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    setGeneratedPassword(arr.join(''));
+    setPasswordSaved(false);
+    setShowPassword(true);
+  };
+
+  const copyPassword = () => {
+    if (!generatedPassword) return;
+    navigator.clipboard.writeText(generatedPassword).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+  };
+
+  const handleSavePassword = () => {
+    if (!generatedPassword) return;
+    setShowAdminPassPopup(true);
+  };
+
+  const handleGenerateCredentials = async () => {
+    try {
+      const res = await api.generateStudentCredentials(id);
+      if (res.success) {
+        setGeneratedPassword(res.data.password);
+        setShowPassword(true);
+        setPasswordSaved(false);
+        loadData(); // reload to get the new user data
+        showToast('success', 'Credentials generated. Username: ' + res.data.username);
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to generate credentials');
+    }
+  };
+
+  const handleAdminPassVerify = async () => {
+    if (!adminPassword.trim()) { setAdminPassError('Enter your password to confirm'); return; }
+    if (!generatedPassword) { setAdminPassError('No password generated'); return; }
+    try {
+      await api.setStudentPassword(id, generatedPassword, adminPassword);
+      setShowAdminPassPopup(false);
+      setAdminPassword('');
+      setAdminPassError('');
+      setGeneratedPassword('');
+      setPasswordSaved(true);
+      setShowPassword(false);
+      showToast('success', 'Password saved successfully');
+    } catch (e: any) {
+      const msg = e.message || '';
+      if (msg.includes('incorrect')) { setAdminPassError('Your password is incorrect.'); showToast('error', 'Wrong password.'); }
+      else { setAdminPassError(msg); showToast('error', msg); }
+    }
+  };
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -275,6 +351,94 @@ export default function StudentDetailPage() {
         </div>
         <div className="col-span-3 mt-3 rounded-lg border border-warm-card-border bg-warm-card p-3"><span className="text-[10px] tracking-wider text-warm-muted uppercase">Referred By</span><p className="mt-1 text-sm text-warm-cream">{s.referredBy || '—'}</p></div></> : null}
       </Section>
+
+      {/* ══════ 8: Login Credentials ══════ */}
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Login Credentials</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          {!studentUser ? (
+            <div className="text-center py-4">
+              <p className="text-xs text-warm-muted mb-3">No login credentials set up yet.</p>
+              <button onClick={handleGenerateCredentials}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                <Key size={13} /> Generate Credentials
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Username */}
+              <div className="mb-4">
+                <p className="mb-1 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Username</p>
+                <div className="flex items-center gap-2 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5">
+                  <User size={14} className="text-warm-muted shrink-0" />
+                  <span className="text-sm text-warm-cream font-mono">{studentUser.username || '—'}</span>
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <p className="mb-1 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Password</p>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input ref={passwordInputRef} type={showPassword ? 'text' : 'password'}
+                      value={generatedPassword} readOnly
+                      placeholder={passwordSaved ? '••••••••••••' : ''}
+                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2.5 pl-9 pr-9 text-sm text-warm-cream font-mono outline-none placeholder:text-warm-muted/30 focus:border-warm-accent transition-colors" />
+                    <Key size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
+                    {generatedPassword && (
+                      <button onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-muted hover:text-warm-cream transition-colors">
+                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    )}
+                  </div>
+                  {generatedPassword && (
+                    <button onClick={copyPassword} title="Copy password"
+                      className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2.5 text-xs text-warm-muted hover:text-warm-cream hover:border-warm-accent/50 transition-colors">
+                      {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  )}
+                  <button onClick={generatePassword} title="Generate new password"
+                    className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                    <RefreshCw size={14} /> Generate
+                  </button>
+                </div>
+                {generatedPassword && (
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={handleSavePassword}
+                      className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                      <Save size={13} /> Save
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* ══ Admin Password Verification popup ══ */}
+      {showAdminPassPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
+            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm saving the student's new credentials.</p>
+            <input type="password" value={adminPassword}
+              onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdminPassVerify()}
+              placeholder="Your password" autoFocus
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+            {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setShowAdminPassPopup(false); setAdminPassword(''); setAdminPassError(''); }}
+                className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleAdminPassVerify}
+                className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Verify</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ MODALS ══ */}
 

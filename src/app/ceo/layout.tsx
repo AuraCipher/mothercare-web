@@ -149,7 +149,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#1a1614]">
       {/* Header */}
-      <header className="relative z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMenuOpen(!menuOpen)}

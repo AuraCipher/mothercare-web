@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Users, GraduationCap, BookOpen, Search, Filter } from 'lucide-react';
+import { Plus, Users, GraduationCap, BookOpen, Search, Filter, LayoutGrid, Menu } from 'lucide-react';
 
 export default function StudentsPage() {
   const router = useRouter();
@@ -13,6 +13,19 @@ export default function StudentsPage() {
   const [groupId, setGroupId] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [sections, setSections] = useState<any[]>([]);
+  const [expandedView, setExpandedView] = useState(false);
+
+  // Restore view preference
+  useEffect(() => {
+    const saved = localStorage.getItem('studentViewMode');
+    if (saved === 'expanded') setExpandedView(true);
+  }, []);
+
+  const toggleView = () => {
+    const next = !expandedView;
+    setExpandedView(next);
+    localStorage.setItem('studentViewMode', next ? 'expanded' : 'grid');
+  };
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -46,7 +59,7 @@ export default function StudentsPage() {
           <Users size={22} className="text-warm-accent" />
           <h1 className="text-xl font-light text-warm-cream">Students</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button onClick={() => router.push('/admin/students/new')}
             className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
             <Plus size={14} /> Add Student
@@ -80,6 +93,10 @@ export default function StudentsPage() {
           className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
           <Filter size={13} /> Filter
         </button>
+        <button onClick={toggleView} title={expandedView ? 'Grid view' : 'Expanded view'}
+          className={`ml-auto rounded-lg border p-2 transition-colors ${expandedView ? 'border-warm-accent/50 text-warm-accent' : 'border-warm-card-border text-warm-muted hover:border-warm-accent/50 hover:text-warm-cream'}`}>
+          {expandedView ? <LayoutGrid size={15} /> : <Menu size={15} />}
+        </button>
       </div>
 
       {loading ? (
@@ -92,33 +109,37 @@ export default function StudentsPage() {
           <p className="text-sm text-warm-muted">No students found.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {students.map(student => (
+        <div className={`grid gap-4 ${expandedView ? 'grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+          {students.map((student, idx) => (
             <div key={student.id} onClick={() => router.push(`/admin/students/${student.id}`)}
-              className="rounded-xl border border-warm-card-border bg-warm-card p-4 cursor-pointer hover:border-warm-accent/40 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warm-accent/10">
-                  <GraduationCap size={18} className="text-warm-accent" />
+              className={`rounded-xl border border-warm-card-border bg-warm-card p-4 cursor-pointer hover:border-warm-accent/40 transition-colors ${expandedView ? 'col-span-2' : ''}`}>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warm-accent/10">
+                  <GraduationCap size={20} className="text-warm-accent" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-warm-cream truncate">{student.name}</p>
-                  <p className="text-[11px] text-warm-muted/60">{student.admissionNumber || '—'}</p>
+                  <p className="text-xs text-warm-muted/60 mt-0.5">{student.admissionNumber || '—'}</p>
+                  <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-warm-muted">
+                    {student.group && (
+                      <span className="flex items-center gap-1">
+                        <BookOpen size={11} className="text-warm-accent" />
+                        {student.group.name}{student.group.section ? ` — ${student.group.section}` : ''}
+                      </span>
+                    )}
+                    {student.rollNumber && (
+                      <span className="text-green-400">{student.gender === 'male' ? '♂' : student.gender === 'female' ? '♀' : ''} Roll: {student.rollNumber}</span>
+                    )}
+                    {student.phone && <span>📞 {student.phone}</span>}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-warm-muted">
-                {student.group && (
-                  <span className="flex items-center gap-1">
-                    <BookOpen size={11} className="text-warm-accent" />
-                    {student.group.name}{student.group.section ? ` — ${student.group.section}` : ''}
-                  </span>
-                )}
-                {student.rollNumber && (
-                  <>
-                    <span className="text-warm-muted/30">|</span>
-                    <span className="text-green-400">Roll: {student.rollNumber}</span>
-                  </>
-                )}
-              </div>
+            </div>
+          ))}
+          {/* Empty column in expanded view for extra content */}
+          {expandedView && students.map((_, idx) => (
+            <div key={`extra-${idx}`} className="rounded-xl border border-dashed border-warm-card-border/30 p-4 min-h-[80px] flex items-center justify-center">
+              <p className="text-[10px] text-warm-muted/30"></p>
             </div>
           ))}
         </div>
