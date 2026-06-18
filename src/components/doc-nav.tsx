@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { FileText, Plus, X, Download } from 'lucide-react';
+import { FileText, Plus, X, Download, Trash2 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -17,9 +17,9 @@ interface UploadItem {
   fileId?: string;
 }
 
-function DocCard({ icon, name, type, progress, showCheck, fileId }: { icon: string; name: string; type: string; progress: number; showCheck?: boolean; fileId?: string }) {
+function DocCard({ icon, name, type, progress, showCheck, fileId, onDelete }: { icon: string; name: string; type: string; progress: number; showCheck?: boolean; fileId?: string; onDelete?: () => void }) {
   return (
-    <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
+    <div className="rounded-xl border border-warm-card-border bg-warm-card p-4 group">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-lg shrink-0">{icon}</span>
@@ -30,10 +30,16 @@ function DocCard({ icon, name, type, progress, showCheck, fileId }: { icon: stri
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {showCheck && fileId ? (
-            <a href={`${API_URL}/api/uploads/${fileId}`} target="_blank" rel="noopener noreferrer"
-              className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download">
-              <Download size={14} />
-            </a>
+            <>
+              <button onClick={onDelete}
+                className="rounded p-1 text-warm-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100" title="Delete">
+                <Trash2 size={14} />
+              </button>
+              <a href={`${API_URL}/api/uploads/${fileId}`} target="_blank" rel="noopener noreferrer"
+                className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download">
+                <Download size={14} />
+              </a>
+            </>
           ) : showCheck ? (
             <span className="text-green-400 text-xs font-medium">✓</span>
           ) : null}
@@ -135,6 +141,25 @@ export default function DocNav() {
     if (inputRef.current) inputRef.current.value = '';
   }, [entityType, entityId]);
 
+  const handleDelete = useCallback(async (fileId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/uploads/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setUploads(prev => prev.filter(u => u.fileId !== fileId));
+        showToast('success', 'File deleted');
+      } else {
+        showToast('error', 'Failed to delete file');
+      }
+    } catch {
+      showToast('error', 'Failed to delete file');
+    }
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
@@ -185,7 +210,7 @@ export default function DocNav() {
             {completedUploads.length > 0 && (
               <>
                 <p className="text-[10px] font-medium tracking-wider text-warm-muted uppercase">Uploaded</p>
-                {completedUploads.map(u => <DocCard key={u.id} icon={u.name.match(/\.(png|jpg|jpeg|webp)$/i) ? '🖼️' : '📄'} name={u.name} type={u.type} progress={100} showCheck fileId={u.fileId} />)}
+                {completedUploads.map(u => <DocCard key={u.id} icon={u.name.match(/\.(png|jpg|jpeg|webp)$/i) ? '🖼️' : '📄'} name={u.name} type={u.type} progress={100} showCheck fileId={u.fileId} onDelete={() => u.fileId && handleDelete(u.fileId)} />)}
               </>
             )}
 
