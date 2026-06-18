@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { FileText, Plus, X, Download } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
@@ -49,9 +50,37 @@ function DocCard({ icon, name, type, progress, showCheck, fileId }: { icon: stri
 }
 
 export default function DocNav() {
+  const pathname = usePathname();
+  // Scope storage per profile page: "docnav_<entityType>_<profileId>"
+  const profileMatch = pathname.match(/\/admin\/(students|teachers)\/([^/]+)/);
+  const storageScope = profileMatch ? `${profileMatch[1]}_${profileMatch[2]}` : 'global';
+  const STORAGE_KEY = `docnav_${storageScope}`;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [initialized, setInitialized] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Restore completed uploads from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as UploadItem[];
+        setUploads(parsed);
+      }
+    } catch { /* ignore parse errors */ }
+    setInitialized(true);
+  }, []);
+
+  // Persist completed uploads to sessionStorage whenever they change
+  // (only after initial restore to avoid overwriting with empty state)
+  useEffect(() => {
+    if (!initialized) return;
+    const completed = uploads.filter(u => u.done);
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
+    } catch { /* storage full — ignore */ }
+  }, [uploads, initialized]);
 
   const handleUpload = useCallback(async (file: File) => {
     const id = Math.random().toString(36).slice(2, 10);
