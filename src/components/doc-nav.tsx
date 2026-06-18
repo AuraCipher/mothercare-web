@@ -51,58 +51,60 @@ function DocCard({ icon, name, type, progress, showCheck, fileId }: { icon: stri
 
 export default function DocNav() {
   const pathname = usePathname();
-  // Scope storage per profile page: "docnav_<entityType>_<profileId>"
   const profileMatch = pathname.match(/\/admin\/(students|teachers)\/([^/]+)/);
-  const storageScope = profileMatch ? `${profileMatch[1]}_${profileMatch[2]}` : 'global';
-  const STORAGE_KEY = `docnav_${storageScope}`;
+  const entityType = profileMatch ? profileMatch[1] : null;
+  const entityId = profileMatch ? profileMatch[2] : null;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
-  const [initialized, setInitialized] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Restore completed uploads from sessionStorage on mount
+  // Fetch existing docs from backend on mount
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as UploadItem[];
-        setUploads(parsed);
-      }
-    } catch { /* ignore parse errors */ }
-    setInitialized(true);
-  }, []);
-
-  // Persist completed uploads to sessionStorage whenever they change
-  // (only after initial restore to avoid overwriting with empty state)
-  useEffect(() => {
-    if (!initialized) return;
-    const completed = uploads.filter(u => u.done);
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
-    } catch { /* storage full — ignore */ }
-  }, [uploads, initialized]);
+    if (!entityType || !entityId) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch(`${API_URL}/api/uploads?entityType=${entityType}&entityId=${entityId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success && Array.isArray(result.data)) {
+          const items: UploadItem[] = result.data.map((f: any) => ({
+            id: f.id,
+            name: f.originalName,
+            type: f.mimeType,
+            size: f.size,
+            progress: 100,
+            done: true,
+            fileId: f.id,
+          }));
+          setUploads(items);
+        }
+      })
+      .catch(() => {});
+  }, [entityType, entityId]);
 
   const handleUpload = useCallback(async (file: File) => {
-    const id = Math.random().toString(36).slice(2, 10);
     const isImage = file.type.startsWith('image/');
-    const icon = isImage ? '🖼️' : '📄';
     const fileType = isImage ? 'Picture' : 'Document';
 
-    // Add to list with 0 progress
-    setUploads(prev => [...prev, { id, name: file.name, type: `${fileType} · ${file.name.split('.').pop()?.toUpperCase() || 'FILE'}`, size: file.size, progress: 0, done: false }]);
+    // Add to list with 0 progress using a temp id
+    const tempId = Math.random().toString(36).slice(2, 10);
+    setUploads(prev => [...prev, { id: tempId, name: file.name, type: `${fileType} · ${file.name.split('.').pop()?.toUpperCase() || 'FILE'}`, size: file.size, progress: 0, done: false }]);
 
-    // Simulate progress up to 30% while reading
     let tick: ReturnType<typeof setInterval> | undefined;
     try {
       const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'document');
+      if (entityType) formData.append('entityType', entityType);
+      if (entityId) formData.append('entityId', entityId);
 
       // Simulate progress up to 80% while upload is in flight
       let progress = 0;
       tick = setInterval(() => {
-        if (progress < 80) { progress += 10; setUploads(prev => prev.map(u => u.id === id ? { ...u, progress } : u)); }
+        if (progress < 80) { progress += 10; setUploads(prev => prev.map(u => u.id === tempId ? { ...u, progress } : u)); }
       }, 200);
 
       const res = await fetch(`${API_URL}/api/upload`, {
@@ -114,22 +116,24 @@ export default function DocNav() {
 
       if (res.ok) {
         const result = await res.json().catch(() => ({}));
-        setUploads(prev => prev.map(u => u.id === id ? { ...u, progress: 100, done: true, fileId: result.data?.id } : u));
+        const data = result.data;
+        // Replace temp entry with real file data from server
+        setUploads(prev => prev.map(u => u.id === tempId ? {
+          ...u, id: data?.id || tempId, progress: 100, done: true, fileId: data?.id,
+        } : u));
         showToast('success', 'File uploaded');
       } else {
-        clearInterval(tick);
-        setUploads(prev => prev.filter(u => u.id !== id));
+        setUploads(prev => prev.filter(u => u.id !== tempId));
         const msg = await res.json().then(d => d.message).catch(() => 'Upload failed');
         showToast('error', msg);
       }
     } catch (e: any) {
       if (tick) clearInterval(tick);
-      setUploads(prev => prev.filter(u => u.id !== id));
+      setUploads(prev => prev.filter(u => u.id !== tempId));
       showToast('error', e.message || 'Upload failed');
     }
-    // Reset file input so same file can be re-uploaded
     if (inputRef.current) inputRef.current.value = '';
-  }, []);
+  }, [entityType, entityId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
