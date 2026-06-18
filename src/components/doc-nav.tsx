@@ -69,16 +69,19 @@ export default function DocNav() {
       .then(r => r.json())
       .then(result => {
         if (result.success && Array.isArray(result.data)) {
-          const items: UploadItem[] = result.data.map((f: any) => ({
-            id: f.id,
-            name: f.originalName,
-            type: f.mimeType,
-            size: f.size,
-            progress: 100,
-            done: true,
-            fileId: f.id,
-          }));
-          setUploads(items);
+          setUploads(prev => {
+            // Keep browser-original names for files uploaded this session
+            const prevNames = new Map(prev.filter(u => u.fileId).map(u => [u.fileId, u.name]));
+            return result.data.map((f: any) => ({
+              id: f.id,
+              name: prevNames.get(f.id) || f.originalName,
+              type: f.mimeType,
+              size: f.size,
+              progress: 100,
+              done: true,
+              fileId: f.id,
+            }));
+          });
         }
       })
       .catch(() => {});

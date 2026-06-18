@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Eye, Download, Pencil, Trash2 } from 'lucide-react';
+import RenameModal from '@/components/rename-modal';
+import ConfirmModal from '@/components/confirm-modal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -14,12 +15,10 @@ interface DocActionMenuProps {
 }
 
 export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: DocActionMenuProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState(fileName);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Close on click outside
   useEffect(() => {
@@ -31,32 +30,14 @@ export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: 
     return () => document.removeEventListener('click', handleClick);
   }, [open]);
 
-  // Focus input when rename starts
-  useEffect(() => {
-    if (renaming && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [renaming]);
-
-  const handleRenameStart = () => {
-    setRenameValue(fileName);
-    setRenaming(true);
-    setOpen(false);
+  const handleRename = (newName: string) => {
+    onRename(newName).catch(() => {});
+    setRenameOpen(false);
   };
 
-  const handleRenameSubmit = async () => {
-    const trimmed = renameValue.trim();
-    if (!trimmed || trimmed === fileName) { setRenaming(false); return; }
-    try {
-      await onRename(trimmed);
-      setRenaming(false);
-    } catch { /* toast handled by parent */ }
-  };
-
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleRenameSubmit();
-    if (e.key === 'Escape') setRenaming(false);
+  const handleDeleteConfirm = () => {
+    onDelete();
+    setDeleteOpen(false);
   };
 
   const handleDownload = () => {
@@ -75,19 +56,6 @@ export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: 
     setOpen(false);
   };
 
-  // If currently renaming, show inline input instead of the menu
-  if (renaming) {
-    return (
-      <input ref={inputRef} type="text" value={renameValue}
-        onChange={(e) => setRenameValue(e.target.value)}
-        onBlur={handleRenameSubmit}
-        onKeyDown={handleRenameKeyDown}
-        className="w-full rounded border border-warm-accent/50 bg-[#1a1614] px-2 py-0.5 text-xs text-warm-cream outline-none"
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
-  }
-
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button onClick={() => setOpen(!open)}
@@ -102,8 +70,8 @@ export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: 
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div ref={menuRef}
-            className="absolute right-0 top-full mt-1 z-50 min-w-[150px] overflow-hidden rounded-lg border border-warm-card-border bg-[#2d2826] shadow-xl">
-            <button onClick={() => { router.push(`/documents/${fileId}`); setOpen(false); }}
+            className="absolute right-0 bottom-full mb-1 z-50 min-w-[150px] overflow-hidden rounded-lg border border-warm-card-border bg-[#2d2826] shadow-xl">
+            <button onClick={() => { window.open(`/documents/${fileId}`, '_blank'); setOpen(false); }}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-warm-cream hover:bg-warm-card transition-colors">
               <Eye size={13} className="text-warm-accent" /> View
             </button>
@@ -111,17 +79,25 @@ export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: 
               className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-warm-cream hover:bg-warm-card transition-colors">
               <Download size={13} className="text-warm-accent" /> Download
             </button>
-            <button onClick={handleRenameStart}
+            <button onClick={() => { setRenameOpen(true); setOpen(false); }}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-warm-cream hover:bg-warm-card transition-colors">
               <Pencil size={13} className="text-warm-accent" /> Rename
             </button>
-            <button onClick={() => { onDelete(); setOpen(false); }}
+            <button onClick={() => { setDeleteOpen(true); setOpen(false); }}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-warm-card transition-colors">
               <Trash2 size={13} /> Delete
             </button>
           </div>
         </>
       )}
+
+      <RenameModal open={renameOpen} currentName={fileName}
+        onConfirm={handleRename} onCancel={() => setRenameOpen(false)} />
+
+      <ConfirmModal open={deleteOpen} title="Delete file"
+        message="This will permanently delete the file and remove it from disk. This action cannot be undone."
+        confirmLabel="Delete" variant="danger"
+        onConfirm={handleDeleteConfirm} onCancel={() => setDeleteOpen(false)} />
     </div>
   );
 }

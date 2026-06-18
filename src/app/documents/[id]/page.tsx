@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Trash2, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, FileText } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import ConfirmModal from '@/components/confirm-modal';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -58,9 +60,62 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
 
 // ─── Markdown Viewer ───────────────────────────────────────────
 function MarkdownViewer({ content }: { content: string }) {
+  // Strip YAML front matter (--- ... ---) at the start of the file
+  const cleanContent = content.replace(/^---[\s\S]*?---\s*/m, '');
+
+  if (cleanContent.length === 0) {
+    return (
+      <pre className="overflow-auto rounded-lg border border-warm-card-border bg-warm-card/30 p-6 text-sm text-warm-muted">
+        (empty file)
+      </pre>
+    );
+  }
+
   return (
-    <div className="prose prose-sm prose-invert max-w-none rounded-lg border border-warm-card-border bg-warm-card/30 p-6">
-      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
+    <div className="max-w-none rounded-lg border border-warm-card-border bg-warm-card/30 p-6">
+      <div className="prose prose-sm prose-invert max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeSanitize]}
+          components={{
+            p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+            h1: ({ children }) => <h1 className="text-xl font-semibold mb-3 mt-6 text-warm-cream">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-5 text-warm-cream">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-base font-semibold mb-1 mt-4 text-warm-cream">{children}</h3>,
+            ul: ({ children }) => <ul className="list-disc pl-6 mb-3 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-6 mb-3 space-y-1">{children}</ol>,
+            li: ({ children }) => <li className="text-sm text-warm-cream/90">{children}</li>,
+            code: ({ className, children, ...props }) => {
+              const isInline = !className;
+              if (isInline) {
+                return <code className="rounded bg-warm-card/50 px-1.5 py-0.5 text-sm text-warm-accent">{children}</code>;
+              }
+              return (
+                <pre className="overflow-auto rounded-lg bg-[#1a1614] p-4 mb-3">
+                  <code className={`text-sm ${className || ''}`} {...props}>{children}</code>
+                </pre>
+              );
+            },
+            a: ({ children, href }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-warm-accent hover:underline">{children}</a>
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-2 border-warm-accent/50 pl-4 mb-3 italic text-warm-muted">{children}</blockquote>
+            ),
+            hr: () => <hr className="border-warm-card-border my-6" />,
+            table: ({ children }) => (
+              <div className="overflow-auto mb-3">
+                <table className="w-full border-collapse text-sm">{children}</table>
+              </div>
+            ),
+            th: ({ children }) => <th className="border border-warm-card-border px-3 py-2 text-left font-medium text-warm-cream bg-warm-card/50">{children}</th>,
+            td: ({ children }) => <td className="border border-warm-card-border px-3 py-2 text-warm-cream/80">{children}</td>,
+            strong: ({ children }) => <strong className="font-semibold text-warm-cream">{children}</strong>,
+            em: ({ children }) => <em className="italic text-warm-cream/90">{children}</em>,
+          }}>
+          {cleanContent}
+        </ReactMarkdown>
+      </div>
     </div>
   );
 }
@@ -114,6 +169,7 @@ export default function DocumentViewerPage() {
   const [blobUrl, setBlobUrl] = useState<string | null>(null); // for binary files
   const [mode, setMode] = useState<ViewerMode>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const loadFile = useCallback(async () => {
     try {
@@ -126,6 +182,7 @@ export default function DocumentViewerPage() {
       setMeta(metaData);
 
       const mime = metaData.mimeType;
+      const isMdExtension = metaData.originalName?.toLowerCase().endsWith('.md');
 
       // 2. Determine viewer mode and load content
       if (mime.startsWith('image/')) {
@@ -138,7 +195,7 @@ export default function DocumentViewerPage() {
         const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
         const blob = await fileRes.blob();
         setBlobUrl(URL.createObjectURL(blob));
-      } else if (mime === 'text/markdown') {
+      } else if (mime === 'text/markdown' || isMdExtension) {
         setMode('markdown');
         const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
         setContent(await fileRes.text());
@@ -168,7 +225,6 @@ export default function DocumentViewerPage() {
   }, [blobUrl]);
 
   const handleDelete = async () => {
-    if (!confirm('Delete this file? This action cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/uploads/${id}`, {
@@ -227,7 +283,7 @@ export default function DocumentViewerPage() {
               <Download size={13} /> Download
             </button>
           )}
-          <button onClick={handleDelete}
+          <button onClick={() => setDeleteConfirmOpen(true)}
             className="flex items-center gap-1.5 rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10 transition-colors">
             <Trash2 size={13} /> Delete
           </button>
@@ -279,6 +335,11 @@ export default function DocumentViewerPage() {
           <DownloadPrompt meta={meta} />
         )}
       </main>
+
+      <ConfirmModal open={deleteConfirmOpen} title="Delete file"
+        message="This will permanently delete this file and remove it from disk. This action cannot be undone."
+        confirmLabel="Delete" variant="danger"
+        onConfirm={handleDelete} onCancel={() => setDeleteConfirmOpen(false)} />
     </div>
   );
 }
