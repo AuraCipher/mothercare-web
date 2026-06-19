@@ -20,6 +20,7 @@ export default function AttendancePage() {
   const [groupId, setGroupId] = useState('');
   const [sections, setSections] = useState<any[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -81,9 +82,13 @@ export default function AttendancePage() {
     finally { setSaving(false); }
   };
 
-  const changeDate = (days: number) => {
+  const skipMap = { day: 1, week: 7, month: 30, year: 365 };
+  const changeDate = (dir: number) => {
     const d = new Date(date);
-    d.setDate(d.getDate() + days);
+    const skip = skipMap[viewMode] || 1;
+    if (viewMode === 'month') d.setMonth(d.getMonth() + dir);
+    else if (viewMode === 'year') d.setFullYear(d.getFullYear() + dir);
+    else d.setDate(d.getDate() + dir * skip);
     setDate(d.toISOString().split('T')[0]);
   };
 
@@ -112,12 +117,22 @@ export default function AttendancePage() {
             ))}
           </select>
         </div>
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setViewMode('day')}
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${viewMode === 'day' ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>Day</button>
+          <button onClick={() => setViewMode('week')}
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${viewMode === 'week' ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>Week</button>
+          <button onClick={() => setViewMode('month')}
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${viewMode === 'month' ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>Month</button>
+          <button onClick={() => setViewMode('year')}
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${viewMode === 'year' ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>Year</button>
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={() => changeDate(-1)} className="rounded-lg p-2 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"><ChevronLeft size={16} /></button>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors" />
           <button onClick={() => changeDate(1)} className="rounded-lg p-2 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"><ChevronRight size={16} /></button>
-          {date !== today && (
+          {date !== today && viewMode === 'day' && (
             <button onClick={() => setDate(today)} className="text-xs text-warm-accent hover:underline">Today</button>
           )}
         </div>
