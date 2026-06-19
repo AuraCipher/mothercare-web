@@ -88,6 +88,7 @@ export default function AttendancePage() {
   };
 
   const today = new Date().toISOString().split('T')[0];
+  const isFutureDate = date > today;
   const counts = { present: 0, absent: 0, late: 0, 'half-day': 0, unmarked: 0 };
   students.forEach(s => { (counts as any)[s.status]++; });
 
@@ -151,9 +152,9 @@ export default function AttendancePage() {
                 {' · '}
                 <span className="text-warm-muted/40">{counts.unmarked} pending</span>
               </span>
-              <button onClick={handleSave} disabled={saving}
+              <button onClick={handleSave} disabled={saving || isFutureDate}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:opacity-50">
-                <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
