@@ -193,7 +193,7 @@ export default function StudentsPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className={`mx-auto px-6 py-10 ${expandedView ? 'max-w-7xl' : 'max-w-6xl'}`}>
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users size={22} className="text-warm-accent" />
@@ -274,14 +274,15 @@ export default function StudentsPage() {
               return (
                 <div key={student.id} className="flex gap-3">
                   {/* Student card — takes remaining space */}
-                  <div onClick={() => router.push(`/admin/students/${student.id}`)}
-                    className="flex-1 rounded-xl border border-warm-card-border bg-warm-card p-4 cursor-pointer hover:border-warm-accent/40 transition-colors">
+                  <div className="flex-1 rounded-xl border border-warm-card-border bg-warm-card p-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warm-accent/10">
+                      <div onClick={() => router.push(`/admin/students/${student.id}`)}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warm-accent/10 cursor-pointer hover:bg-warm-accent/20 transition-colors">
                         <GraduationCap size={20} className="text-warm-accent" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-warm-cream truncate">{student.name}</p>
+                        <p onClick={() => router.push(`/admin/students/${student.id}`)}
+                          className="text-sm font-medium text-warm-cream truncate cursor-pointer hover:text-warm-accent transition-colors">{student.name}</p>
                         <p className="text-xs text-warm-muted/60 mt-0.5">{student.admissionNumber || '—'}</p>
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-warm-muted">
                           {student.group && (
@@ -294,40 +295,49 @@ export default function StudentsPage() {
                             <span className="text-green-400">{student.gender === 'male' ? '♂' : student.gender === 'female' ? '♀' : ''} Roll: {student.rollNumber}</span>
                           )}
                         </div>
+                        {/* Username shown on card when generated */}
+                        {cred?.username && (
+                          <div className="mt-3 pt-3 border-t border-warm-card-border/50">
+                            <p className="text-[9px] font-medium tracking-wider text-warm-muted uppercase mb-1">Login Credentials</p>
+                            <p className="text-xs text-warm-accent font-mono">👤 {cred.username}</p>
+                            <p className="text-[10px] text-warm-muted/60 mt-0.5">
+                              {cred.saved ? '✅ Password saved' : cred.password ? '🔑 Password ready, not saved yet' : '— No password set'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Credential panel — fixed width */}
-                  <div className="w-[260px] shrink-0 rounded-xl border border-warm-card-border bg-warm-card p-3 self-start">
-                    {cred?.username && (
-                      <div className="mb-1.5">
-                        <p className="text-[10px] text-warm-accent font-mono">👤 {cred.username}</p>
+                  {/* Credential panel — right side */}
+                  <div className="w-[400px] shrink-0 rounded-xl border border-warm-card-border bg-warm-card p-4 self-start">
+                    <div className="mb-2">
+                      <p className="text-[9px] font-medium tracking-wider text-warm-muted uppercase mb-0.5">Contact</p>
+                      <p className="text-xs text-warm-muted/80">📞 {student.phone || '—'}</p>
+                    </div>
+                    <div className="border-t border-warm-card-border/50 pt-3 mb-3">
+                      <p className="text-[9px] font-medium tracking-wider text-warm-muted uppercase mb-0.5">Password</p>
+                      <div className="relative">
+                        <input type="text" readOnly
+                          value={cred?.password || ''}
+                          placeholder="Click Gen to create..."
+                          className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2 pl-8 pr-8 text-xs text-warm-cream font-mono outline-none placeholder:text-warm-muted/30 focus:border-warm-accent transition-colors" />
+                        <Key size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-warm-muted/50" />
+                        {cred?.saved && <Check size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-green-400" />}
                       </div>
-                    )}
-                    <div className="mb-1.5">
-                      <p className="text-[10px] text-warm-muted/60">📞 {student.phone || '—'}</p>
                     </div>
-                    <div className="relative mb-2">
-                      <input type="text" readOnly
-                        value={cred?.password || ''}
-                        placeholder="Generate password..."
-                        className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-1.5 pl-7 pr-2 text-xs text-warm-cream font-mono outline-none placeholder:text-warm-muted/30 focus:border-warm-accent transition-colors" />
-                      <Key size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-warm-muted/50" />
-                      {cred?.saved && <Check size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-400" />}
-                    </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <button onClick={() => generateForOne(student.id)} title="Generate"
-                        className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-                        <RefreshCw size={10} /> Gen
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-2 text-[11px] text-warm-accent hover:bg-warm-accent/20 transition-colors">
+                        <RefreshCw size={12} /> Gen
                       </button>
                       <button onClick={() => handleSaveSingleClick(student.id)} title="Save"
-                        className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-                        <Save size={10} /> Save
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2 text-[11px] text-warm-muted hover:text-warm-cream transition-colors">
+                        <Save size={12} /> Save
                       </button>
                       <button onClick={() => handleSend(student.id)} title="Send"
-                        className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-                        <Send size={10} /> Send
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2 text-[11px] text-warm-muted hover:text-warm-cream transition-colors">
+                        <Send size={12} /> Send
                       </button>
                     </div>
                   </div>
