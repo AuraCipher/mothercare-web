@@ -39,17 +39,55 @@ export default function StudentCredentialsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [groupId, setGroupId] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
+  const [sections, setSections] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sendHistory, setSendHistory] = useState<Record<string, any[]>>({});
+  const [passwords, setPasswords] = useState<Record<string, string>>({});
+  const [credStatus, setCredStatus] = useState<Record<string, { saved: boolean }>>({});
+  const [showAdminPopup, setShowAdminPopup] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPassError, setAdminPassError] = useState('');
+  const [savingAll, setSavingAll] = useState(false);
+  const [pendingSaveTargets, setPendingSaveTargets] = useState<string[]>([]);
+
+  const generatePassword = (): string => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const all = upper + lower + digits + special;
+    let pw = '';
+    pw += upper[Math.floor(Math.random() * upper.length)];
+    pw += lower[Math.floor(Math.random() * lower.length)];
+    pw += digits[Math.floor(Math.random() * digits.length)];
+    pw += special[Math.floor(Math.random() * special.length)];
+    for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
+    const arr = pw.split('');
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    return arr.join('');
+  };
+
+  const handleGenerate = (studentId: string) => {
+    setPasswords(prev => ({ ...prev, [studentId]: generatePassword() }));
+  };
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
+  // Load sections for class filter
+  useEffect(() => {
+    if (branchId && ayId) {
+      api.getSections(branchId, ayId).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
+    }
+  }, []);
+
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents({ limit: 200 });
+      const res = await api.getStudents({ limit: 200, groupId: groupId || undefined, rollNumber: rollNumber || undefined });
       if (res.success) {
         let filtered = res.data;
         // Apply status filter
@@ -71,7 +109,7 @@ export default function StudentCredentialsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadStudents(); }, [statusFilter, search]);
+  useEffect(() => { loadStudents(); }, [statusFilter, search, groupId, rollNumber]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -84,6 +122,63 @@ export default function StudentCredentialsPage() {
   const selectAll = () => {
     if (selectedIds.size === students.length) setSelectedIds(new Set());
     else setSelectedIds(new Set(students.map(s => s.id)));
+  };
+
+  const handleSave = async (studentId: string, password: string) => {
+    const token = localStorage.getItem('token');
+    if (!adminPassword.trim()) { setShowAdminPopup(true); setPendingSaveTargets([studentId]); return; }
+    try {
+      const res = await fetch(`${API_URL}/api/admin/students/${studentId}/set-password`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, adminPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCredStatus(prev => ({ ...prev, [studentId]: { saved: true } }));
+        showToast('success', 'Password saved');
+        return true;
+      } else { showToast('error', data.message || 'Save failed'); return false; }
+    } catch { showToast('error', 'Save failed'); return false; }
+  };
+
+  const handleSaveClick = (studentId: string) => {
+    const pw = passwords[studentId];
+    if (!pw) { showToast('info', 'Generate a password first'); return; }
+    setPendingSaveTargets([studentId]);
+    setShowAdminPopup(true);
+  };
+
+  const handleSaveAllClick = () => {
+    const pending = Object.entries(passwords).filter(([sid]) => !credStatus[sid]?.saved);
+    if (pending.length === 0) { showToast('info', 'No unsaved passwords'); return; }
+    setPendingSaveTargets(pending.map(([sid]) => sid));
+    setShowAdminPopup(true);
+  };
+
+  const handleAdminVerify = async () => {
+    if (!adminPassword.trim()) { setAdminPassError('Enter your password'); return; }
+    setSavingAll(true);
+    try {
+      let successCount = 0;
+      for (const sid of pendingSaveTargets) {
+        const pw = passwords[sid];
+        if (!pw) continue;
+        const token = localStorage.getItem('token');
+        try {
+          const res = await fetch(`${API_URL}/api/admin/students/${sid}/set-password`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pw, adminPassword }),
+          });
+          const data = await res.json();
+          if (data.success) { setCredStatus(prev => ({ ...prev, [sid]: { saved: true } })); successCount++; }
+        } catch {}
+      }
+      showToast('success', `${successCount}/${pendingSaveTargets.length} saved`);
+    } finally {
+      setShowAdminPopup(false); setAdminPassword(''); setAdminPassError(''); setSavingAll(false); setPendingSaveTargets([]);
+    }
   };
 
   const handleSend = async (studentId: string) => {
@@ -164,6 +259,10 @@ export default function StudentCredentialsPage() {
           className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
           <Send size={13} /> Send to New {pendingCount > 0 && `(${pendingCount})`}
         </button>
+        <button onClick={handleSaveAllClick}
+          className="flex items-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors">
+          <Save size={13} /> Save All
+        </button>
         <button onClick={handleSendSelected}
           className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
           <Send size={13} /> Send Selected ({selectedIds.size})
@@ -177,11 +276,25 @@ export default function StudentCredentialsPage() {
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative min-w-[180px] max-w-xs flex-1">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or admission..."
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-8 pr-3 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+        </div>
+        <div className="min-w-[150px]">
+          <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent transition-colors">
+            <option value="">All Classes</option>
+            {sections.map((sec: any) => (
+              <option key={sec.id} value={sec.id}>{sec.name}{sec.section ? ` — ${sec.section}` : ''}</option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-[100px]">
+          <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
+            placeholder="Roll no."
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
         </div>
         {STATUS_OPTIONS.map(opt => (
           <button key={opt.value} onClick={() => setStatusFilter(opt.value)}
@@ -212,6 +325,7 @@ export default function StudentCredentialsPage() {
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden sm:table-cell">Class</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden md:table-cell">WhatsApp</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden lg:table-cell">Username</th>
+                <th className="text-left px-3 py-2 text-warm-muted font-medium">Password</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium">Status</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden md:table-cell">Last Sent</th>
                 <th className="w-20 px-3 py-2"></th>
@@ -232,12 +346,31 @@ export default function StudentCredentialsPage() {
                     <td className="px-3 py-2.5 text-warm-muted hidden sm:table-cell">{s.group?.name || '—'}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-warm-muted hidden md:table-cell">{s.studentWhatsapp || s.phone || '—'}</td>
                     <td className="px-3 py-2.5 text-warm-accent font-mono hidden lg:table-cell">{s.username || '—'}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        {passwords[s.id] ? (
+                          <span className="text-xs text-warm-cream font-mono">{passwords[s.id]}</span>
+                        ) : (
+                          <span className="text-xs text-warm-muted/40">—</span>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); handleGenerate(s.id); }}
+                          className="rounded p-0.5 text-warm-muted hover:text-warm-accent transition-colors" title="Generate password">
+                          <RefreshCw size={12} />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5">{statusBadge(s.credentialStatus)}</td>
                     <td className="px-3 py-2.5 text-warm-muted/60 hidden md:table-cell">
                       {s.credentialSentAt ? new Date(s.credentialSentAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
+                        {passwords[s.id] && (
+                          <button onClick={() => handleSaveClick(s.id)} title="Save password"
+                            className={`rounded p-1 transition-colors ${credStatus[s.id]?.saved ? 'text-green-400' : 'text-warm-muted hover:text-warm-accent'}`}>
+                            <Save size={13} />
+                          </button>
+                        )}
                         {s.username && (
                           <button onClick={() => handleSend(s.id)} title="Send via WhatsApp"
                             className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors">
@@ -267,6 +400,30 @@ export default function StudentCredentialsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Admin password verification popup */}
+      {showAdminPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => { setShowAdminPopup(false); setPendingSaveTargets([]); }}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
+            <p className="mb-4 text-xs text-warm-muted">Enter your admin password to confirm saving {pendingSaveTargets.length > 1 ? `${pendingSaveTargets.length} student` : ''} credentials.</p>
+            <input type="password" value={adminPassword}
+              onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && !savingAll && handleAdminVerify()}
+              placeholder="Your password" autoFocus
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+            {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setShowAdminPopup(false); setAdminPassword(''); setAdminPassError(''); setPendingSaveTargets([]); }}
+                className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={handleAdminVerify} disabled={savingAll}
+                className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:opacity-50">
+                {savingAll ? 'Saving...' : 'Verify'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>
