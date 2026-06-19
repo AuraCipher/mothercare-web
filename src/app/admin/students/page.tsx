@@ -162,9 +162,55 @@ export default function StudentsPage() {
     }
   };
 
-  const handleSend = (studentId: string) => {
-    // Placeholder — send method TBD
-    showToast('info', 'Send feature coming soon');
+  const handleSend = async (studentId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/students/${studentId}/send-credentials`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCredentials(prev => ({ ...prev, [studentId]: { ...prev[studentId], sent: true } }));
+        showToast('success', 'Credentials sent via WhatsApp');
+      } else {
+        showToast('error', data.message || 'Failed to send');
+      }
+    } catch {
+      showToast('error', 'Failed to send credentials');
+    }
+  };
+
+  const handleSendAll = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const studentIds = students.filter(s => credentials[s.id]?.username).map(s => s.id);
+    if (studentIds.length === 0) { showToast('info', 'No students with credentials to send'); return; }
+    try {
+      const res = await fetch(`/api/admin/students/send-all-credentials`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const { sent, skipped, failed } = data.data;
+        // Mark sent ones
+        setCredentials(prev => {
+          const updated = { ...prev };
+          data.data.results?.forEach((r: any) => {
+            if (r.sent && updated[r.studentId]) updated[r.studentId] = { ...updated[r.studentId], sent: true };
+          });
+          return updated;
+        });
+        showToast('success', `${sent} sent, ${skipped} skipped, ${failed} failed`);
+      } else {
+        showToast('error', data.message || 'Failed to send');
+      }
+    } catch {
+      showToast('error', 'Failed to send credentials');
+    }
   };
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -261,7 +307,7 @@ export default function StudentsPage() {
                   className="flex items-center gap-1 rounded-lg bg-warm-accent/10 px-2.5 py-1.5 text-[11px] text-warm-accent hover:bg-warm-accent/20 transition-colors">
                   <Save size={12} /> Save All
                 </button>
-                <button onClick={() => showToast('info', 'Send feature coming soon')} title="Send all credentials"
+                <button onClick={handleSendAll} title="Send all credentials"
                   className="flex items-center gap-1 rounded-lg bg-warm-accent/10 px-2.5 py-1.5 text-[11px] text-warm-accent hover:bg-warm-accent/20 transition-colors">
                   <Send size={12} /> Send All
                 </button>
