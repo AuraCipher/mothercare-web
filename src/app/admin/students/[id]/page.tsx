@@ -194,6 +194,7 @@ export default function StudentDetailPage() {
             {s.rollNumber && <span className="text-sm text-warm-muted/70">Roll No: {s.rollNumber}</span>}
             {s.group && <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/20 bg-warm-accent/5 px-2.5 py-0.5 text-[11px] text-warm-accent">{s.group.name}{s.group.section ? ` — ${s.group.section}` : ''}</span>}
             <span className={`inline-flex items-center gap-1.5 text-xs ${s.status === 'ACTIVE' ? 'text-green-400' : 'text-warm-muted/50'}`}><span className={`inline-block h-2 w-2 rounded-full ${s.status === 'ACTIVE' ? 'bg-green-400' : 'bg-gray-500'}`} />{s.status}</span>
+            {s.username && <span className="text-xs text-warm-accent font-mono">👤 {s.username}</span>}
           </div>
         </div>
         {/* Passport-size photo — clickable with context menu */}

@@ -38,6 +38,7 @@ export default function NewStudentPage() {
     groupId: '', profilePhotoId: '',
     guardianName: '', guardianRelation: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const bId = localStorage.getItem('activeBranchId');
@@ -51,7 +52,13 @@ export default function NewStudentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
     if (!form.name.trim()) { showToast('error', 'Student name is required'); return; }
+    if (!form.groupId) {
+      setFormErrors({ groupId: 'Please select a class' });
+      showToast('error', 'Class assignment is required');
+      return;
+    }
     setSaving(true);
     try {
       const res = await api.createStudent({
@@ -216,14 +223,15 @@ export default function NewStudentPage() {
         {/* Class Assignment */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <h2 className="mb-4 text-xs font-semibold tracking-wider text-warm-accent uppercase">Class Assignment</h2>
-          <Field label="Class / Section">
+          <Field label="Class / Section *">
             <select value={form.groupId} onChange={(e) => set('groupId')(e.target.value)}
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+              className={`w-full rounded-lg border ${formErrors.groupId ? 'border-red-500/50' : 'border-warm-card-border'} bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors`}>
               <option value="">— Select Class —</option>
               {sections.map((s: any) => (
                 <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
               ))}
             </select>
+            {formErrors.groupId && <p className="mt-1 text-[10px] text-red-400">{formErrors.groupId}</p>}
           </Field>
         </div>
 
