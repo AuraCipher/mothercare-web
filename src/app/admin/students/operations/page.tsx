@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
@@ -74,6 +74,18 @@ export default function StudentCredentialsPage() {
     setPasswords(prev => ({ ...prev, [studentId]: generatePassword() }));
   };
 
+  const handleGenerateAll = async () => {
+    let count = 0;
+    for (const s of students) {
+      if (!s.username || !passwords[s.id]) {
+        handleGenerate(s.id);
+        count++;
+      }
+    }
+    if (count > 0) showToast('success', `Passwords generated for ${count} students`);
+    else showToast('info', 'All students already have passwords');
+  };
+
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
@@ -124,22 +136,28 @@ export default function StudentCredentialsPage() {
     else setSelectedIds(new Set(students.map(s => s.id)));
   };
 
-  const handleSave = async (studentId: string, password: string) => {
-    const token = localStorage.getItem('token');
-    if (!adminPassword.trim()) { setShowAdminPopup(true); setPendingSaveTargets([studentId]); return; }
-    try {
-      const res = await fetch(`${API_URL}/api/admin/students/${studentId}/set-password`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, adminPassword }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCredStatus(prev => ({ ...prev, [studentId]: { saved: true } }));
-        showToast('success', 'Password saved');
-        return true;
-      } else { showToast('error', data.message || 'Save failed'); return false; }
-    } catch { showToast('error', 'Save failed'); return false; }
+  // Ensure a student has a User account before saving password
+  const ensureUser = async (studentId: string, token: string) => {
+    const s = students.find(st => st.id === studentId);
+    if (s?.userId) return true; // already has User
+    const res = await fetch(`${API_URL}/admin/students/${studentId}/generate-credentials`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return data.success;
+  };
+
+  const savePassword = async (studentId: string, password: string, adminPass: string, token: string) => {
+    // First ensure User exists (generate credentials if needed)
+    await ensureUser(studentId, token);
+    const res = await fetch(`${API_URL}/admin/students/${studentId}/set-password`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, adminPassword: adminPass }),
+    });
+    const data = await res.json();
+    return data;
   };
 
   const handleSaveClick = (studentId: string) => {
@@ -161,17 +179,13 @@ export default function StudentCredentialsPage() {
     setSavingAll(true);
     try {
       let successCount = 0;
+      const token = localStorage.getItem('token');
+      if (!token) return;
       for (const sid of pendingSaveTargets) {
         const pw = passwords[sid];
         if (!pw) continue;
-        const token = localStorage.getItem('token');
         try {
-          const res = await fetch(`${API_URL}/api/admin/students/${sid}/set-password`, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: pw, adminPassword }),
-          });
-          const data = await res.json();
+          const data = await savePassword(sid, pw, adminPassword, token);
           if (data.success) { setCredStatus(prev => ({ ...prev, [sid]: { saved: true } })); successCount++; }
         } catch {}
       }
@@ -184,7 +198,7 @@ export default function StudentCredentialsPage() {
   const handleSend = async (studentId: string) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/api/admin/students/${studentId}/send-credentials`, {
+      const res = await fetch(`${API_URL}/admin/students/${studentId}/send-credentials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -199,7 +213,7 @@ export default function StudentCredentialsPage() {
     if (selectedIds.size === 0) { showToast('info', 'Select students first'); return; }
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/api/admin/students/send-all-credentials`, {
+      const res = await fetch(`${API_URL}/admin/students/send-all-credentials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: Array.from(selectedIds) }),
@@ -214,7 +228,7 @@ export default function StudentCredentialsPage() {
   const handleSendToNew = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/api/admin/students/send-to-new`, {
+      const res = await fetch(`${API_URL}/admin/students/send-to-new`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -255,9 +269,9 @@ export default function StudentCredentialsPage() {
 
       {/* Bulk Action Bar */}
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-warm-card-border bg-warm-card p-3">
-        <button onClick={handleSendToNew}
-          className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-          <Send size={13} /> Send to New {pendingCount > 0 && `(${pendingCount})`}
+        <button onClick={handleGenerateAll}
+          className="flex items-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors">
+          <RefreshCw size={13} /> Gen All
         </button>
         <button onClick={handleSaveAllClick}
           className="flex items-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors">
@@ -293,7 +307,7 @@ export default function StudentCredentialsPage() {
         </div>
         <div className="min-w-[100px]">
           <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
-            placeholder="Roll no."
+            placeholder="Roll no." autoComplete="off"
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
         </div>
         {STATUS_OPTIONS.map(opt => (
@@ -333,8 +347,8 @@ export default function StudentCredentialsPage() {
             </thead>
             <tbody>
               {students.map((s: any) => (
-                <>
-                  <tr key={s.id}
+                <React.Fragment key={s.id}>
+                  <tr
                     className="border-t border-warm-card-border/50 hover:bg-warm-card/30 transition-colors cursor-pointer"
                     onClick={() => toggleHistory(s.id)}>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -396,7 +410,7 @@ export default function StudentCredentialsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -409,7 +423,8 @@ export default function StudentCredentialsPage() {
           <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
             <p className="mb-4 text-xs text-warm-muted">Enter your admin password to confirm saving {pendingSaveTargets.length > 1 ? `${pendingSaveTargets.length} student` : ''} credentials.</p>
-            <input type="password" value={adminPassword}
+            <input type="text" value={adminPassword}
+              style={{ WebkitTextSecurity: 'disc' } as any}
               onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
               onKeyDown={(e) => e.key === 'Enter' && !savingAll && handleAdminVerify()}
               placeholder="Your password" autoFocus
