@@ -143,6 +143,22 @@ export default function TeacherDetailPage() {
     setShowAdminPassPopup(true);
   };
 
+  const handleSendCredential = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      if (!data) return;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/admin/teachers/${data.id}/send-credentials`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await res.json();
+      if (result.success) showToast('success', 'Credentials sent via WhatsApp');
+      else showToast('error', result.message || 'Failed to send');
+    } catch { showToast('error', 'Failed to send'); }
+  };
+
   const handleAdminPassVerify = async () => {
     if (!adminPassword.trim()) {
       setAdminPassError('Enter your password to confirm');
@@ -550,7 +566,7 @@ export default function TeacherDetailPage() {
                 >
                   <Save size={13} /> Save
                 </button>
-                <button
+                <button onClick={handleSendCredential}
                   className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors"
                 >
                   <Send size={13} /> Send
