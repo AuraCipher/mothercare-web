@@ -267,6 +267,20 @@ export default function AttendancePage() {
           <div className="rounded-xl border border-warm-card-border overflow-auto">
             <table className="w-full text-xs">
               <thead>
+                {/* Month label row for week view crossing months */}
+                {viewMode === 'week' && (
+                  <tr className="bg-warm-card/50">
+                    <th colSpan={2} className="px-2 py-1 text-[9px] text-warm-muted/50 text-left"></th>
+                    {dateColumns.map((d, i) => {
+                      const dt = new Date(d);
+                      const prev = i > 0 ? new Date(dateColumns[i-1]) : null;
+                      const showMonth = !prev || prev.getMonth() !== dt.getMonth() || prev.getFullYear() !== dt.getFullYear();
+                      return <th key={d} className={`px-1 py-1 text-[9px] text-center ${showMonth ? 'text-warm-accent' : 'text-transparent'}`}>
+                        {showMonth ? MONTHS[dt.getMonth()] : '-'}
+                      </th>;
+                    })}
+                  </tr>
+                )}
                 <tr className="bg-warm-card/50">
                   <th className="sticky left-0 bg-warm-card/50 z-10 w-12 px-2 py-2 text-warm-muted font-medium text-left">Roll</th>
                   <th className="sticky left-12 bg-warm-card/50 z-10 px-2 py-2 text-warm-muted font-medium text-left min-w-[140px]">Name</th>
@@ -289,10 +303,12 @@ export default function AttendancePage() {
                     </td>
                     {viewMode === 'year' ? MONTHS.map((m, mi) => {
                       const [p, a, l] = getSummary(s.id, mi).split('/').map(Number);
-                      return <td key={m} className="px-2 py-2 text-center">
-                        <span className="text-green-400">{p}</span>
-                        {a > 0 && <span className="text-red-400 ml-0.5">/{a}</span>}
-                        {l > 0 && <span className="text-yellow-400 ml-0.5">/{l}</span>}
+                      const total = p + a + l;
+                      return <td key={m} className="px-2 py-2 text-center text-[11px] whitespace-nowrap">
+                        <span className="text-green-400 font-medium">P{p}</span>
+                        {a > 0 && <span className="text-red-400 font-medium ml-1">A{a}</span>}
+                        {l > 0 && <span className="text-yellow-400 ml-1">L{l}</span>}
+                        {total === 0 && <span className="text-warm-muted/30">—</span>}
                       </td>;
                     }) : dateColumns.map(d => {
                       const stat = statusMap[s.id]?.[d] || (new Date(d) > new Date(today) ? 'future' : '—');
