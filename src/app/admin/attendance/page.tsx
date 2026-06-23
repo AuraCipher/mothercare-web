@@ -129,7 +129,7 @@ export default function AttendancePage() {
     setStudents((prev: any[]) => prev.map((s: any) => {
       if (s.id !== studentId) return s;
       const current = s.attendances?.[0]?.status || 'unmarked';
-      const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'present' };
+      const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'function', function: 'present' };
       const newStatus = next[current] || 'present';
       return { ...s, attendances: [{ status: newStatus }] };
     }));
@@ -187,7 +187,7 @@ export default function AttendancePage() {
   const getDayStatus = (s: any) => {
     const atts = s.attendances || [];
     const status = atts[0]?.status || 'unmarked';
-    const labels: Record<string, string> = { present: '✓ Present', absent: '✗ Absent', late: '⏳ Late', leave: '✈ Leave', holiday: '🎉 Holiday' };
+    const labels: Record<string, string> = { present: '✓ Present', absent: '✗ Absent', late: '⏳ Late', leave: '✈ Leave', holiday: '🎉 Holiday', function: '🎪 Function' };
     return { status, label: labels[status] || '— Not Marked' };
   };
 
@@ -197,6 +197,7 @@ export default function AttendancePage() {
     status === 'late' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-900/30' :
     status === 'leave' ? 'bg-blue-900/20 text-blue-400 border-blue-900/30' :
     status === 'holiday' ? 'bg-purple-900/20 text-purple-400 border-purple-900/30' :
+    status === 'function' ? 'bg-pink-900/20 text-pink-400 border-pink-900/30' :
     'bg-warm-card/50 text-warm-muted/50 border-warm-card-border';
 
   const cellClass = (status: string) =>
@@ -205,6 +206,7 @@ export default function AttendancePage() {
     status === 'late' ? 'text-yellow-400 bg-yellow-900/10' :
     status === 'leave' ? 'text-blue-400 bg-blue-900/10' :
     status === 'holiday' ? 'text-purple-400 bg-purple-900/10' :
+    status === 'function' ? 'text-pink-400 bg-pink-900/10' :
     'text-warm-muted/30';
 
   // Get the day/month columns for timetable-style views
@@ -245,8 +247,7 @@ export default function AttendancePage() {
         const st = getCellStatus(s.id, d);
         if (st === 'present') totalP++;
         else if (st === 'absent') totalA++;
-        else if (st === 'late') totalL++;
-        else if (st === 'leave') totalL++;
+        else if (st === 'late' || st === 'leave' || st === 'function') totalL++;
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
         else totalU++;
@@ -313,6 +314,7 @@ export default function AttendancePage() {
                   <button onClick={() => markAll('absent')} className="rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10">All Absent</button>
                   <button onClick={() => markAll('late')} className="rounded-lg border border-yellow-900/30 px-3 py-1.5 text-xs text-yellow-400 hover:bg-yellow-900/10">All Late</button>
                   <button onClick={() => markAll('leave')} className="rounded-lg border border-blue-900/30 px-3 py-1.5 text-xs text-blue-400 hover:bg-blue-900/10">All Leave</button>
+                  <button onClick={() => markAll('function')} className="rounded-lg border border-pink-900/30 px-3 py-1.5 text-xs text-pink-400 hover:bg-pink-900/10">All Function</button>
                   <button onClick={() => markHoliday(date)} className="rounded-lg border border-purple-900/30 px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-900/10">Mark Holiday</button>
                 </>
               )}
@@ -429,7 +431,7 @@ export default function AttendancePage() {
                           return (
                             <td key={d} className="px-0 py-2 text-center" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
                               <span className={`inline-flex items-center justify-center rounded font-bold ${viewMode === 'month' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'} ${cellClass(st)}`}>
-                                {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : st === 'leave' ? 'Lv' : st === 'holiday' ? 'H' : '·'}
+                                {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : st === 'leave' ? 'Lv' : st === 'holiday' ? 'H' : st === 'function' ? 'F' : '·'}
                               </span>
                             </td>
                           );
