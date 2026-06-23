@@ -66,7 +66,16 @@ export default function AttendancePage() {
       };
     }
     // year
-    return { from: `${d.getFullYear()}-01-01`, to: `${d.getFullYear()}-12-31`, label: `Year ${d.getFullYear()}` };
+    const year = d.getFullYear();
+    return {
+      from: `${year}-01-01`,
+      to: `${year}-12-31`,
+      label: `Year ${year}`,
+      months: Array.from({ length: 12 }, (_, i) => {
+        const m = String(i + 1).padStart(2, '0');
+        return { label: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i], from: `${year}-${m}-01`, to: `${year}-${m}-${new Date(year, i + 1, 0).getDate()}` };
+      }),
+    };
   }, [date, viewMode, today]);
 
   const groupParam = groupId ? `&groupId=${groupId}` : '';
@@ -165,13 +174,18 @@ export default function AttendancePage() {
     status === 'late' ? 'text-yellow-400 bg-yellow-900/10' :
     'text-warm-muted/30';
 
-  // Get the day columns for timetable-style views
+  // Get the day/month columns for timetable-style views
   const viewDays = useMemo(() => {
     if (viewMode === 'week' || viewMode === 'month') return (dateRange as any).days as string[] | undefined;
     return undefined;
   }, [viewMode, dateRange]);
 
-  const isTimetableView = viewMode === 'week' || viewMode === 'month';
+  const viewMonths = useMemo(() => {
+    if (viewMode === 'year') return (dateRange as any).months as { label: string; from: string; to: string }[] | undefined;
+    return undefined;
+  }, [viewMode, dateRange]);
+
+  const isTimetableView = viewMode === 'week' || viewMode === 'month' || viewMode === 'year';
 
   // Compute totals
   let totalP = 0, totalA = 0, totalL = 0, totalU = 0;
@@ -183,6 +197,15 @@ export default function AttendancePage() {
       else if (st === 'late') totalL++;
       else totalU++;
     });
+  } else if (viewMode === 'year' && viewMonths) {
+    for (const s of students) {
+      for (const att of (s.attendances || [])) {
+        const st = att.status;
+        if (st === 'present') totalP++;
+        else if (st === 'absent') totalA++;
+        else if (st === 'late') totalL++;
+      }
+    }
   } else if (isTimetableView && viewDays) {
     for (const s of students) {
       for (const d of viewDays) {
@@ -273,9 +296,20 @@ export default function AttendancePage() {
 
           {/* Table */}
           <div className="rounded-xl border border-warm-card-border overflow-x-auto relative">
-            <table className="w-full text-sm" style={{ minWidth: isTimetableView && viewDays ? `${viewDays.length * (viewMode === 'month' ? 24 : 32) + 240}px` : undefined }}>
+            <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 70 : 32) + 240}px` : undefined }}>
               <thead>
-                {isTimetableView && viewDays ? (
+                {viewMode === 'year' && viewMonths ? (
+                  <tr>
+                    <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
+                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
+                    {viewMonths.map((m) => (
+                      <th key={m.label} className="px-1 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e] w-[70px] min-w-[70px]">
+                        <span className="font-semibold">{m.label}</span>
+                      </th>
+                    ))}
+                    <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
+                  </tr>
+                ) : isTimetableView && viewDays ? (
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
@@ -298,6 +332,45 @@ export default function AttendancePage() {
               </thead>
               <tbody>
                 {students.map((s: any, idx: number) => {
+                  if (viewMode === 'year' && viewMonths) {
+                    let totalP = 0, totalA = 0, totalL = 0;
+                    return (
+                      <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
+                        <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
+                        <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
+                          <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
+                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
+                        </td>
+                        {viewMonths.map(m => {
+                          const atts = (s.attendances || []).filter((a: any) => {
+                            const ad = typeof a.date === 'string' ? a.date.split('T')[0] : a.date;
+                            return ad >= m.from && ad <= m.to;
+                          });
+                          const p = atts.filter((a: any) => a.status === 'present').length;
+                          const a = atts.filter((a: any) => a.status === 'absent').length;
+                          const l = atts.filter((a: any) => a.status === 'late').length;
+                          totalP += p; totalA += a; totalL += l;
+                          return (
+                            <td key={m.label} className="px-1 py-2 text-center text-[11px] font-mono w-[70px] min-w-[70px]">
+                              <span className="text-green-400">{p > 0 ? 'P' + p : ''}</span>
+                              {a > 0 && <span className="text-red-400 ml-0.5">A{a}</span>}
+                              {l > 0 && <span className="text-yellow-400 ml-0.5">L{l}</span>}
+                              {p === 0 && a === 0 && l === 0 && <span className="text-warm-muted/30">·</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-2 text-center sticky right-0 bg-[#1a1614] z-10">
+                          <span className="text-xs font-mono">
+                            <span className="text-green-400 font-medium">{totalP > 0 ? 'P' + totalP : ''}</span>
+                            {totalA > 0 && <span className="text-red-400 font-medium ml-0.5">A{totalA}</span>}
+                            {totalL > 0 && <span className="text-yellow-400 font-medium ml-0.5">L{totalL}</span>}
+                            {totalP === 0 && totalA === 0 && totalL === 0 && <span className="text-warm-muted/30">·</span>}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+
                   if (isTimetableView && viewDays) {
                     let sp = 0, sa = 0, sl = 0;
                     for (const d of viewDays) {
