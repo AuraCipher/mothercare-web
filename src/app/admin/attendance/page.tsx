@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import {
-  Calendar, ChevronLeft, ChevronRight, Users, Save,
+  Calendar, ChevronLeft, ChevronRight, Save,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
@@ -187,7 +187,7 @@ export default function AttendancePage() {
   const getDayStatus = (s: any) => {
     const atts = s.attendances || [];
     const status = atts[0]?.status || 'unmarked';
-    const labels: Record<string, string> = { present: '✓ Present', absent: '✗ Absent', late: '⏳ Late', leave: '✈ Leave', holiday: '🎉 Holiday', function: '🎪 Function' };
+    const labels: Record<string, string> = { present: '✓ Present', absent: '✗ Absent', late: '⏳ Late', leave: '✈ Leave', holiday: 'Holiday', function: 'Function' };
     return { status, label: labels[status] || '— Not Marked' };
   };
 
