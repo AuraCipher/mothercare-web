@@ -273,17 +273,25 @@ export default function AttendancePage() {
             <table className="w-full text-sm" style={{ minWidth: isTimetableView && viewDays ? `${viewDays.length * 32 + 260}px` : undefined }}>
               <thead>
                 {isTimetableView && viewDays ? (
-                  <tr className="bg-warm-card/70">
+                  <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
-                    {viewDays.map((d, i) => (
-                      <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px]">
-                        <div className="flex flex-col items-center leading-tight">
-                          <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
-                          <span className="text-[9px] text-warm-muted/40 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
-                        </div>
-                      </th>
-                    ))}
+                    {viewDays.map((d, i) => {
+                      const dt = new Date(d + 'T00:00:00');
+                      const monthLabel = dt.toLocaleString('default', { month: 'short' });
+                      const dayNum = parseInt(d.slice(8), 10);
+                      return (
+                        <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px] bg-[#24201e]">
+                          <div className="flex flex-col items-center leading-tight">
+                            <span className="font-semibold">
+                              {viewMode === 'week' ? DAYS[i] : dayNum}
+                              {viewMode === 'week' && <span className="text-[9px] text-warm-muted/40 ml-0.5">{monthLabel}</span>}
+                            </span>
+                            <span className="text-[8px] text-warm-muted/30 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
+                          </div>
+                        </th>
+                      );
+                    })}
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : (
