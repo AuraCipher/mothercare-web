@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import {
   Calendar, ChevronLeft, ChevronRight, Users, Save,
@@ -8,6 +8,7 @@ import {
 import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function AttendancePage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -26,7 +27,7 @@ export default function AttendancePage() {
   const isFutureDate = date > today;
 
   // Calculate from/to based on view mode
-  const dateRange = (() => {
+  const dateRange = useMemo(() => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return { from: today, to: today, label: today };
     if (viewMode === 'day') return { from: date, to: date, label: date };
@@ -34,7 +35,15 @@ export default function AttendancePage() {
       const day = d.getDay();
       const mon = new Date(d); mon.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-      return { from: mon.toISOString().split('T')[0], to: sun.toISOString().split('T')[0], label: `${mon.toISOString().split('T')[0]} — ${sun.toISOString().split('T')[0]}` };
+      return {
+        from: mon.toISOString().split('T')[0],
+        to: sun.toISOString().split('T')[0],
+        label: `${mon.toISOString().split('T')[0]} — ${sun.toISOString().split('T')[0]}`,
+        weekDays: Array.from({ length: 7 }, (_, i) => {
+          const day = new Date(mon); day.setDate(mon.getDate() + i);
+          return day.toISOString().split('T')[0];
+        }),
+      };
     }
     if (viewMode === 'month') {
       const from = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -43,7 +52,7 @@ export default function AttendancePage() {
     }
     // year
     return { from: `${d.getFullYear()}-01-01`, to: `${d.getFullYear()}-12-31`, label: `Year ${d.getFullYear()}` };
-  })();
+  }, [date, viewMode, today]);
 
   const loadUrl = viewMode === 'day'
     ? `${API_URL}/admin/attendance?date=${date}&groupId=${groupId}`
@@ -53,7 +62,7 @@ export default function AttendancePage() {
     if (branchId && ayId) {
       api.getSections(branchId, ayId).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
     }
-  }, []);
+  }, [branchId, ayId]);
 
   const loadAttendance = useCallback(async () => {
     if (!groupId || !token) return;
@@ -63,9 +72,22 @@ export default function AttendancePage() {
       const json = await res.json();
       if (json.success) setStudents(json.data);
     } catch {} finally { setLoading(false); }
-  }, [loadUrl, token]);
+  }, [loadUrl, token, groupId]);
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
+
+  // Build lookup map: studentId -> dateString -> status
+  const statusMap = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const s of students) {
+      map[s.id] = {};
+      for (const att of (s.attendances || [])) {
+        const d = typeof att.date === 'string' ? att.date.split('T')[0] : att.date;
+        map[s.id][d] = att.status;
+      }
+    }
+    return map;
+  }, [students]);
 
   const toggleStatus = (studentId: string) => {
     setStudents((prev: any[]) => prev.map((s: any) => {
@@ -108,17 +130,20 @@ export default function AttendancePage() {
     setDate(d.toISOString().split('T')[0]);
   };
 
-  // For range views (week/month/year), compute summary per student
+  // For day view — single status
+  const getDayStatus = (s: any) => {
+    const atts = s.attendances || [];
+    const status = atts[0]?.status || 'unmarked';
+    return { status, label: status === 'present' ? '✓ Present' : status === 'absent' ? '✗ Absent' : status === 'late' ? '⏳ Late' : '— Not Marked' };
+  };
+
+  // For month/year — summary counts
   const getSummary = (s: any) => {
     const atts = s.attendances || [];
-    if (viewMode === 'day') {
-      const status = atts[0]?.status || 'unmarked';
-      return { status, label: status === 'present' ? '✓ Present' : status === 'absent' ? '✗ Absent' : status === 'late' ? '⏳ Late' : '— Not Marked' };
-    }
     const p = atts.filter((a: any) => a.status === 'present').length;
     const a = atts.filter((a: any) => a.status === 'absent').length;
     const l = atts.filter((a: any) => a.status === 'late').length;
-    return { status: 'summary', label: `P${p} A${a} L${l}`, p, a, l };
+    return { p, a, l };
   };
 
   const statusClass = (status: string) =>
@@ -127,23 +152,49 @@ export default function AttendancePage() {
     status === 'late' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-900/30' :
     'bg-warm-card/50 text-warm-muted/50 border-warm-card-border';
 
+  const cellClass = (status: string) =>
+    status === 'present' ? 'text-green-400 bg-green-900/10' :
+    status === 'absent' ? 'text-red-400 bg-red-900/10' :
+    status === 'late' ? 'text-yellow-400 bg-yellow-900/10' :
+    'text-warm-muted/30';
+
+  // Compute totals
   let totalP = 0, totalA = 0, totalL = 0, totalU = 0;
-  students.forEach((s: any) => {
-    const summary = getSummary(s);
-    if (viewMode === 'day') {
-      if (summary.status === 'present') totalP++;
-      else if (summary.status === 'absent') totalA++;
-      else if (summary.status === 'late') totalL++;
+  if (viewMode === 'day') {
+    students.forEach((s: any) => {
+      const st = getDayStatus(s).status;
+      if (st === 'present') totalP++;
+      else if (st === 'absent') totalA++;
+      else if (st === 'late') totalL++;
       else totalU++;
-    } else {
-      totalP += (summary as any).p || 0;
-      totalA += (summary as any).a || 0;
-      totalL += (summary as any).l || 0;
+    });
+  } else if (viewMode === 'week') {
+    const weekDates = (dateRange as any).weekDays as string[] | undefined;
+    if (weekDates) {
+      for (const s of students) {
+        for (const d of weekDates) {
+          const st = statusMap[s.id]?.[d] || 'unmarked';
+          if (st === 'present') totalP++;
+          else if (st === 'absent') totalA++;
+          else if (st === 'late') totalL++;
+          else totalU++;
+        }
+      }
     }
-  });
+  } else {
+    students.forEach((s: any) => {
+      const sum = getSummary(s);
+      totalP += sum.p;
+      totalA += sum.a;
+      totalL += sum.l;
+    });
+  }
+
+  const weekDates = viewMode === 'week' ? (dateRange as any).weekDays as string[] : null;
+  const isTimetableView = viewMode === 'week';
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <Calendar size={22} className="text-warm-accent" />
@@ -191,9 +242,13 @@ export default function AttendancePage() {
           {/* Bulk actions + summary */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <button onClick={() => markAll('present')} className="rounded-lg border border-green-900/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-900/10">All Present</button>
-              <button onClick={() => markAll('absent')} className="rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10">All Absent</button>
-              <button onClick={() => markAll('late')} className="rounded-lg border border-yellow-900/30 px-3 py-1.5 text-xs text-yellow-400 hover:bg-yellow-900/10">All Late</button>
+              {viewMode === 'day' && (
+                <>
+                  <button onClick={() => markAll('present')} className="rounded-lg border border-green-900/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-900/10">All Present</button>
+                  <button onClick={() => markAll('absent')} className="rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10">All Absent</button>
+                  <button onClick={() => markAll('late')} className="rounded-lg border border-yellow-900/30 px-3 py-1.5 text-xs text-yellow-400 hover:bg-yellow-900/10">All Late</button>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {viewMode !== 'day' && (
@@ -203,28 +258,87 @@ export default function AttendancePage() {
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L
                 {viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate}
+              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day'}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-warm-card-border overflow-hidden">
+          <div className="rounded-xl border border-warm-card-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-warm-card/70">
-                  <th className="w-16 px-4 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
-                  <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
-                  <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">Status</th>
-                </tr>
+                {isTimetableView && weekDates ? (
+                  <tr className="bg-warm-card/70">
+                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
+                    <th className="text-left px-3 py-3 text-xs text-warm-muted font-medium min-w-[140px]">Student</th>
+                    {weekDates.map((d, i) => (
+                      <th key={d} className="w-14 px-1 py-3 text-xs text-warm-muted font-medium text-center">
+                        <div className="flex flex-col items-center leading-tight">
+                          <span>{DAYS[i]}</span>
+                          <span className="text-[9px] text-warm-muted/50">{d.slice(5)}</span>
+                        </div>
+                      </th>
+                    ))}
+                    <th className="w-24 px-3 py-3 text-xs text-warm-muted font-medium text-center">Summary</th>
+                  </tr>
+                ) : (
+                  <tr className="bg-warm-card/70">
+                    <th className="w-16 px-4 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
+                    <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
+                    <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
+                      {viewMode === 'day' ? 'Status' : 'Summary'}
+                    </th>
+                  </tr>
+                )}
               </thead>
               <tbody>
-                {students.map((s: any) => {
-                  const summary = getSummary(s);
+                {students.map((s: any, idx: number) => {
+                  if (isTimetableView && weekDates) {
+                    // Week view — timetable columns per day
+                    let sp = 0, sa = 0, sl = 0;
+                    for (const d of weekDates) {
+                      const st = statusMap[s.id]?.[d] || 'unmarked';
+                      if (st === 'present') sp++;
+                      else if (st === 'absent') sa++;
+                      else if (st === 'late') sl++;
+                    }
+                    return (
+                      <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
+                        <td className="px-2 py-2.5 text-xs text-warm-muted text-center">{idx + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <p className="text-sm text-warm-cream truncate max-w-[180px]">{s.name}</p>
+                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
+                        </td>
+                        {weekDates.map(d => {
+                          const st = statusMap[s.id]?.[d] || 'unmarked';
+                          return (
+                            <td key={d} className="px-1 py-2.5 text-center">
+                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-bold ${cellClass(st)}`}>
+                                {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : '—'}
+                              </span>
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="text-[11px] font-mono">
+                            <span className="text-green-400">{sp > 0 ? `P${sp}` : ''}</span>
+                            {sa > 0 && <span className="text-red-400 ml-0.5">{sa > 0 ? `A${sa}` : ''}</span>}
+                            {sl > 0 && <span className="text-yellow-400 ml-0.5">{sl > 0 ? `L${sl}` : ''}</span>}
+                            {sp === 0 && sa === 0 && sl === 0 && <span className="text-warm-muted/30">—</span>}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const dayView = viewMode === 'day';
+                  const summary = dayView ? getDayStatus(s) : null;
+                  const sum = !dayView ? getSummary(s) : null;
+
                   return (
-                    <tr key={s.id} onClick={() => viewMode === 'day' && toggleStatus(s.id)}
+                    <tr key={s.id} onClick={() => dayView && toggleStatus(s.id)}
                       className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors cursor-pointer">
                       <td className="px-4 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
                       <td className="px-4 py-3">
@@ -232,15 +346,16 @@ export default function AttendancePage() {
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {viewMode === 'day' ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(summary.status)}`}>
-                            {summary.label}
+                        {dayView ? (
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(summary!.status)}`}>
+                            {summary!.label}
                           </span>
                         ) : (
                           <span className="text-xs font-mono">
-                            <span className="text-green-400 font-medium">{summary.label.split(' ')[0]}</span>
-                            {summary.label.includes('A') && <span className="text-red-400 font-medium ml-1">{(summary as any).a > 0 ? `A${(summary as any).a}` : ''}</span>}
-                            {summary.label.includes('L') && <span className="text-yellow-400 ml-1">{(summary as any).l > 0 ? `L${(summary as any).l}` : ''}</span>}
+                            <span className="text-green-400 font-medium">{sum!.p > 0 ? `P${sum!.p}` : ''}</span>
+                            {sum!.a > 0 && <span className="text-red-400 font-medium ml-1">{`A${sum!.a}`}</span>}
+                            {sum!.l > 0 && <span className="text-yellow-400 ml-1">{`L${sum!.l}`}</span>}
+                            {sum!.p === 0 && sum!.a === 0 && sum!.l === 0 && <span className="text-warm-muted/30">—</span>}
                           </span>
                         )}
                       </td>
