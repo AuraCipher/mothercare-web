@@ -565,13 +565,13 @@ export default function AttendancePage() {
                 })}
               </tbody>
             </table>
-            {!groupId && !isTimetableView && (
-              <div className="absolute right-1 top-0 bottom-0 flex flex-col justify-center gap-0 pointer-events-none z-30">
+            {students.length > 0 && (
+              <div className="fixed right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0 z-40">
                 {ALPHABET.map(letter => {
                   const found = filteredStudents.some((s: any) => (s.name?.[0] || '').toUpperCase() === letter);
                   return (
                     <button key={letter} onClick={() => scrollToLetter(letter)}
-                      className={`pointer-events-auto text-[10px] leading-tight px-0.5 py-0 rounded transition-colors ${found ? 'text-warm-accent hover:text-warm-cream font-medium' : 'text-warm-muted/20'}`}>
+                      className={`text-[11px] leading-tight px-1 py-0 rounded transition-colors ${found ? 'text-warm-accent hover:text-warm-cream font-medium' : 'text-warm-muted/20 cursor-default'}`}>
                       {letter}
                     </button>
                   );
