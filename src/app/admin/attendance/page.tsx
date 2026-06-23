@@ -8,7 +8,7 @@ import {
 import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Hol'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Format date as YYYY-MM-DD using local time (no UTC timezone shift)
 function localDateStr(d: Date): string {
@@ -223,7 +223,7 @@ export default function AttendancePage() {
   const isTimetableView = viewMode === 'week' || viewMode === 'month' || viewMode === 'year';
 
   // Compute totals
-  let totalP = 0, totalA = 0, totalL = 0, totalLv = 0, totalU = 0;
+  let totalP = 0, totalA = 0, totalL = 0, totalLv = 0, totalF = 0, totalU = 0;
   if (viewMode === 'day') {
     students.forEach((s: any) => {
       const st = getDayStatus(s).status;
@@ -231,6 +231,7 @@ export default function AttendancePage() {
       else if (st === 'absent') totalA++;
       else if (st === 'late') totalL++;
       else if (st === 'leave') totalLv++;
+      else if (st === 'function') totalF++;
       else totalU++;
     });
   } else if (viewMode === 'year' && viewMonths) {
@@ -241,6 +242,7 @@ export default function AttendancePage() {
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
         else if (st === 'leave') totalLv++;
+        else if (st === 'function') totalF++;
       }
     }
   } else if (isTimetableView && viewDays) {
@@ -251,6 +253,7 @@ export default function AttendancePage() {
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
         else if (st === 'leave') totalLv++;
+        else if (st === 'function') totalF++;
         else totalU++;
       }
     }
@@ -261,6 +264,7 @@ export default function AttendancePage() {
       totalA += atts.filter((a: any) => a.status === 'absent').length;
       totalL += atts.filter((a: any) => a.status === 'late').length;
       totalLv += atts.filter((a: any) => a.status === 'leave').length;
+      totalF += atts.filter((a: any) => a.status === 'function').length;
     });
   }
 
@@ -325,7 +329,7 @@ export default function AttendancePage() {
                 <span className="text-xs text-warm-muted/60 mr-2">{dateRange.label}</span>
               )}
               <span className="text-xs text-warm-muted/70">
-                <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv
+                <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
                 {viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
               <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
