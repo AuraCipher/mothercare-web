@@ -24,6 +24,9 @@ function attPercent(atts: any[]): number {
   const present = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
   return Math.round((present / total) * 100);
 }
+function attColor(pct: number): string {
+  return pct >= 80 ? 'text-green-400' : pct >= 70 ? 'text-yellow-400' : 'text-red-400';
+}
 
 // Build a display label for a group from sections array
 function groupLabel(sections: any[], id: string): string {
@@ -451,7 +454,7 @@ export default function AttendancePage() {
                           );
                         })}
                         <td className="px-1 py-2 text-center sticky right-16 bg-[#1a1614] z-10">
-                          <span className={`text-xs font-mono font-medium ${(totalP + totalA + totalL + totalLv) > 0 && ((totalP / (totalP + totalA + totalL + totalLv)) * 100) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                          <span className={`text-xs font-mono font-medium ${(totalP + totalA + totalL + totalLv) > 0 ? attColor((totalP / (totalP + totalA + totalL + totalLv)) * 100) : 'text-warm-muted/30'}`}>
                             {(totalP + totalA + totalL + totalLv) > 0 ? Math.round((totalP / (totalP + totalA + totalL + totalLv)) * 100) + '%' : '·'}
                           </span>
                         </td>
@@ -495,7 +498,7 @@ export default function AttendancePage() {
                           );
                         })}
                         <td className="px-1 py-2 text-center sticky right-16 bg-[#1a1614] z-10">
-                          <span className={`text-xs font-mono font-medium ${(sp + sa + sl + slv) > 0 && ((sp / (sp + sa + sl + slv)) * 100) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                          <span className={`text-xs font-mono font-medium ${(sp + sa + sl + slv) > 0 ? attColor((sp / (sp + sa + sl + slv)) * 100) : 'text-warm-muted/30'}`}>
                             {(sp + sa + sl + slv) > 0 ? Math.round((sp / (sp + sa + sl + slv)) * 100) + '%' : '·'}
                           </span>
                         </td>
@@ -524,7 +527,7 @@ export default function AttendancePage() {
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                       </td>
                       <td className="px-2 py-3 text-xs text-center font-mono">
-                        <span className={`font-medium ${attPercent(s.attendances || []) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`font-medium ${attColor(attPercent(s.attendances || []))}`}>
                           {attPercent(s.attendances || [])}%
                         </span>
                       </td>
