@@ -16,6 +16,13 @@ function localDateStr(d: Date): string {
 }
 function todayStr(): string { return localDateStr(new Date()); }
 
+// Build a display label for a group from sections array
+function groupLabel(sections: any[], id: string): string {
+  const g = sections.find(s => s.id === id);
+  if (!g) return '';
+  return g.section ? `${g.name} — ${g.section}` : g.name;
+}
+
 export default function AttendancePage() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -403,7 +410,7 @@ export default function AttendancePage() {
                         <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
                         <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
                           <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
-                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
+                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                         </td>
                         {viewMonths.map(m => {
                           const atts = (s.attendances || []).filter((a: any) => {
@@ -451,7 +458,7 @@ export default function AttendancePage() {
                         <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
                         <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
                           <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
-                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
+                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                         </td>
                         {viewDays.map(d => {
                           const st = getCellStatus(s.id, d);
@@ -484,7 +491,7 @@ export default function AttendancePage() {
                       <td className="px-4 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-warm-cream">{s.name}</p>
-                        <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}</p>
+                        <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
