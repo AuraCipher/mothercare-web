@@ -9,12 +9,21 @@ import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const EDIT_LOCK_DAYS = 7; // Can't edit attendance older than this many days
 
 // Format date as YYYY-MM-DD using local time (no UTC timezone shift)
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function todayStr(): string { return localDateStr(new Date()); }
+
+// Attendance percentage across an array of attendance records
+function attPercent(atts: any[]): number {
+  const total = atts.length;
+  if (!total) return 0;
+  const present = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+  return Math.round((present / total) * 100);
+}
 
 // Build a display label for a group from sections array
 function groupLabel(sections: any[], id: string): string {
@@ -37,8 +46,15 @@ export default function AttendancePage() {
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
+  const todayDt = new Date();
   const today = todayStr();
   const isFutureDate = date > today;
+  const isLocked = (() => {
+    const d = new Date(date + 'T00:00:00');
+    const cutoff = new Date(todayDt);
+    cutoff.setDate(cutoff.getDate() - EDIT_LOCK_DAYS);
+    return d < cutoff;
+  })();
 
   // Calculate from/to based on view mode
   const dateRange = useMemo(() => {
@@ -357,9 +373,9 @@ export default function AttendancePage() {
               <span className="text-xs text-warm-muted/70">
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
+              <button onClick={handleSave} disabled={saving || isFutureDate || isLocked || viewMode !== 'day' || !groupId}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : isLocked ? 'Locked' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -377,6 +393,7 @@ export default function AttendancePage() {
                         <span className="font-semibold">{m.label}</span>
                       </th>
                     ))}
+                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-12 bg-[#24201e] z-20">%</th>
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : isTimetableView && viewDays ? (
@@ -388,6 +405,7 @@ export default function AttendancePage() {
                         <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
                       </th>
                     ))}
+                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-12 bg-[#24201e] z-20">%</th>
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : (
@@ -395,6 +413,7 @@ export default function AttendancePage() {
                     <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
                     <th className="w-16 px-2 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
                     <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
+                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">%</th>
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
                       {viewMode === 'day' ? 'Status' : 'Sum'}
                     </th>
@@ -431,6 +450,11 @@ export default function AttendancePage() {
                             </td>
                           );
                         })}
+                        <td className="px-1 py-2 text-center sticky right-16 bg-[#1a1614] z-10">
+                          <span className={`text-xs font-mono font-medium ${(totalP + totalA + totalL + totalLv) > 0 && ((totalP / (totalP + totalA + totalL + totalLv)) * 100) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                            {(totalP + totalA + totalL + totalLv) > 0 ? Math.round((totalP / (totalP + totalA + totalL + totalLv)) * 100) + '%' : '·'}
+                          </span>
+                        </td>
                         <td className="px-2 py-2 text-center sticky right-0 bg-[#1a1614] z-10">
                           <span className="text-xs font-mono">
                             <span className="text-green-400 font-medium">{totalP > 0 ? 'P' + totalP : ''}</span>
@@ -470,6 +494,11 @@ export default function AttendancePage() {
                             </td>
                           );
                         })}
+                        <td className="px-1 py-2 text-center sticky right-16 bg-[#1a1614] z-10">
+                          <span className={`text-xs font-mono font-medium ${(sp + sa + sl + slv) > 0 && ((sp / (sp + sa + sl + slv)) * 100) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                            {(sp + sa + sl + slv) > 0 ? Math.round((sp / (sp + sa + sl + slv)) * 100) + '%' : '·'}
+                          </span>
+                        </td>
                         <td className="px-2 py-2 text-center sticky right-0 bg-[#1a1614] z-10">
                           <span className="text-xs font-mono">
                             <span className="text-green-400 font-medium">{sp > 0 ? 'P' + sp : ''}</span>
@@ -493,6 +522,11 @@ export default function AttendancePage() {
                       <td className="px-4 py-3">
                         <p className="text-sm text-warm-cream">{s.name}</p>
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
+                      </td>
+                      <td className="px-2 py-3 text-xs text-center font-mono">
+                        <span className={`font-medium ${attPercent(s.attendances || []) >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                          {attPercent(s.attendances || [])}%
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
