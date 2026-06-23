@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { api } from '@/lib/api';
 import {
   Calendar, ChevronLeft, ChevronRight, Save,
@@ -44,6 +44,13 @@ export default function AttendancePage() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  const scrollToLetter = (letter: string) => {
+    const el = document.getElementById('stu-' + letter);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -384,7 +391,7 @@ export default function AttendancePage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-warm-card-border relative">
+          <div className="rounded-xl border border-warm-card-border relative" ref={containerRef}>
             <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 52 : 32) + 200}px` : undefined }}>
               <thead>
                 {viewMode === 'year' && viewMonths ? (
@@ -518,7 +525,7 @@ export default function AttendancePage() {
                   const dayView = viewMode === 'day';
 
                   return (
-                    <tr key={s.id} onClick={() => dayView && toggleStatus(s.id)}
+                    <tr key={s.id} id={'stu-' + (s.name?.[0] || '').toUpperCase()} onClick={() => dayView && toggleStatus(s.id)}
                       className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors cursor-pointer">
                       <td className="px-2 py-3 text-xs text-warm-muted/60 text-center">{idx + 1}</td>
                       <td className="px-2 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
@@ -558,6 +565,19 @@ export default function AttendancePage() {
                 })}
               </tbody>
             </table>
+            {!groupId && !isTimetableView && (
+              <div className="absolute right-1 top-0 bottom-0 flex flex-col justify-center gap-0 pointer-events-none z-30">
+                {ALPHABET.map(letter => {
+                  const found = filteredStudents.some((s: any) => (s.name?.[0] || '').toUpperCase() === letter);
+                  return (
+                    <button key={letter} onClick={() => scrollToLetter(letter)}
+                      className={`pointer-events-auto text-[10px] leading-tight px-0.5 py-0 rounded transition-colors ${found ? 'text-warm-accent hover:text-warm-cream font-medium' : 'text-warm-muted/20'}`}>
+                      {letter}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {students.length === 0 && (
               <div className="p-12 text-center text-sm text-warm-muted">No students in this class.</div>
             )}
