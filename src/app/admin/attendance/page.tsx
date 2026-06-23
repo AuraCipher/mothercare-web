@@ -24,6 +24,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(todayStr());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -113,6 +114,16 @@ export default function AttendancePage() {
     }
     return map;
   }, [students]);
+
+  // Filter students by search query (name or roll number, partial match)
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    const q = searchQuery.toLowerCase();
+    return students.filter((s: any) =>
+      s.name?.toLowerCase().includes(q) ||
+      s.rollNumber?.toLowerCase().includes(q)
+    );
+  }, [students, searchQuery]);
 
   // Check if a date string is Sunday
   const isSunday = (dateStr: string) => new Date(dateStr + 'T00:00:00').getDay() === 0;
@@ -288,6 +299,15 @@ export default function AttendancePage() {
           </select>
         </div>
 
+        <div className="relative min-w-[180px]">
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search student name or roll…"
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-warm-muted/50 hover:text-warm-cream text-xs">✕</button>
+          )}
+        </div>
+
         <div className="flex items-center gap-2">
           <button onClick={() => changeDate(-1)} className="rounded-lg p-2 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"><ChevronLeft size={16} /></button>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
@@ -375,7 +395,7 @@ export default function AttendancePage() {
                 )}
               </thead>
               <tbody>
-                {students.map((s: any, idx: number) => {
+                {filteredStudents.map((s: any, idx: number) => {
                   if (viewMode === 'year' && viewMonths) {
                     let totalP = 0, totalA = 0, totalL = 0, totalLv = 0;
                     return (
