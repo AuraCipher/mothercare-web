@@ -330,7 +330,6 @@ export default function AttendancePage() {
               )}
               <span className="text-xs text-warm-muted/70">
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
-                {viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
               <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
