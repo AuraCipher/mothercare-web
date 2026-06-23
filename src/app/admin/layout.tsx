@@ -40,6 +40,7 @@ const navItems = [
   { href: '/admin/classes', icon: BookOpen, label: 'Classes / Sections' },
   { href: '/admin/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/admin/attendance', icon: CheckSquare, label: 'Attendance' },
+  { href: '/admin/attendance/teachers', icon: CheckSquare, label: '── Teachers', indent: true },
 ];
 
 /* ── Layout ── */

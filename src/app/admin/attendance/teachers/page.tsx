@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { api } from '@/lib/api';
 import {
   Calendar, ChevronLeft, ChevronRight, Save,
 } from 'lucide-react';
@@ -10,37 +9,25 @@ import { showToast } from '@/components/toast';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Format date as YYYY-MM-DD using local time (no UTC timezone shift)
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function todayStr(): string { return localDateStr(new Date()); }
 
-// Build a display label for a group from sections array
-function groupLabel(sections: any[], id: string): string {
-  const g = sections.find(s => s.id === id);
-  if (!g) return '';
-  return g.section ? `${g.name} — ${g.section}` : g.name;
-}
-
-export default function AttendancePage() {
-  const [students, setStudents] = useState<any[]>([]);
+export default function TeacherAttendancePage() {
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [groupId, setGroupId] = useState('');
-  const [sections, setSections] = useState<any[]>([]);
   const [date, setDate] = useState(todayStr());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const today = todayStr();
   const isFutureDate = date > today;
 
-  // Calculate from/to based on view mode
   const dateRange = useMemo(() => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return { from: today, to: today, label: today };
@@ -73,7 +60,6 @@ export default function AttendancePage() {
         }),
       };
     }
-    // year
     const year = d.getFullYear();
     return {
       from: `${year}-01-01`,
@@ -87,14 +73,8 @@ export default function AttendancePage() {
   }, [date, viewMode, today]);
 
   const loadUrl = viewMode === 'day'
-    ? `${API_URL}/admin/attendance?date=${date}${groupId ? `&groupId=${groupId}` : ''}`
-    : `${API_URL}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupId ? `&groupId=${groupId}` : ''}`;
-
-  useEffect(() => {
-    if (branchId && ayId) {
-      api.getSections(branchId, ayId).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
-    }
-  }, [branchId, ayId]);
+    ? `${API_URL}/admin/attendance/teachers?date=${date}`
+    : `${API_URL}/admin/attendance/teachers?from=${dateRange.from}&to=${dateRange.to}`;
 
   const loadAttendance = useCallback(async () => {
     if (!token) return;
@@ -102,88 +82,82 @@ export default function AttendancePage() {
     try {
       const res = await fetch(loadUrl, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
-      if (json.success) setStudents(json.data);
+      if (json.success) setTeachers(json.data);
     } catch {} finally { setLoading(false); }
   }, [loadUrl, token]);
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
-  // Build lookup map: studentId -> dateString -> status
   const statusMap = useMemo(() => {
     const map: Record<string, Record<string, string>> = {};
-    for (const s of students) {
-      map[s.id] = {};
-      for (const att of (s.attendances || [])) {
+    for (const t of teachers) {
+      map[t.id] = {};
+      for (const att of (t.attendances || [])) {
         const d = typeof att.date === 'string' ? att.date.split('T')[0] : att.date;
-        map[s.id][d] = att.status;
+        map[t.id][d] = att.status;
       }
     }
     return map;
-  }, [students]);
+  }, [teachers]);
 
-  // Filter students by search query (name or roll number, partial match)
-  const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) return students;
+  const filteredTeachers = useMemo(() => {
+    if (!searchQuery.trim()) return teachers;
     const q = searchQuery.toLowerCase();
-    return students.filter((s: any) =>
-      s.name?.toLowerCase().includes(q) ||
-      s.rollNumber?.toLowerCase().includes(q)
+    return teachers.filter((t: any) =>
+      t.name?.toLowerCase().includes(q)
     );
-  }, [students, searchQuery]);
+  }, [teachers, searchQuery]);
 
-  // Check if a date string is Sunday
   const isSunday = (dateStr: string) => new Date(dateStr + 'T00:00:00').getDay() === 0;
 
-  // Get cell status: actual attendance, or 'holiday' for Sunday with no record
-  const getCellStatus = (studentId: string, dateStr: string) => {
-    const attStatus = statusMap[studentId]?.[dateStr];
+  const getCellStatus = (teacherId: string, dateStr: string) => {
+    const attStatus = statusMap[teacherId]?.[dateStr];
     if (attStatus) return attStatus;
     if (isSunday(dateStr)) return 'holiday';
     return 'unmarked';
   };
 
-  const toggleStatus = (studentId: string) => {
-    setStudents((prev: any[]) => prev.map((s: any) => {
-      if (s.id !== studentId) return s;
-      const current = s.attendances?.[0]?.status || 'unmarked';
+  const toggleStatus = (teacherId: string) => {
+    setTeachers((prev: any[]) => prev.map((t: any) => {
+      if (t.id !== teacherId) return t;
+      const current = t.attendances?.[0]?.status || 'unmarked';
       const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'function', function: 'present' };
       const newStatus = next[current] || 'present';
-      return { ...s, attendances: [{ status: newStatus }] };
+      return { ...t, attendances: [{ status: newStatus }] };
     }));
   };
 
   const markAll = (status: string) => {
-    setStudents((prev: any[]) => prev.map((s: any) => ({ ...s, attendances: [{ status }] })));
+    setTeachers((prev: any[]) => prev.map((t: any) => ({ ...t, attendances: [{ status }] })));
   };
 
-  // Mark a date as holiday for all students
   const markHoliday = async (dateStr: string) => {
-    if (!groupId || !token) return;
+    if (!token) return;
     setSaving(true);
-    const records = students.map((s: any) => ({ studentId: s.id, status: 'holiday' }));
+    const records = teachers.map((t: any) => ({ teacherId: t.id, status: 'holiday' }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+      const res = await fetch(`${API_URL}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: dateStr, groupId, academicYearId: ayId, records }),
+        body: JSON.stringify({ date: dateStr, academicYearId: ayId, records }),
       });
       const json = await res.json();
-      if (json.success) { showToast('success', `Holiday set for ${json.data.saved} students`); loadAttendance(); }
+      if (json.success) { showToast('success', `Holiday set for ${json.data.saved} teachers`); loadAttendance(); }
       else showToast('error', json.message || 'Failed');
     } catch { showToast('error', 'Failed'); } finally { setSaving(false); }
   };
 
   const handleSave = async () => {
-    if (!groupId || !date || !token) return;
+    if (!date || !token) return;
     setSaving(true);
-    const records = students
-      .filter((s: any) => s.attendances?.[0]?.status && s.attendances[0].status !== 'unmarked')
-      .map((s: any) => ({ studentId: s.id, status: s.attendances[0].status }));
+    const records = teachers
+      .filter((t: any) => t.attendances?.[0]?.status && t.attendances[0].status !== 'unmarked')
+      .map((t: any) => ({ teacherId: t.id, status: t.attendances[0].status }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+      const res = await fetch(`${API_URL}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, groupId, academicYearId: ayId, records }),
+        body: JSON.stringify({ date, academicYearId: ayId, records }),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `${json.data.saved} saved`); loadAttendance(); }
@@ -200,9 +174,8 @@ export default function AttendancePage() {
     setDate(localDateStr(d));
   };
 
-  // For day view — single status
-  const getDayStatus = (s: any) => {
-    const atts = s.attendances || [];
+  const getDayStatus = (t: any) => {
+    const atts = t.attendances || [];
     const status = atts[0]?.status || 'unmarked';
     const labels: Record<string, string> = { present: '✓ Present', absent: '✗ Absent', late: '⏳ Late', leave: '✈ Leave', holiday: 'Holiday', function: 'Function' };
     return { status, label: labels[status] || '— Not Marked' };
@@ -226,7 +199,6 @@ export default function AttendancePage() {
     status === 'function' ? 'text-pink-400 bg-pink-900/10' :
     'text-warm-muted/30';
 
-  // Get the day/month columns for timetable-style views
   const viewDays = useMemo(() => {
     if (viewMode === 'week' || viewMode === 'month') return (dateRange as any).days as string[] | undefined;
     return undefined;
@@ -239,11 +211,10 @@ export default function AttendancePage() {
 
   const isTimetableView = viewMode === 'week' || viewMode === 'month' || viewMode === 'year';
 
-  // Compute totals
   let totalP = 0, totalA = 0, totalL = 0, totalLv = 0, totalF = 0, totalU = 0;
   if (viewMode === 'day') {
-    students.forEach((s: any) => {
-      const st = getDayStatus(s).status;
+    teachers.forEach((t: any) => {
+      const st = getDayStatus(t).status;
       if (st === 'present') totalP++;
       else if (st === 'absent') totalA++;
       else if (st === 'late') totalL++;
@@ -252,8 +223,8 @@ export default function AttendancePage() {
       else totalU++;
     });
   } else if (viewMode === 'year' && viewMonths) {
-    for (const s of students) {
-      for (const att of (s.attendances || [])) {
+    for (const t of teachers) {
+      for (const att of (t.attendances || [])) {
         const st = att.status;
         if (st === 'present') totalP++;
         else if (st === 'absent') totalA++;
@@ -263,9 +234,9 @@ export default function AttendancePage() {
       }
     }
   } else if (isTimetableView && viewDays) {
-    for (const s of students) {
+    for (const t of teachers) {
       for (const d of viewDays) {
-        const st = getCellStatus(s.id, d);
+        const st = getCellStatus(t.id, d);
         if (st === 'present' || st === 'holiday') totalP++;
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
@@ -275,8 +246,8 @@ export default function AttendancePage() {
       }
     }
   } else {
-    students.forEach((s: any) => {
-      const atts = s.attendances || [];
+    teachers.forEach((t: any) => {
+      const atts = t.attendances || [];
       totalP += atts.filter((a: any) => a.status === 'present').length;
       totalA += atts.filter((a: any) => a.status === 'absent').length;
       totalL += atts.filter((a: any) => a.status === 'late').length;
@@ -287,27 +258,20 @@ export default function AttendancePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <Calendar size={22} className="text-warm-accent" />
-        <h1 className="text-xl font-light text-warm-cream">Attendance</h1>
+        <h1 className="text-xl font-light text-warm-cream">Teacher Attendance</h1>
       </div>
 
-      {/* Top bar: class + date + view mode */}
       <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="min-w-[200px]">
-          <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
-            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-            <option value="">— All Students —</option>
-            {sections.map((s: any) => (
-              <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2 px-3 py-2 text-sm text-warm-muted border border-warm-card-border rounded-lg">
+          <Calendar size={14} className="text-warm-accent" />
+          <span>All Teachers</span>
         </div>
 
         <div className="relative min-w-[180px]">
           <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search student name or roll…"
+            placeholder="Search teacher name…"
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-warm-muted/50 hover:text-warm-cream text-xs">✕</button>
@@ -336,10 +300,9 @@ export default function AttendancePage() {
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-lg bg-warm-card" />)}</div>
       ) : (
         <>
-          {/* Bulk actions + summary */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              {viewMode === 'day' && groupId && (
+              {viewMode === 'day' && (
                 <>
                   <button onClick={() => markAll('present')} className="rounded-lg border border-green-900/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-900/10">All Present</button>
                   <button onClick={() => markAll('absent')} className="rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10">All Absent</button>
@@ -357,21 +320,20 @@ export default function AttendancePage() {
               <span className="text-xs text-warm-muted/70">
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
+              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day'}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
 
-          {/* Table */}
           <div className="rounded-xl border border-warm-card-border overflow-x-auto relative">
-            <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 70 : 32) + 240}px` : undefined }}>
+            <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 70 : 32) + 200}px` : undefined }}>
               <thead>
                 {viewMode === 'year' && viewMonths ? (
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
-                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
+                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Teacher</th>
                     {viewMonths.map((m) => (
                       <th key={m.label} className="px-1 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e] w-[70px] min-w-[70px]">
                         <span className="font-semibold">{m.label}</span>
@@ -382,7 +344,7 @@ export default function AttendancePage() {
                 ) : isTimetableView && viewDays ? (
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
-                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
+                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Teacher</th>
                     {viewDays.map((d, i) => (
                       <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e]" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
                         <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
@@ -393,8 +355,7 @@ export default function AttendancePage() {
                 ) : (
                   <tr className="bg-warm-card/70">
                     <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
-                    <th className="w-16 px-2 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
-                    <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
+                    <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Teacher Name</th>
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
                       {viewMode === 'day' ? 'Status' : 'Sum'}
                     </th>
@@ -402,18 +363,17 @@ export default function AttendancePage() {
                 )}
               </thead>
               <tbody>
-                {filteredStudents.map((s: any, idx: number) => {
+                {filteredTeachers.map((t: any, idx: number) => {
                   if (viewMode === 'year' && viewMonths) {
                     let totalP = 0, totalA = 0, totalL = 0, totalLv = 0;
                     return (
-                      <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
+                      <tr key={t.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
                         <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
                         <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
-                          <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
-                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
+                          <p className="text-sm text-warm-cream truncate max-w-[180px]">{t.name}</p>
                         </td>
                         {viewMonths.map(m => {
-                          const atts = (s.attendances || []).filter((a: any) => {
+                          const atts = (t.attendances || []).filter((a: any) => {
                             const ad = typeof a.date === 'string' ? a.date.split('T')[0] : a.date;
                             return ad >= m.from && ad <= m.to;
                           });
@@ -447,21 +407,20 @@ export default function AttendancePage() {
                   if (isTimetableView && viewDays) {
                     let sp = 0, sa = 0, sl = 0, slv = 0;
                     for (const d of viewDays) {
-                      const st = getCellStatus(s.id, d);
+                      const st = getCellStatus(t.id, d);
                       if (st === 'present') sp++;
                       else if (st === 'absent') sa++;
                       else if (st === 'late') sl++;
                       else if (st === 'leave') slv++;
                     }
                     return (
-                      <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
+                      <tr key={t.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
                         <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
                         <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
-                          <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
-                          <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
+                          <p className="text-sm text-warm-cream truncate max-w-[180px]">{t.name}</p>
                         </td>
                         {viewDays.map(d => {
-                          const st = getCellStatus(s.id, d);
+                          const st = getCellStatus(t.id, d);
                           return (
                             <td key={d} className="px-0 py-2 text-center" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
                               <span className={`inline-flex items-center justify-center rounded font-bold ${viewMode === 'month' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'} ${cellClass(st)}`}>
@@ -486,22 +445,20 @@ export default function AttendancePage() {
                   const dayView = viewMode === 'day';
 
                   return (
-                    <tr key={s.id} onClick={() => dayView && toggleStatus(s.id)}
+                    <tr key={t.id} onClick={() => dayView && toggleStatus(t.id)}
                       className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors cursor-pointer">
                       <td className="px-2 py-3 text-xs text-warm-muted/60 text-center">{idx + 1}</td>
-                      <td className="px-2 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-warm-cream">{s.name}</p>
-                        <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
+                        <p className="text-sm text-warm-cream">{t.name}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
-                            {getDayStatus(s).label}
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(t).status)}`}>
+                            {getDayStatus(t).label}
                           </span>
                         ) : (
                           (() => {
-                            const atts = s.attendances || [];
+                            const atts = t.attendances || [];
                             const p = atts.filter((a: any) => a.status === 'present').length;
                             const a = atts.filter((a: any) => a.status === 'absent').length;
                             const l = atts.filter((a: any) => a.status === 'late').length;
@@ -521,8 +478,8 @@ export default function AttendancePage() {
                 })}
               </tbody>
             </table>
-            {students.length === 0 && (
-              <div className="p-12 text-center text-sm text-warm-muted">No students in this class.</div>
+            {teachers.length === 0 && (
+              <div className="p-12 text-center text-sm text-warm-muted">No teachers found.</div>
             )}
           </div>
         </>
