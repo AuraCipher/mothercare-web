@@ -284,10 +284,7 @@ export default function AttendancePage() {
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
                     {viewDays.map((d, i) => (
                       <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e]" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
-                        <div className="flex flex-col items-center leading-tight">
-                          <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
-                          <span className={`text-[10px] text-warm-muted/70 -mt-0.5 ${viewMode === 'week' ? '' : 'hidden'}`}>{d.slice(5, 7)}/{d.slice(8)}</span>
-                        </div>
+                        <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
                       </th>
                     ))}
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
