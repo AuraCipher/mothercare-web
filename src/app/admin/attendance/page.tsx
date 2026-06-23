@@ -276,14 +276,14 @@ export default function AttendancePage() {
 
           {/* Table */}
           <div className="rounded-xl border border-warm-card-border overflow-x-auto relative">
-            <table className="w-full text-sm" style={{ minWidth: isTimetableView && viewDays ? `${viewDays.length * 32 + 260}px` : undefined }}>
+            <table className="w-full text-sm" style={{ minWidth: isTimetableView && viewDays ? `${viewDays.length * (viewMode === 'month' ? 24 : 32) + 240}px` : undefined }}>
               <thead>
                 {isTimetableView && viewDays ? (
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
                     {viewDays.map((d, i) => (
-                      <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px] bg-[#24201e]">
+                      <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e]" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
                         <div className="flex flex-col items-center leading-tight">
                           <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
                           <span className="text-[10px] text-warm-muted/70 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
@@ -322,8 +322,8 @@ export default function AttendancePage() {
                         {viewDays.map(d => {
                           const st = statusMap[s.id]?.[d] || 'unmarked';
                           return (
-                            <td key={d} className="px-0 py-2 text-center min-w-[32px] w-[32px]">
-                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold ${cellClass(st)}`}>
+                            <td key={d} className="px-0 py-2 text-center" style={{ minWidth: viewMode === 'month' ? 24 : 32, width: viewMode === 'month' ? 24 : 32 }}>
+                              <span className={`inline-flex items-center justify-center rounded font-bold ${viewMode === 'month' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'} ${cellClass(st)}`}>
                                 {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : '·'}
                               </span>
                             </td>
