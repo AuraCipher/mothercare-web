@@ -69,9 +69,10 @@ export default function AttendancePage() {
     return { from: `${d.getFullYear()}-01-01`, to: `${d.getFullYear()}-12-31`, label: `Year ${d.getFullYear()}` };
   }, [date, viewMode, today]);
 
+  const groupParam = groupId ? `&groupId=${groupId}` : '';
   const loadUrl = viewMode === 'day'
-    ? `${API_URL}/admin/attendance?date=${date}&groupId=${groupId}`
-    : `${API_URL}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}&groupId=${groupId}`;
+    ? `${API_URL}/admin/attendance?date=${date}${groupParam}`
+    : `${API_URL}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupParam}`;
 
   useEffect(() => {
     if (branchId && ayId) {
@@ -80,14 +81,14 @@ export default function AttendancePage() {
   }, [branchId, ayId]);
 
   const loadAttendance = useCallback(async () => {
-    if (!groupId || !token) return;
+    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch(loadUrl, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (json.success) setStudents(json.data);
     } catch {} finally { setLoading(false); }
-  }, [loadUrl, token, groupId]);
+  }, [loadUrl, token]);
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
@@ -215,7 +216,7 @@ export default function AttendancePage() {
         <div className="min-w-[200px]">
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-            <option value="">— Select Class —</option>
+            <option value="">— All Students —</option>
             {sections.map((s: any) => (
               <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
             ))}
@@ -240,18 +241,14 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {!groupId ? (
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-12 text-center">
-          <p className="text-sm text-warm-muted">Select a class to view attendance.</p>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-lg bg-warm-card" />)}</div>
       ) : (
         <>
           {/* Bulk actions + summary */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              {viewMode === 'day' && (
+              {viewMode === 'day' && groupId && (
                 <>
                   <button onClick={() => markAll('present')} className="rounded-lg border border-green-900/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-900/10">All Present</button>
                   <button onClick={() => markAll('absent')} className="rounded-lg border border-red-900/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/10">All Absent</button>
@@ -267,9 +264,9 @@ export default function AttendancePage() {
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L
                 {viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day'}
+              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
