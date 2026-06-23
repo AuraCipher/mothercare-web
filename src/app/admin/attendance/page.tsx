@@ -269,29 +269,29 @@ export default function AttendancePage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-warm-card-border overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="rounded-xl border border-warm-card-border overflow-x-auto relative">
+            <table className="w-full text-sm" style={{ minWidth: isTimetableView && viewDays ? `${viewDays.length * 32 + 260}px` : undefined }}>
               <thead>
                 {isTimetableView && viewDays ? (
                   <tr className="bg-warm-card/70">
-                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-10">#</th>
-                    <th className="text-left px-3 py-3 text-xs text-warm-muted font-medium min-w-[140px] sticky left-12 bg-[#24201e] z-10">Student</th>
+                    <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
+                    <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
                     {viewDays.map((d, i) => (
-                      <th key={d} className={`px-1 py-3 text-xs text-warm-muted font-medium text-center ${viewMode === 'week' ? 'w-14' : 'w-9'}`}>
+                      <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px]">
                         <div className="flex flex-col items-center leading-tight">
-                          <span className="text-[9px] text-warm-muted/50">{viewMode === 'week' ? DAYS[i] : d.slice(8)}</span>
-                          <span className="text-[8px] text-warm-muted/30">{d.slice(5, 7)}</span>
+                          <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
+                          <span className="text-[9px] text-warm-muted/40 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
                         </div>
                       </th>
                     ))}
-                    <th className="w-20 px-3 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-10">Sum</th>
+                    <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : (
                   <tr className="bg-warm-card/70">
                     <th className="w-16 px-4 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
                     <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
-                      {viewMode === 'day' ? 'Status' : 'Summary'}
+                      {viewMode === 'day' ? 'Status' : 'Sum'}
                     </th>
                   </tr>
                 )}
@@ -299,7 +299,6 @@ export default function AttendancePage() {
               <tbody>
                 {students.map((s: any, idx: number) => {
                   if (isTimetableView && viewDays) {
-                    // Timetable-style: day columns per student
                     let sp = 0, sa = 0, sl = 0;
                     for (const d of viewDays) {
                       const st = statusMap[s.id]?.[d] || 'unmarked';
@@ -309,27 +308,27 @@ export default function AttendancePage() {
                     }
                     return (
                       <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
-                        <td className="px-2 py-2.5 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
-                        <td className="px-3 py-2.5 sticky left-12 bg-[#1a1614] z-10">
-                          <p className="text-sm text-warm-cream truncate max-w-[160px]">{s.name}</p>
+                        <td className="px-1 py-2 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
+                        <td className="px-2 py-2 sticky left-10 bg-[#1a1614] z-10">
+                          <p className="text-sm text-warm-cream truncate max-w-[140px]">{s.name}</p>
                           <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
                         </td>
                         {viewDays.map(d => {
                           const st = statusMap[s.id]?.[d] || 'unmarked';
                           return (
-                            <td key={d} className="px-0.5 py-2.5 text-center">
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-sm text-xs font-bold ${cellClass(st)}`}>
-                                {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : '—'}
+                            <td key={d} className="px-0 py-2 text-center min-w-[32px] w-[32px]">
+                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold ${cellClass(st)}`}>
+                                {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : '·'}
                               </span>
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2.5 text-center sticky right-0 bg-[#1a1614] z-10">
-                          <span className="text-[11px] font-mono">
-                            <span className="text-green-400">{sp > 0 ? `P${sp}` : ''}</span>
-                            {sa > 0 && <span className="text-red-400 ml-0.5">A${sa}</span>}
-                            {sl > 0 && <span className="text-yellow-400 ml-0.5">L${sl}</span>}
-                            {sp === 0 && sa === 0 && sl === 0 && <span className="text-warm-muted/30">—</span>}
+                        <td className="px-2 py-2 text-center sticky right-0 bg-[#1a1614] z-10">
+                          <span className="text-xs font-mono">
+                            <span className="text-green-400 font-medium">{sp > 0 ? 'P' + sp : ''}</span>
+                            {sa > 0 && <span className="text-red-400 font-medium ml-0.5">A{sa}</span>}
+                            {sl > 0 && <span className="text-yellow-400 font-medium ml-0.5">L{sl}</span>}
+                            {sp === 0 && sa === 0 && sl === 0 && <span className="text-warm-muted/30">·</span>}
                           </span>
                         </td>
                       </tr>
@@ -362,7 +361,7 @@ export default function AttendancePage() {
                                 <span className="text-green-400 font-medium">{p > 0 ? `P${p}` : ''}</span>
                                 {a > 0 && <span className="text-red-400 font-medium ml-1">{`A${a}`}</span>}
                                 {l > 0 && <span className="text-yellow-400 ml-1">{`L${l}`}</span>}
-                                {p === 0 && a === 0 && l === 0 && <span className="text-warm-muted/30">—</span>}
+                                {p === 0 && a === 0 && l === 0 && <span className="text-warm-muted/30">·</span>}
                               </span>
                             );
                           })()
