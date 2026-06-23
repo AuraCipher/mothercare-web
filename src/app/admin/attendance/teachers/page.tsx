@@ -357,7 +357,7 @@ export default function TeacherAttendancePage() {
                         <span className="font-semibold">{m.label}</span>
                       </th>
                     ))}
-                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-12 bg-[#24201e] z-20">%</th>
+                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-16 bg-[#24201e] z-20">%</th>
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : isTimetableView && viewDays ? (
@@ -369,7 +369,7 @@ export default function TeacherAttendancePage() {
                         <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
                       </th>
                     ))}
-                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-12 bg-[#24201e] z-20">%</th>
+                    <th className="w-12 min-w-[48px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky right-16 bg-[#24201e] z-20">%</th>
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : (
