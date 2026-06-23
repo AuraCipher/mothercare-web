@@ -393,7 +393,8 @@ export default function AttendancePage() {
                   </tr>
                 ) : (
                   <tr className="bg-warm-card/70">
-                    <th className="w-16 px-4 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
+                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
+                    <th className="w-16 px-2 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
                     <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
                       {viewMode === 'day' ? 'Status' : 'Sum'}
@@ -488,7 +489,8 @@ export default function AttendancePage() {
                   return (
                     <tr key={s.id} onClick={() => dayView && toggleStatus(s.id)}
                       className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors cursor-pointer">
-                      <td className="px-4 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
+                      <td className="px-2 py-3 text-xs text-warm-muted/60 text-center">{idx + 1}</td>
+                      <td className="px-2 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-warm-cream">{s.name}</p>
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
