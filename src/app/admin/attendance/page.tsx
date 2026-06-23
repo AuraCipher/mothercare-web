@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const [sections, setSections] = useState<any[]>([]);
   const [date, setDate] = useState(todayStr());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [attMode, setAttMode] = useState<'students' | 'teachers'>('students');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -86,10 +87,11 @@ export default function AttendancePage() {
     };
   }, [date, viewMode, today]);
 
-  const groupParam = groupId ? `&groupId=${groupId}` : '';
+  const groupParam = groupId && attMode === 'students' ? `&groupId=${groupId}` : '';
+  const attBase = attMode === 'teachers' ? '/admin/attendance/teachers' : '/admin/attendance';
   const loadUrl = viewMode === 'day'
-    ? `${API_URL}/admin/attendance?date=${date}${groupParam}`
-    : `${API_URL}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupParam}`;
+    ? `${API_URL}${attBase}?date=${date}${groupParam}`
+    : `${API_URL}${attBase}?from=${dateRange.from}&to=${dateRange.to}${groupParam}`;
 
   useEffect(() => {
     if (branchId && ayId) {
@@ -175,16 +177,20 @@ export default function AttendancePage() {
   };
 
   const handleSave = async () => {
-    if (!groupId || !date || !token) return;
+    if (!date || !token) return;
+    if (attMode === 'students' && !groupId) return;
     setSaving(true);
+    const batchPath = attMode === 'teachers' ? '/admin/attendance/teachers/batch' : '/admin/attendance/batch';
     const records = students
       .filter((s: any) => s.attendances?.[0]?.status && s.attendances[0].status !== 'unmarked')
-      .map((s: any) => ({ studentId: s.id, status: s.attendances[0].status }));
+      .map((s: any) => attMode === 'teachers' ? { teacherId: s.id, status: s.attendances[0].status } : { studentId: s.id, status: s.attendances[0].status });
+    const body: any = { date, academicYearId: ayId, records };
+    if (attMode === 'students') body.groupId = groupId;
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+      const res = await fetch(`${API_URL}${batchPath}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, groupId, academicYearId: ayId, records }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `${json.data.saved} saved`); loadAttendance(); }
@@ -296,15 +302,22 @@ export default function AttendancePage() {
 
       {/* Top bar: class + date + view mode */}
       <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="min-w-[200px]">
-          <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
-            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
-            <option value="">— All Students —</option>
-            {sections.map((s: any) => (
-              <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
-            ))}
-          </select>
-        </div>
+        {attMode === 'students' ? (
+          <div className="min-w-[200px]">
+            <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors">
+              <option value="">— All Students —</option>
+              {sections.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 text-sm text-warm-muted border border-warm-card-border rounded-lg">
+            <Calendar size={14} className="text-warm-accent" />
+            <span>All Teachers</span>
+          </div>
+        )}
 
         <div className="relative min-w-[180px]">
           <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -329,6 +342,13 @@ export default function AttendancePage() {
               className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
                 viewMode === m ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
               }`}>{m === 'day' ? 'Day' : m === 'week' ? 'Week' : m === 'month' ? 'Month' : 'Year'}</button>
+          ))}
+          <div className="w-px h-6 bg-warm-card-border/50 mx-1" />
+          {(['students', 'teachers'] as const).map(m => (
+            <button key={m} onClick={() => setAttMode(m)}
+              className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                attMode === m ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
+              }`}>{m === 'students' ? 'Students' : 'Teachers'}</button>
           ))}
         </div>
       </div>
@@ -358,9 +378,9 @@ export default function AttendancePage() {
               <span className="text-xs text-warm-muted/70">
                 <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
               </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || !groupId}
+              <button onClick={handleSave} disabled={saving || isFutureDate || viewMode !== 'day' || (attMode === 'students' && !groupId)}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
+                <Save size={14} /> {attMode === 'students' && !groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
