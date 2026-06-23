@@ -39,7 +39,7 @@ export default function AttendancePage() {
         from: mon.toISOString().split('T')[0],
         to: sun.toISOString().split('T')[0],
         label: `${mon.toISOString().split('T')[0]} — ${sun.toISOString().split('T')[0]}`,
-        weekDays: Array.from({ length: 7 }, (_, i) => {
+        days: Array.from({ length: 7 }, (_, i) => {
           const day = new Date(mon); day.setDate(mon.getDate() + i);
           return day.toISOString().split('T')[0];
         }),
@@ -48,7 +48,16 @@ export default function AttendancePage() {
     if (viewMode === 'month') {
       const from = new Date(d.getFullYear(), d.getMonth(), 1);
       const to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-      return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0], label: from.toLocaleString('default', { month: 'long', year: 'numeric' }) };
+      const daysInMonth = to.getDate();
+      return {
+        from: from.toISOString().split('T')[0],
+        to: to.toISOString().split('T')[0],
+        label: from.toLocaleString('default', { month: 'long', year: 'numeric' }),
+        days: Array.from({ length: daysInMonth }, (_, i) => {
+          const day = new Date(from); day.setDate(i + 1);
+          return day.toISOString().split('T')[0];
+        }),
+      };
     }
     // year
     return { from: `${d.getFullYear()}-01-01`, to: `${d.getFullYear()}-12-31`, label: `Year ${d.getFullYear()}` };
@@ -137,15 +146,6 @@ export default function AttendancePage() {
     return { status, label: status === 'present' ? '✓ Present' : status === 'absent' ? '✗ Absent' : status === 'late' ? '⏳ Late' : '— Not Marked' };
   };
 
-  // For month/year — summary counts
-  const getSummary = (s: any) => {
-    const atts = s.attendances || [];
-    const p = atts.filter((a: any) => a.status === 'present').length;
-    const a = atts.filter((a: any) => a.status === 'absent').length;
-    const l = atts.filter((a: any) => a.status === 'late').length;
-    return { p, a, l };
-  };
-
   const statusClass = (status: string) =>
     status === 'present' ? 'bg-green-900/20 text-green-400 border-green-900/30' :
     status === 'absent' ? 'bg-red-900/20 text-red-400 border-red-900/30' :
@@ -158,6 +158,14 @@ export default function AttendancePage() {
     status === 'late' ? 'text-yellow-400 bg-yellow-900/10' :
     'text-warm-muted/30';
 
+  // Get the day columns for timetable-style views
+  const viewDays = useMemo(() => {
+    if (viewMode === 'week' || viewMode === 'month') return (dateRange as any).days as string[] | undefined;
+    return undefined;
+  }, [viewMode, dateRange]);
+
+  const isTimetableView = viewMode === 'week' || viewMode === 'month';
+
   // Compute totals
   let totalP = 0, totalA = 0, totalL = 0, totalU = 0;
   if (viewMode === 'day') {
@@ -168,30 +176,25 @@ export default function AttendancePage() {
       else if (st === 'late') totalL++;
       else totalU++;
     });
-  } else if (viewMode === 'week') {
-    const weekDates = (dateRange as any).weekDays as string[] | undefined;
-    if (weekDates) {
-      for (const s of students) {
-        for (const d of weekDates) {
-          const st = statusMap[s.id]?.[d] || 'unmarked';
-          if (st === 'present') totalP++;
-          else if (st === 'absent') totalA++;
-          else if (st === 'late') totalL++;
-          else totalU++;
-        }
+  } else if (isTimetableView && viewDays) {
+    for (const s of students) {
+      for (const d of viewDays) {
+        const st = statusMap[s.id]?.[d] || 'unmarked';
+        if (st === 'present') totalP++;
+        else if (st === 'absent') totalA++;
+        else if (st === 'late') totalL++;
+        else totalU++;
       }
     }
   } else {
+    // Year view — summary counts
     students.forEach((s: any) => {
-      const sum = getSummary(s);
-      totalP += sum.p;
-      totalA += sum.a;
-      totalL += sum.l;
+      const atts = s.attendances || [];
+      totalP += atts.filter((a: any) => a.status === 'present').length;
+      totalA += atts.filter((a: any) => a.status === 'absent').length;
+      totalL += atts.filter((a: any) => a.status === 'late').length;
     });
   }
-
-  const weekDates = viewMode === 'week' ? (dateRange as any).weekDays as string[] : null;
-  const isTimetableView = viewMode === 'week';
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -269,19 +272,19 @@ export default function AttendancePage() {
           <div className="rounded-xl border border-warm-card-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                {isTimetableView && weekDates ? (
+                {isTimetableView && viewDays ? (
                   <tr className="bg-warm-card/70">
-                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
-                    <th className="text-left px-3 py-3 text-xs text-warm-muted font-medium min-w-[140px]">Student</th>
-                    {weekDates.map((d, i) => (
-                      <th key={d} className="w-14 px-1 py-3 text-xs text-warm-muted font-medium text-center">
+                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-10">#</th>
+                    <th className="text-left px-3 py-3 text-xs text-warm-muted font-medium min-w-[140px] sticky left-12 bg-[#24201e] z-10">Student</th>
+                    {viewDays.map((d, i) => (
+                      <th key={d} className={`px-1 py-3 text-xs text-warm-muted font-medium text-center ${viewMode === 'week' ? 'w-14' : 'w-9'}`}>
                         <div className="flex flex-col items-center leading-tight">
-                          <span>{DAYS[i]}</span>
-                          <span className="text-[9px] text-warm-muted/50">{d.slice(5)}</span>
+                          <span className="text-[9px] text-warm-muted/50">{viewMode === 'week' ? DAYS[i] : d.slice(8)}</span>
+                          <span className="text-[8px] text-warm-muted/30">{d.slice(5, 7)}</span>
                         </div>
                       </th>
                     ))}
-                    <th className="w-24 px-3 py-3 text-xs text-warm-muted font-medium text-center">Summary</th>
+                    <th className="w-20 px-3 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-10">Sum</th>
                   </tr>
                 ) : (
                   <tr className="bg-warm-card/70">
@@ -295,10 +298,10 @@ export default function AttendancePage() {
               </thead>
               <tbody>
                 {students.map((s: any, idx: number) => {
-                  if (isTimetableView && weekDates) {
-                    // Week view — timetable columns per day
+                  if (isTimetableView && viewDays) {
+                    // Timetable-style: day columns per student
                     let sp = 0, sa = 0, sl = 0;
-                    for (const d of weekDates) {
+                    for (const d of viewDays) {
                       const st = statusMap[s.id]?.[d] || 'unmarked';
                       if (st === 'present') sp++;
                       else if (st === 'absent') sa++;
@@ -306,26 +309,26 @@ export default function AttendancePage() {
                     }
                     return (
                       <tr key={s.id} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
-                        <td className="px-2 py-2.5 text-xs text-warm-muted text-center">{idx + 1}</td>
-                        <td className="px-3 py-2.5">
-                          <p className="text-sm text-warm-cream truncate max-w-[180px]">{s.name}</p>
+                        <td className="px-2 py-2.5 text-xs text-warm-muted text-center sticky left-0 bg-[#1a1614] z-10">{idx + 1}</td>
+                        <td className="px-3 py-2.5 sticky left-12 bg-[#1a1614] z-10">
+                          <p className="text-sm text-warm-cream truncate max-w-[160px]">{s.name}</p>
                           <p className="text-[9px] text-warm-muted/40">{s.rollNumber || ''}</p>
                         </td>
-                        {weekDates.map(d => {
+                        {viewDays.map(d => {
                           const st = statusMap[s.id]?.[d] || 'unmarked';
                           return (
-                            <td key={d} className="px-1 py-2.5 text-center">
-                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-bold ${cellClass(st)}`}>
+                            <td key={d} className="px-0.5 py-2.5 text-center">
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-sm text-xs font-bold ${cellClass(st)}`}>
                                 {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : '—'}
                               </span>
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-3 py-2.5 text-center sticky right-0 bg-[#1a1614] z-10">
                           <span className="text-[11px] font-mono">
                             <span className="text-green-400">{sp > 0 ? `P${sp}` : ''}</span>
-                            {sa > 0 && <span className="text-red-400 ml-0.5">{sa > 0 ? `A${sa}` : ''}</span>}
-                            {sl > 0 && <span className="text-yellow-400 ml-0.5">{sl > 0 ? `L${sl}` : ''}</span>}
+                            {sa > 0 && <span className="text-red-400 ml-0.5">A${sa}</span>}
+                            {sl > 0 && <span className="text-yellow-400 ml-0.5">L${sl}</span>}
                             {sp === 0 && sa === 0 && sl === 0 && <span className="text-warm-muted/30">—</span>}
                           </span>
                         </td>
@@ -334,8 +337,6 @@ export default function AttendancePage() {
                   }
 
                   const dayView = viewMode === 'day';
-                  const summary = dayView ? getDayStatus(s) : null;
-                  const sum = !dayView ? getSummary(s) : null;
 
                   return (
                     <tr key={s.id} onClick={() => dayView && toggleStatus(s.id)}
@@ -347,16 +348,24 @@ export default function AttendancePage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(summary!.status)}`}>
-                            {summary!.label}
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
+                            {getDayStatus(s).label}
                           </span>
                         ) : (
-                          <span className="text-xs font-mono">
-                            <span className="text-green-400 font-medium">{sum!.p > 0 ? `P${sum!.p}` : ''}</span>
-                            {sum!.a > 0 && <span className="text-red-400 font-medium ml-1">{`A${sum!.a}`}</span>}
-                            {sum!.l > 0 && <span className="text-yellow-400 ml-1">{`L${sum!.l}`}</span>}
-                            {sum!.p === 0 && sum!.a === 0 && sum!.l === 0 && <span className="text-warm-muted/30">—</span>}
-                          </span>
+                          (() => {
+                            const atts = s.attendances || [];
+                            const p = atts.filter((a: any) => a.status === 'present').length;
+                            const a = atts.filter((a: any) => a.status === 'absent').length;
+                            const l = atts.filter((a: any) => a.status === 'late').length;
+                            return (
+                              <span className="text-xs font-mono">
+                                <span className="text-green-400 font-medium">{p > 0 ? `P${p}` : ''}</span>
+                                {a > 0 && <span className="text-red-400 font-medium ml-1">{`A${a}`}</span>}
+                                {l > 0 && <span className="text-yellow-400 ml-1">{`L${l}`}</span>}
+                                {p === 0 && a === 0 && l === 0 && <span className="text-warm-muted/30">—</span>}
+                              </span>
+                            );
+                          })()
                         )}
                       </td>
                     </tr>
