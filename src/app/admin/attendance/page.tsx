@@ -10,12 +10,18 @@ import { showToast } from '@/components/toast';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// Format date as YYYY-MM-DD using local time (no UTC timezone shift)
+function localDateStr(d: Date): string {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayStr(): string { return localDateStr(new Date()); }
+
 export default function AttendancePage() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [groupId, setGroupId] = useState('');
   const [sections, setSections] = useState<any[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayStr());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
 
@@ -23,7 +29,7 @@ export default function AttendancePage() {
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const isFutureDate = date > today;
 
   // Calculate from/to based on view mode
@@ -36,12 +42,12 @@ export default function AttendancePage() {
       const mon = new Date(d); mon.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
       return {
-        from: mon.toISOString().split('T')[0],
-        to: sun.toISOString().split('T')[0],
-        label: `${mon.toISOString().split('T')[0]} — ${sun.toISOString().split('T')[0]}`,
+        from: localDateStr(mon),
+        to: localDateStr(sun),
+        label: `${localDateStr(mon)} — ${localDateStr(sun)}`,
         days: Array.from({ length: 7 }, (_, i) => {
           const day = new Date(mon); day.setDate(mon.getDate() + i);
-          return day.toISOString().split('T')[0];
+          return localDateStr(day);
         }),
       };
     }
@@ -50,12 +56,12 @@ export default function AttendancePage() {
       const to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       const daysInMonth = to.getDate();
       return {
-        from: from.toISOString().split('T')[0],
-        to: to.toISOString().split('T')[0],
+        from: localDateStr(from),
+        to: localDateStr(to),
         label: from.toLocaleString('default', { month: 'long', year: 'numeric' }),
         days: Array.from({ length: daysInMonth }, (_, i) => {
           const day = new Date(from); day.setDate(i + 1);
-          return day.toISOString().split('T')[0];
+          return localDateStr(day);
         }),
       };
     }
@@ -136,7 +142,7 @@ export default function AttendancePage() {
     if (viewMode === 'month') d.setMonth(d.getMonth() + dir);
     else if (viewMode === 'year') d.setFullYear(d.getFullYear() + dir);
     else d.setDate(d.getDate() + dir * (viewMode === 'week' ? 7 : 1));
-    setDate(d.toISOString().split('T')[0]);
+    setDate(localDateStr(d));
   };
 
   // For day view — single status
@@ -276,22 +282,14 @@ export default function AttendancePage() {
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
-                    {viewDays.map((d, i) => {
-                      const dt = new Date(d + 'T00:00:00');
-                      const monthLabel = dt.toLocaleString('default', { month: 'short' });
-                      const dayNum = parseInt(d.slice(8), 10);
-                      return (
-                        <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px] bg-[#24201e]">
-                          <div className="flex flex-col items-center leading-tight">
-                            <span className="font-semibold">
-                              {viewMode === 'week' ? DAYS[i] : dayNum}
-                              {viewMode === 'week' && <span className="text-[9px] text-warm-muted/40 ml-0.5">{monthLabel}</span>}
-                            </span>
-                            <span className="text-[8px] text-warm-muted/30 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
-                          </div>
-                        </th>
-                      );
-                    })}
+                    {viewDays.map((d, i) => (
+                      <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px] bg-[#24201e]">
+                        <div className="flex flex-col items-center leading-tight">
+                          <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
+                          <span className="text-[8px] text-warm-muted/30 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
+                        </div>
+                      </th>
+                    ))}
                     <th className="w-16 min-w-[64px] px-2 py-3 text-xs text-warm-muted font-medium text-center sticky right-0 bg-[#24201e] z-20">Sum</th>
                   </tr>
                 ) : (
