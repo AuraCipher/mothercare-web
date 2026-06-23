@@ -8,7 +8,7 @@ import {
 import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Hol'];
 
 // Format date as YYYY-MM-DD using local time (no UTC timezone shift)
 function localDateStr(d: Date): string {
