@@ -384,15 +384,15 @@ export default function AttendancePage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-warm-card-border overflow-x-auto relative">
-            <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 70 : 32) + 240}px` : undefined }}>
+          <div className="rounded-xl border border-warm-card-border relative">
+            <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 52 : 32) + 200}px` : undefined }}>
               <thead>
                 {viewMode === 'year' && viewMonths ? (
                   <tr>
                     <th className="w-10 min-w-[40px] px-1 py-3 text-xs text-warm-muted font-medium text-center sticky left-0 bg-[#24201e] z-20">#</th>
                     <th className="text-left px-2 py-3 text-xs text-warm-muted font-medium min-w-[120px] sticky left-10 bg-[#24201e] z-20">Student</th>
                     {viewMonths.map((m) => (
-                      <th key={m.label} className="px-1 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e] w-[70px] min-w-[70px]">
+                      <th key={m.label} className="px-0.5 py-3 text-xs text-warm-muted font-medium text-center bg-[#24201e] w-[52px] min-w-[52px]">
                         <span className="font-semibold">{m.label}</span>
                       </th>
                     ))}
@@ -445,7 +445,7 @@ export default function AttendancePage() {
                           const lv = atts.filter((a: any) => a.status === 'leave').length;
                           totalP += p; totalA += a; totalL += l; totalLv += lv;
                           return (
-                            <td key={m.label} className="px-1 py-2 text-center text-[11px] font-mono w-[70px] min-w-[70px]">
+                            <td key={m.label} className="px-0.5 py-2 text-center text-[10px] font-mono w-[52px] min-w-[52px]">
                               <span className="text-green-400">{p > 0 ? 'P' + p : ''}</span>
                               {a > 0 && <span className="text-red-400 ml-0.5">A{a}</span>}
                               {l > 0 && <span className="text-yellow-400 ml-0.5">L{l}</span>}
