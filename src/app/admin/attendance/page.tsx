@@ -286,7 +286,7 @@ export default function AttendancePage() {
                       <th key={d} className="px-0 py-3 text-xs text-warm-muted font-medium text-center min-w-[32px] w-[32px] bg-[#24201e]">
                         <div className="flex flex-col items-center leading-tight">
                           <span className="font-semibold">{viewMode === 'week' ? DAYS[i] : parseInt(d.slice(8), 10)}</span>
-                          <span className="text-[8px] text-warm-muted/30 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
+                          <span className="text-[10px] text-warm-muted/70 -mt-0.5">{d.slice(5, 7)}/{d.slice(8)}</span>
                         </div>
                       </th>
                     ))}
