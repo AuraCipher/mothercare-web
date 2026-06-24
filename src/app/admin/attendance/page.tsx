@@ -47,6 +47,7 @@ export default function AttendanceDashboard() {
       desc: stats ? `${stats.totalStudents} active students` : 'Loading…',
       href: '/admin/attendance/students',
       color: 'text-blue-400',
+      key: 'snapshot',
     },
   ];
 
@@ -62,7 +63,7 @@ export default function AttendanceDashboard() {
         {cards.map(c => {
           const Icon = c.icon;
           return (
-            <button key={c.href} onClick={() => router.push(c.href)}
+            <button key={c.key || c.href} onClick={() => router.push(c.href)}
               className="text-left rounded-xl border border-warm-card-border bg-warm-card p-5 hover:border-warm-accent/50 transition-colors">
               <Icon size={22} className={c.color + ' mb-3'} />
               <p className="text-sm font-medium text-warm-cream">{c.label}</p>
