@@ -52,6 +52,10 @@ export default function StudentDetailPage() {
   useEffect(() => { loadData(); }, [id]);
   useEffect(() => { if (id) loadStatusLogs(); }, [id]);
 
+  async function loadStatusLogs() {
+    try { const res: any = await apiRequest(`/admin/students/${id}/status-logs`); if (res.success) setStatusLogs(res.data); } catch {}
+  }
+
   // ── Modal / form state ──────────────────────────────────
   const [editStudent, setEditStudent] = useState(false);
   const [sf, setSf] = useState<any>({});
@@ -188,13 +192,6 @@ export default function StudentDetailPage() {
       if (res.success) { showToast('success', res.message); router.push('/admin/students'); }
       else showToast('error', res.message || 'Failed');
     } catch (e: any) { showToast('error', e.message); }
-  };
-
-  const loadStatusLogs = async () => {
-    try {
-      const res = await apiRequest(`/admin/students/${id}/status-logs`);
-      if (res.success) setStatusLogs(res.data);
-    } catch {}
   };
 
   const handleAdminPassVerify = async () => {
