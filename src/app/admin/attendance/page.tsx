@@ -384,18 +384,6 @@ export default function AttendancePage() {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-3">
-              {viewMode !== 'day' && (
-                <span className="text-xs text-warm-muted/60 mr-2">{dateRange.label}</span>
-              )}
-              <span className="text-xs text-warm-muted/70">
-                <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
-              </span>
-              <button onClick={handleSave} disabled={saving || isFutureDate || isLocked || viewMode !== 'day' || !groupId}
-                className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : isLocked ? 'Locked' : saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
           </div>
 
           {/* Status legend + totals */}
@@ -410,8 +398,13 @@ export default function AttendancePage() {
               <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400/60" /> Holiday</span>
             </div>
             <span className="text-xs text-warm-muted/70">
+              {viewMode !== 'day' && <span className="text-warm-muted/60 mr-2">{dateRange.label} — </span>}
               <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-cyan-400 font-medium">{totalHd}</span> Hd · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
             </span>
+            <button onClick={handleSave} disabled={saving || isFutureDate || isLocked || viewMode !== 'day' || !groupId}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+              <Save size={14} /> {!groupId ? 'Select a Class' : viewMode !== 'day' ? 'Read Only' : isFutureDate ? 'Future Date' : isLocked ? 'Locked' : saving ? 'Saving...' : 'Save'}
+            </button>
           </div>
 
           {/* Table */}
