@@ -1,0 +1,257 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { FileText, Download, Printer, RefreshCw, Calendar, Users, ChevronDown } from 'lucide-react';
+import { showToast } from '@/components/toast';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+type ReportData = {
+  title: string;
+  generatedAt: string;
+  total: number;
+  summary: { present: number; absent: number; late: number; leave: number; halfDay: number; holiday: number; function: number; total: number; percentage: number };
+  students: { name: string; roll: string; present: number; absent: number; late: number; percent: number }[];
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+export default function ReportsPage() {
+  const [groupId, setGroupId] = useState('');
+  const [period, setPeriod] = useState<'monthly' | 'yearly' | 'custom'>('monthly');
+  const [sections, setSections] = useState<any[]>([]);
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [generated, setGenerated] = useState(false);
+
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth());
+  const [year, setYear] = useState(now.getFullYear());
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  useEffect(() => {
+    if (branchId && ayId) {
+      fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => r.json()).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
+    }
+  }, [branchId, ayId, token]);
+
+  const buildDateRange = () => {
+    if (period === 'monthly') {
+      const m = String(month + 1).padStart(2, '0');
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      return { from: `${year}-${m}-01`, to: `${year}-${m}-${String(lastDay).padStart(2, '0')}` };
+    }
+    if (period === 'yearly') return { from: `${year}-01-01`, to: `${year}-12-31` };
+    return { from: fromDate, to: toDate };
+  };
+
+  const generateReport = async () => {
+    if (!token) return;
+    setLoading(true);
+    setReport(null);
+    setGenerated(false);
+
+    const { from, to } = buildDateRange();
+    if (!from || !to) { showToast('error', 'Select date range'); setLoading(false); return; }
+
+    // Load attendance data
+    const url = groupId
+      ? `${API_URL}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
+      : `${API_URL}/admin/attendance?from=${from}&to=${to}`;
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!json.success) { showToast('error', 'Failed to load data'); setLoading(false); return; }
+
+      const students = json.data || [];
+      const summary = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0, holiday: 0, function: 0, total: 0, percentage: 0 };
+      const rows: any[] = [];
+
+      for (const s of students) {
+        const atts = s.attendances || [];
+        const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+        const a = atts.filter((a: any) => a.status === 'absent').length;
+        const l = atts.filter((a: any) => a.status === 'late').length;
+        const lv = atts.filter((a: any) => a.status === 'leave').length;
+        const totalRec = p + a + l + lv;
+        summary.present += p; summary.absent += a; summary.late += l;
+        summary.leave += lv; summary.total += totalRec;
+        rows.push({ name: s.name, roll: s.rollNumber || '—', present: p, absent: a, late: l, percent: totalRec ? Math.round((p / totalRec) * 100) : 0 });
+      }
+      rows.sort((a, b) => b.percent - a.percent);
+      summary.percentage = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
+
+      const periodLabel = period === 'monthly' ? MONTHS[month] + ' ' + year : period === 'yearly' ? 'Year ' + year : from + ' to ' + to;
+      const groupLabel = groupId ? sections.find((s: any) => s.id === groupId) : null;
+      const title = (groupLabel ? groupLabel.name + (groupLabel.section ? ' — ' + groupLabel.section : '') + ' · ' : 'All Students · ') + periodLabel;
+
+      setReport({ title, generatedAt: new Date().toLocaleString(), total: rows.length, summary, students: rows });
+      setGenerated(true);
+    } catch { showToast('error', 'Failed to generate report'); }
+    finally { setLoading(false); }
+  };
+
+  const downloadPDF = () => {
+    if (!report) return;
+    // Build a print-friendly page and trigger download
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const rows = report.students.map(s => `<tr><td>${s.roll}</td><td>${s.name}</td><td>${s.present}</td><td>${s.absent}</td><td>${s.late}</td><td class="pct">${s.percent}%</td></tr>`).join('');
+    win.document.write(`
+      <html><head><title>${report.title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #222; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f0f0f0; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
+        td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+        .pct { font-weight: bold; }
+        .summary { margin-bottom: 20px; font-size: 13px; }
+        .summary span { margin-right: 16px; }
+        .green { color: #16a34a; } .red { color: #dc2626; } .yellow { color: #ca8a04; }
+        @media print { body { padding: 20px; } }
+      </style></head><body>
+      <h1>${report.title}</h1>
+      <div class="meta">Generated: ${report.generatedAt} · ${report.total} students</div>
+      <div class="summary">
+        <span class="green">P ${report.summary.present}</span>
+        <span class="red">A ${report.summary.absent}</span>
+        <span class="yellow">L ${report.summary.late}</span>
+        <span>Lv ${report.summary.leave}</span>
+        <span>%: <strong>${report.summary.percentage}%</strong></span>
+      </div>
+      <table><thead><tr><th>Roll</th><th>Name</th><th>P</th><th>A</th><th>L</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>
+      </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  };
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-6 flex items-center gap-3">
+        <FileText size={22} className="text-warm-accent" />
+        <h1 className="text-xl font-light text-warm-cream">Attendance Reports</h1>
+      </div>
+
+      {/* Filters */}
+      <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Class</label>
+            <select value={groupId} onChange={e => setGroupId(e.target.value)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              <option value="">All Students</option>
+              {sections.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name}{s.section ? ' — ' + s.section : ''}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Period</label>
+            <div className="flex gap-1">
+              {(['monthly', 'yearly'] as const).map(p => (
+                <button key={p} onClick={() => setPeriod(p)}
+                  className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
+                  {p === 'monthly' ? 'Monthly' : 'Yearly'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Month</label>
+            <select value={month} onChange={e => setMonth(Number(e.target.value))}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              {MONTHS.map((m, i) => <option key={i} value={i}>{m} {year}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Year</label>
+            <select value={year} onChange={e => setYear(Number(e.target.value))}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <button onClick={generateReport} disabled={loading}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+          {loading ? <RefreshCw size={15} className="animate-spin" /> : <FileText size={15} />}
+          {loading ? 'Generating…' : 'Generate Report'}
+        </button>
+      </div>
+
+      {/* Report output */}
+      {report && (
+        <div className="rounded-xl border border-warm-card-border overflow-hidden">
+          <div className="bg-warm-card/70 px-5 py-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium text-warm-cream">{report.title}</h2>
+              <p className="text-[10px] text-warm-muted/50 mt-0.5">{report.generatedAt} · {report.total} students</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={downloadPDF}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:bg-warm-card transition-colors">
+                <Download size={13} /> Download / Print
+              </button>
+              <button onClick={generateReport}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+                <RefreshCw size={13} /> Regenerate
+              </button>
+            </div>
+          </div>
+
+          {/* Summary row */}
+          <div className="px-5 py-3 border-t border-warm-card-border/30 flex flex-wrap gap-4 text-xs text-warm-muted/70">
+            <span><span className="text-green-400 font-medium">{report.summary.present}</span> P</span>
+            <span><span className="text-red-400 font-medium">{report.summary.absent}</span> A</span>
+            <span><span className="text-yellow-400 font-medium">{report.summary.late}</span> L</span>
+            <span><span className="text-blue-400 font-medium">{report.summary.leave}</span> Lv</span>
+            <span className="font-medium">{report.summary.percentage}%</span>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto border-t border-warm-card-border/30">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-warm-card/50">
+                  <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">P</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">A</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">L</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.students.map((s, i) => (
+                  <tr key={i} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
+                    <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>
+                    <td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td>
+                    <td className="px-3 py-2 text-xs text-green-400 text-center">{s.present}</td>
+                    <td className="px-3 py-2 text-xs text-red-400 text-center">{s.absent}</td>
+                    <td className="px-3 py-2 text-xs text-yellow-400 text-center">{s.late}</td>
+                    <td className={`px-3 py-2 text-xs text-center font-medium ${s.percent >= 80 ? 'text-green-400' : s.percent >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.percent}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
