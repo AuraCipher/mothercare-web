@@ -394,6 +394,17 @@ export default function AttendancePage() {
             </div>
           </div>
 
+          {/* Status legend */}
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-[10px] text-warm-muted/60">
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400/60" /> Present</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400/60" /> Absent</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400/60" /> Late</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400/60" /> Leave</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400/60" /> Half-Day</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400/60" /> Function</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400/60" /> Holiday</span>
+          </div>
+
           {/* Table */}
           <div className="rounded-xl border border-warm-card-border relative" ref={containerRef}>
             <table className="w-full text-sm" style={{ minWidth: isTimetableView ? `${(viewMode === 'year' ? viewMonths : viewDays)!.length * (viewMode === 'month' ? 24 : viewMode === 'year' ? 52 : 32) + 200}px` : undefined }}>
