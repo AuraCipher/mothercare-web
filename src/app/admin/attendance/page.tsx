@@ -269,7 +269,7 @@ export default function AttendancePage() {
   const isTimetableView = viewMode === 'week' || viewMode === 'month' || viewMode === 'year';
 
   // Compute totals
-  let totalP = 0, totalA = 0, totalL = 0, totalLv = 0, totalF = 0, totalU = 0;
+  let totalP = 0, totalA = 0, totalL = 0, totalLv = 0, totalHd = 0, totalF = 0, totalU = 0;
   if (viewMode === 'day') {
     students.forEach((s: any) => {
       const st = getDayStatus(s).status;
@@ -277,6 +277,7 @@ export default function AttendancePage() {
       else if (st === 'absent') totalA++;
       else if (st === 'late') totalL++;
       else if (st === 'leave') totalLv++;
+      else if (st === 'half-day') totalHd++;
       else if (st === 'function') totalF++;
       else totalU++;
     });
@@ -288,6 +289,7 @@ export default function AttendancePage() {
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
         else if (st === 'leave') totalLv++;
+      else if (st === 'half-day') totalHd++;
         else if (st === 'function') totalF++;
       }
     }
@@ -299,6 +301,7 @@ export default function AttendancePage() {
         else if (st === 'absent') totalA++;
         else if (st === 'late') totalL++;
         else if (st === 'leave') totalLv++;
+      else if (st === 'half-day') totalHd++;
         else if (st === 'function') totalF++;
         else totalU++;
       }
@@ -310,6 +313,7 @@ export default function AttendancePage() {
       totalA += atts.filter((a: any) => a.status === 'absent').length;
       totalL += atts.filter((a: any) => a.status === 'late').length;
       totalLv += atts.filter((a: any) => a.status === 'leave').length;
+      totalHd += atts.filter((a: any) => a.status === 'half-day').length;
       totalF += atts.filter((a: any) => a.status === 'function').length;
     });
   }
@@ -394,15 +398,20 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* Status legend */}
-          <div className="mb-4 flex flex-wrap items-center gap-3 text-[10px] text-warm-muted/60">
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400/60" /> Present</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400/60" /> Absent</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400/60" /> Late</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400/60" /> Leave</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400/60" /> Half-Day</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400/60" /> Function</span>
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400/60" /> Holiday</span>
+          {/* Status legend + totals */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-warm-muted/60">
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400/60" /> Present</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400/60" /> Absent</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400/60" /> Late</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400/60" /> Leave</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400/60" /> Half-Day</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400/60" /> Function</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400/60" /> Holiday</span>
+            </div>
+            <span className="text-xs text-warm-muted/70">
+              <span className="text-green-400 font-medium">{totalP}</span> P · <span className="text-red-400 font-medium">{totalA}</span> A · <span className="text-yellow-400 font-medium">{totalL}</span> L · <span className="text-blue-400 font-medium">{totalLv}</span> Lv · <span className="text-cyan-400 font-medium">{totalHd}</span> Hd · <span className="text-pink-400 font-medium">{totalF}</span> F{viewMode === 'day' && <span className="text-warm-muted/40 ml-1">· {totalU} pending</span>}
+            </span>
           </div>
 
           {/* Table */}
