@@ -161,10 +161,10 @@ export default function ReportsPage() {
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Period</label>
             <div className="flex gap-1">
-              {(['monthly', 'full'] as const).map(p => (
+              {(['monthly', 'full', 'custom'] as const).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
                   className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
-                  {p === 'monthly' ? 'Monthly' : 'Full AY'}
+                  {p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
                 </button>
               ))}
             </div>
