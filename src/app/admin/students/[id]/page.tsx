@@ -35,6 +35,9 @@ export default function StudentDetailPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
   const [ecList, setEcList] = useState<any[]>([]);
+  const [statusReason, setStatusReason] = useState('');
+  const [statusLogs, setStatusLogs] = useState<any[]>([]);
+  const [changingStatus, setChangingStatus] = useState(false);
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
 
@@ -47,6 +50,7 @@ export default function StudentDetailPage() {
   };
 
   useEffect(() => { loadData(); }, [id]);
+  useEffect(() => { if (id) loadStatusLogs(); }, [id]);
 
   // ── Modal / form state ──────────────────────────────────
   const [editStudent, setEditStudent] = useState(false);
@@ -161,6 +165,36 @@ export default function StudentDetailPage() {
     } catch (e: any) {
       showToast('error', e.message || 'Failed to generate credentials');
     }
+  };
+
+  const handleChangeStatus = async (newStatus: string) => {
+    setChangingStatus(true);
+    try {
+      const res = await apiRequest(`/admin/students/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: newStatus, reason: statusReason || undefined }) });
+      if (res.success) {
+        showToast('success', res.message);
+        setData((prev: any) => ({ ...prev, status: newStatus }));
+        setStatusReason('');
+        loadStatusLogs();
+      } else showToast('error', res.message || 'Failed');
+    } catch (e: any) { showToast('error', e.message); }
+    finally { setChangingStatus(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Permanently delete this student? This cannot be undone.')) return;
+    try {
+      const res = await apiRequest(`/admin/students/${id}`, { method: 'DELETE' });
+      if (res.success) { showToast('success', res.message); router.push('/admin/students'); }
+      else showToast('error', res.message || 'Failed');
+    } catch (e: any) { showToast('error', e.message); }
+  };
+
+  const loadStatusLogs = async () => {
+    try {
+      const res = await apiRequest(`/admin/students/${id}/status-logs`);
+      if (res.success) setStatusLogs(res.data);
+    } catch {}
   };
 
   const handleAdminPassVerify = async () => {
@@ -353,7 +387,62 @@ export default function StudentDetailPage() {
         <div className="col-span-3 mt-3 rounded-lg border border-warm-card-border bg-warm-card p-3"><span className="text-[10px] tracking-wider text-warm-muted uppercase">Referred By</span><p className="mt-1 text-sm text-warm-cream">{s.referredBy || '—'}</p></div></> : null}
       </Section>
 
-      {/* ══════ 8: Login Credentials ══════ */}
+      {/* ══════ 8: Student Status & Actions ══════ */}
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Student Status</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-warm-muted">Current:</span>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+              data?.status === 'ACTIVE' ? 'bg-green-900/20 text-green-400 border-green-900/30' :
+              data?.status === 'SUSPENDED' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-900/30' :
+              data?.status === 'WITHDRAWN' ? 'bg-blue-900/20 text-blue-400 border-blue-900/30' :
+              data?.status === 'EXPELED' ? 'bg-red-900/20 text-red-400 border-red-900/30' :
+              data?.status === 'DECEASED' ? 'bg-gray-900/20 text-gray-400 border-gray-900/30' :
+              data?.status === 'TRANSFERRED' ? 'bg-purple-900/20 text-purple-400 border-purple-900/30' :
+              'bg-warm-card/50 text-warm-muted/50 border-warm-card-border'
+            }`}>{data?.status || 'ACTIVE'}</span>
+            <select value="" onChange={(e) => { if (e.target.value) handleChangeStatus(e.target.value); }}
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              <option value="">Change status…</option>
+              <option value="SUSPENDED">Suspend</option>
+              <option value="ACTIVE">Re-activate</option>
+              <option value="WITHDRAWN">Withdrawn</option>
+              <option value="TRANSFERRED">Transferred</option>
+              <option value="EXPELED">Expelled</option>
+              <option value="DECEASED">Deceased</option>
+            </select>
+            <input type="text" value={statusReason} onChange={(e) => setStatusReason(e.target.value)}
+              placeholder="Reason (optional)…"
+              className="flex-1 min-w-[200px] rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
+            {changingStatus && <span className="text-xs text-warm-muted">Saving…</span>}
+          </div>
+
+          {statusLogs.length > 0 && (
+            <div className="mt-4 border-t border-warm-card-border pt-3">
+              <p className="text-[10px] tracking-wider text-warm-muted uppercase mb-2">Status History</p>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {statusLogs.map((log: any) => (
+                  <div key={log.id} className="flex items-center gap-2 text-[11px] text-warm-muted/70">
+                    <span className="text-warm-muted/40">{new Date(log.createdAt).toLocaleDateString()}</span>
+                    <span>{log.previousStatus || '—'} → <strong>{log.newStatus}</strong></span>
+                    {log.reason && <span className="italic">({log.reason})</span>}
+                    {log.changedBy && <span className="text-warm-muted/50">by {log.changedBy.name}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 border-t border-warm-card-border pt-4 flex justify-end">
+            <button onClick={handleDelete} className="rounded-lg border border-red-900/30 px-4 py-2 text-xs text-red-400 hover:bg-red-900/10 transition-colors">
+              Delete Student
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════ 9: Login Credentials ══════ */}
       <section className="mb-10">
         <h2 className="mb-4 text-sm font-medium text-warm-cream">Login Credentials</h2>
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
