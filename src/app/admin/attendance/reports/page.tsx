@@ -18,7 +18,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 export default function ReportsPage() {
   const [groupId, setGroupId] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'yearly' | 'custom'>('monthly');
+  const [period, setPeriod] = useState<'monthly' | 'full' | 'custom'>('monthly');
   const [sections, setSections] = useState<any[]>([]);
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,6 @@ export default function ReportsPage() {
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
-  const [year, setYear] = useState(now.getFullYear());
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -44,11 +43,12 @@ export default function ReportsPage() {
 
   const buildDateRange = () => {
     if (period === 'monthly') {
+      const y = now.getFullYear();
       const m = String(month + 1).padStart(2, '0');
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      return { from: `${year}-${m}-01`, to: `${year}-${m}-${String(lastDay).padStart(2, '0')}` };
+      const lastDay = new Date(y, month + 1, 0).getDate();
+      return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` };
     }
-    if (period === 'yearly') return { from: `${year}-01-01`, to: `${year}-12-31` };
+    if (period === 'full') return { from: '2025-08-01', to: '2026-06-30' };
     return { from: fromDate, to: toDate };
   };
 
@@ -89,7 +89,7 @@ export default function ReportsPage() {
       rows.sort((a, b) => b.percent - a.percent);
       summary.percentage = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
 
-      const periodLabel = period === 'monthly' ? MONTHS[month] + ' ' + year : period === 'yearly' ? 'Year ' + year : from + ' to ' + to;
+      const periodLabel = period === 'monthly' ? MONTHS[month] + ' ' + now.getFullYear() : period === 'full' ? 'Full Academic Year' : from + ' to ' + to;
       const groupLabel = groupId ? sections.find((s: any) => s.id === groupId) : null;
       const title = (groupLabel ? groupLabel.name + (groupLabel.section ? ' — ' + groupLabel.section : '') + ' · ' : 'All Students · ') + periodLabel;
 
@@ -161,10 +161,10 @@ export default function ReportsPage() {
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Period</label>
             <div className="flex gap-1">
-              {(['monthly', 'yearly'] as const).map(p => (
+              {(['monthly', 'full'] as const).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
                   className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
-                  {p === 'monthly' ? 'Monthly' : 'Yearly'}
+                  {p === 'monthly' ? 'Monthly' : 'Full AY'}
                 </button>
               ))}
             </div>
@@ -174,17 +174,24 @@ export default function ReportsPage() {
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Month</label>
             <select value={month} onChange={e => setMonth(Number(e.target.value))}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-              {MONTHS.map((m, i) => <option key={i} value={i}>{m} {year}</option>)}
+              {MONTHS.map((m, i) => <option key={i} value={i}>{m} 2026</option>)}
             </select>
           </div>
 
-          <div className={period === 'yearly' ? '' : 'opacity-30 pointer-events-none'}>
-            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Year</label>
-            <select value={year} onChange={e => setYear(Number(e.target.value))}
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-              {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
+          {period === 'custom' && (
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">From</label>
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">To</label>
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+              </div>
+            </div>
+          )}
         </div>
 
         <button onClick={generateReport} disabled={loading}
