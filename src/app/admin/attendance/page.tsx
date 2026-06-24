@@ -179,13 +179,6 @@ export default function AttendancePage() {
     }));
   };
 
-  const setNote = (studentId: string, note: string) => {
-    setStudents((prev: any[]) => prev.map((s: any) => {
-      if (s.id !== studentId) return s;
-      return { ...s, attendances: [{ status: s.attendances?.[0]?.status || 'unmarked', note }] };
-    }));
-  };
-
   const markAll = (status: string) => {
     setStudents((prev: any[]) => prev.map((s: any) => ({ ...s, attendances: [{ status }] })));
   };
@@ -553,19 +546,9 @@ export default function AttendancePage() {
                       )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(s).status)}`}
-                              onClick={() => toggleStatus(s.id)}>
-                              {getDayStatus(s).label}
-                            </span>
-                            {['absent','late','leave'].includes(s.attendances?.[0]?.status || '') && (
-                              <input type="text" value={s.attendances?.[0]?.note || ''}
-                                onChange={(e) => setNote(s.id, e.target.value)}
-                                placeholder="Reason…"
-                                className="w-40 rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-[10px] text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent text-center"
-                                onClick={(e) => e.stopPropagation()} />
-                            )}
-                          </div>
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
+                            {getDayStatus(s).label}
+                          </span>
                         ) : (
                           (() => {
                             const atts = s.attendances || [];
