@@ -18,6 +18,22 @@ const statusColors: Record<string, string> = {
   function: 'bg-pink-900/20 text-pink-400 border-pink-900/30',
 };
 
+function fmtDate(d: string): string {
+  const raw = (d || '').split('T')[0];
+  if (!raw) return d;
+  const dt = new Date(raw + 'T00:00:00');
+  if (isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function thisMonthRange() {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` };
+}
+
 export default function StudentAttendanceDetail() {
   const params = useParams();
   const router = useRouter();
@@ -27,29 +43,27 @@ export default function StudentAttendanceDetail() {
   const [records, setRecords] = useState<AttRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [summary, setSummary] = useState<any>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const { from, to } = thisMonthRange();
 
   useEffect(() => {
     if (!id || !token) return;
-    Promise.all([
-      fetch(`${API_URL}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch(`${API_URL}/admin/attendance?date=2026-06-24&groupId=`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-    ]).then(([stuRes]) => {
-      if (stuRes.success) setStudent(stuRes.data);
-    }).catch(() => {});
+    fetch(`${API_URL}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(res => { if (res.success) setStudent(res.data); })
+      .catch(() => {});
   }, [id, token]);
 
   useEffect(() => {
     if (!id || !token) return;
     setLoading(true);
-    fetch(`${API_URL}/admin/students/${id}/attendance?from=2026-06-01&to=2026-06-30`, {
+    fetch(`${API_URL}/admin/students/${id}/attendance?from=${from}&to=${to}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(res => {
-      if (res.success) { setRecords(res.data.records || []); setSummary(res.data.summary); }
+      if (res.success) { setRecords(res.data.records || []); }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [id, token]);
+  }, [id, token, from, to]);
 
   const toggleStatus = (idx: number) => {
     setRecords(prev => prev.map((r, i) => {
@@ -89,30 +103,29 @@ export default function StudentAttendanceDetail() {
     setSaving(false);
   };
 
-  const d = (dateStr: string) => {
-    const dt = new Date(dateStr + 'T00:00:00');
-    return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
+  const totalP = records.filter(r => r.status === 'present' || r.status === 'holiday').length;
+  const totalA = records.filter(r => r.status === 'absent').length;
+  const totalL = records.filter(r => r.status === 'late').length;
+  const totalLv = records.filter(r => r.status === 'leave').length;
+  const totalRec = records.length;
+  const pct = totalRec ? Math.round((totalP / totalRec) * 100) : 0;
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <button onClick={() => router.back()} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream">
-        <ArrowLeft size={13} /> Back to Attendance
+        <ArrowLeft size={13} /> Back
       </button>
 
-      <div className="mb-6 flex items-center gap-3">
-        <Calendar size={22} className="text-warm-accent" />
+      <div className="mb-6">
         <h1 className="text-xl font-light text-warm-cream">{student?.name || 'Student Attendance'}</h1>
-      </div>
-
-      {summary && (
-        <div className="mb-6 flex items-center gap-4 text-xs text-warm-muted/70">
-          <span className="text-green-400 font-medium">{summary.present}</span> P ·
-          <span className="text-red-400 font-medium">{summary.absent}</span> A ·
-          <span className="text-yellow-400 font-medium">{summary.late}</span> L ·
-          <span className="font-medium">{summary.percentage}%</span>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-warm-muted/70">
+          <span className="text-green-400 font-medium">{totalP}</span> P ·
+          <span className="text-red-400 font-medium">{totalA}</span> A ·
+          <span className="text-yellow-400 font-medium">{totalL}</span> L ·
+          <span className="text-blue-400 font-medium">{totalLv}</span> Lv ·
+          <span className={pct >= 80 ? 'text-green-400 font-medium' : pct >= 70 ? 'text-yellow-400 font-medium' : 'text-red-400 font-medium'}>{pct}%</span>
         </div>
-      )}
+      </div>
 
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-lg bg-warm-card" />)}</div>
@@ -129,7 +142,7 @@ export default function StudentAttendanceDetail() {
             <tbody>
               {records.map((rec, idx) => (
                 <tr key={rec.date} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
-                  <td className="px-4 py-3 text-xs text-warm-muted/70">{d(rec.date)}</td>
+                  <td className="px-4 py-3 text-xs text-warm-muted/70">{fmtDate(rec.date)}</td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => toggleStatus(idx)}
                       className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[90px] ${statusColors[rec.status] || 'bg-warm-card/50 text-warm-muted/50 border-warm-card-border'}`}>
@@ -149,7 +162,7 @@ export default function StudentAttendanceDetail() {
               ))}
             </tbody>
           </table>
-          {records.length === 0 && <div className="p-12 text-center text-sm text-warm-muted">No attendance records found.</div>}
+          {records.length === 0 && <div className="p-12 text-center text-sm text-warm-muted">No attendance records this month.</div>}
         </div>
       )}
 
