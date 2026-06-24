@@ -499,19 +499,9 @@ export default function TeacherAttendancePage() {
                       )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(t).status)}`}
-                              onClick={() => toggleStatus(t.id)}>
-                              {getDayStatus(t).label}
-                            </span>
-                            {['absent','late','leave'].includes(t.attendances?.[0]?.status || '') && (
-                              <input type="text" value={t.attendances?.[0]?.note || ''}
-                                onChange={(e) => setNote(t.id, e.target.value)}
-                                placeholder="Reason…"
-                                className="w-40 rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-[10px] text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent text-center"
-                                onClick={(e) => e.stopPropagation()} />
-                            )}
-                          </div>
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(t).status)}`}>
+                            {getDayStatus(t).label}
+                          </span>
                         ) : (
                           (() => {
                             const atts = t.attendances || [];

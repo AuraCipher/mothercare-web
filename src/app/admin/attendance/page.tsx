@@ -533,12 +533,12 @@ export default function AttendancePage() {
                   const dayView = viewMode === 'day';
 
                   return (
-                    <tr key={s.id} id={'stu-' + (s.name?.[0] || '').toUpperCase()} onClick={() => dayView && toggleStatus(s.id)}
-                      className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors cursor-pointer">
+                    <tr key={s.id} id={'stu-' + (s.name?.[0] || '').toUpperCase()}
+                      className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
                       <td className="px-2 py-3 text-xs text-warm-muted/60 text-center">{idx + 1}</td>
                       <td className="px-2 py-3 text-xs text-warm-muted text-center">{s.rollNumber || '—'}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-warm-cream">{s.name}</p>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = '/admin/attendance/student/' + s.id}>
+                        <p className="text-sm text-warm-cream hover:text-warm-accent transition-colors">{s.name}</p>
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                       </td>
                       {!dayView && (
