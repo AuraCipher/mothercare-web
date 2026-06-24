@@ -14,6 +14,7 @@ const statusColors: Record<string, string> = {
   absent: 'bg-red-900/20 text-red-400 border-red-900/30',
   late: 'bg-yellow-900/20 text-yellow-400 border-yellow-900/30',
   leave: 'bg-blue-900/20 text-blue-400 border-blue-900/30',
+  'half-day': 'bg-cyan-900/20 text-cyan-400 border-cyan-900/30',
   holiday: 'bg-purple-900/20 text-purple-400 border-purple-900/30',
   function: 'bg-pink-900/20 text-pink-400 border-pink-900/30',
   future: 'bg-warm-card/30 text-warm-muted/30 border-warm-card-border',
@@ -96,7 +97,7 @@ export default function StudentAttendanceDetail() {
     setRecords(prev => prev.map((r, i) => {
       if (i !== idx || r.status === 'future' || isFutureDate(r.date)) return r;
       const current = r.status || 'unmarked';
-      const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'function', function: 'present' };
+      const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'half-day', 'half-day': 'function', function: 'present' };
       const ns = next[current] || 'present';
       return { ...r, status: ns, note: ns === 'present' ? '' : r.note };
     }));
