@@ -133,89 +133,90 @@ export default function AttendanceDashboard() {
       {/* Today's snapshot */}
       {todayTotal > 0 && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-warm-cream">Today&apos;s Attendance</h2>
-            <span className={`text-lg font-light ${todayPct >= 80 ? 'text-green-400' : todayPct >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>
-              {todayPct}%
-            </span>
+            <span className="text-lg font-light text-warm-accent">{todayPct}%</span>
           </div>
-          <div className="w-full h-3 bg-warm-card-border/30 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${todayPct >= 80 ? 'bg-green-500' : todayPct >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
-              style={{ width: `${todayPct}%` }} />
+          <div className="w-full h-2 bg-warm-card-border/20 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-warm-accent transition-all" style={{ width: `${todayPct}%` }} />
           </div>
-          <p className="mt-2 text-[11px] text-warm-muted/50">{todayP} present out of {todayTotal} students today</p>
+          <p className="mt-2 text-xs text-warm-muted/50">{todayP} present · {todayTotal - todayP} absent · {todayTotal} total</p>
         </div>
       )}
 
       {/* Trend chart */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-warm-cream">Trend</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-sm font-medium text-warm-cream">Attendance Trend</h2>
           <div className="flex items-center gap-1">
             {(['daily', 'weekly', 'monthly'] as const).map(m => (
               <button key={m} onClick={() => setTrendMode(m)}
-                className={`px-2.5 py-1 text-[10px] rounded-lg transition-colors ${trendMode === m ? 'bg-warm-accent text-[#1a1614] font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
+                className={`px-3 py-1 text-xs rounded-lg transition-colors ${trendMode === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
                 {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : 'Monthly'}
               </button>
             ))}
-            <button onClick={loadTrend} className="ml-1 p-1.5 text-warm-muted hover:text-warm-cream"><RefreshCw size={12} /></button>
+            <button onClick={loadTrend} className="ml-1 p-1.5 text-warm-muted hover:text-warm-cream transition-colors"><RefreshCw size={13} /></button>
           </div>
         </div>
-        {trendData.length > 0 && (
-          <div className="flex items-end gap-[3px] h-32">
+        {trendData.length > 0 ? (
+          <div className="flex items-end gap-[2px] h-36">
             {trendData.map((d, i) => {
-              const h = d.pct != null ? Math.max((d.pct / 100) * 100, 4) : 2;
+              const h = d.pct != null ? (d.pct / 100) * 100 : 2;
+              const alpha = d.pct != null ? (d.pct >= 80 ? 'cc' : d.pct >= 70 ? '99' : '66') : '20';
               return (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-                  <div className="w-full rounded-sm" style={{ height: `${h}%`, backgroundColor: d.pct != null ? (d.pct >= 80 ? '#22c55e' : d.pct >= 70 ? '#eab308' : '#ef4444') : '#333' }}
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative min-w-[8px]">
+                  <div className="w-full rounded-sm hover:opacity-80 transition-opacity"
+                    style={{ height: `${Math.max(h, 3)}%`, backgroundColor: '#b39a76' + alpha }}
                     title={`${d.label}: ${d.pct != null ? d.pct + '%' : 'No data'}`} />
-                  {trendData.length <= 31 && i % Math.max(1, Math.floor(trendData.length / 10)) === 0 && (
-                    <span className="text-[7px] text-warm-muted/40 mt-1 truncate w-full text-center">{d.label}</span>
+                  {trendData.length <= 31 && i % Math.ceil(trendData.length / 8) === 0 && (
+                    <span className="text-[7px] text-warm-muted/30 mt-1.5 whitespace-nowrap">{d.label}</span>
                   )}
                 </div>
               );
             })}
           </div>
+        ) : (
+          <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
         )}
-        {trendData.length === 0 && <p className="text-xs text-warm-muted/50 text-center py-8">No data for this period</p>}
       </div>
 
-      {/* Class breakdown + Top absentees */}
+      {/* Bottom grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Class breakdown */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
-          <h2 className="text-sm font-medium text-warm-cream mb-4">Class Breakdown</h2>
+          <h2 className="text-sm font-medium text-warm-cream mb-4">By Class</h2>
           {classData.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {classData.map((c, i) => (
                 <div key={i}>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-warm-cream truncate">{c.name}</span>
-                    <span className={`font-medium ${c.pct >= 80 ? 'text-green-400' : c.pct >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{c.pct}%</span>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-warm-cream/80 truncate pr-2">{c.name}</span>
+                    <span className="text-warm-accent font-medium">{c.pct}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-warm-card-border/30 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${c.pct >= 80 ? 'bg-green-500' : c.pct >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                      style={{ width: `${c.pct}%` }} />
+                  <div className="w-full h-1.5 bg-warm-card-border/20 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-warm-accent/70 transition-all" style={{ width: `${c.pct}%` }} />
                   </div>
                 </div>
               ))}
             </div>
-          ) : <p className="text-xs text-warm-muted/50 text-center py-6">Select a class to see data</p>}
+          ) : (
+            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data</div>
+          )}
         </div>
 
-        {/* Top absentees */}
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <h2 className="text-sm font-medium text-warm-cream mb-4">Lowest Attendance</h2>
           {absenteeData.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {absenteeData.map((s, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-xs text-warm-cream truncate flex-1">{i + 1}. {s.name}</span>
-                  <span className={`text-xs font-medium ml-2 ${s.pct >= 80 ? 'text-green-400' : s.pct >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.pct}%</span>
+                <div key={i} className="flex items-center justify-between border-b border-warm-card-border/5 pb-2 last:border-0">
+                  <span className="text-xs text-warm-muted/70 truncate flex-1">{i + 1}. {s.name}</span>
+                  <span className="text-xs text-warm-accent/70 ml-2">{s.pct}%</span>
                 </div>
               ))}
             </div>
-          ) : <p className="text-xs text-warm-muted/50 text-center py-6">No data yet</p>}
+          ) : (
+            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data</div>
+          )}
         </div>
       </div>
 
