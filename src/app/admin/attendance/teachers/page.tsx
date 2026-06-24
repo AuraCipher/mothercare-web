@@ -376,7 +376,7 @@ export default function TeacherAttendancePage() {
                   <tr className="bg-warm-card/70">
                     <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
                     <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Teacher Name</th>
-                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">%</th>
+                    {viewMode !== 'day' && <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">%</th>}
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
                       {viewMode === 'day' ? 'Status' : 'Sum'}
                     </th>
@@ -482,11 +482,13 @@ export default function TeacherAttendancePage() {
                       <td className="px-4 py-3">
                         <p className="text-sm text-warm-cream">{t.name}</p>
                       </td>
-                      <td className="px-2 py-3 text-xs text-center font-mono">
-                        <span className={`font-medium ${attColor(attPercent(t.attendances || []))}`}>
-                          {attPercent(t.attendances || [])}%
-                        </span>
-                      </td>
+                      {!dayView && (
+                        <td className="px-2 py-3 text-xs text-center font-mono">
+                          <span className={`font-medium ${attColor(attPercent(t.attendances || []))}`}>
+                            {attPercent(t.attendances || [])}%
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
                           <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(t).status)}`}>

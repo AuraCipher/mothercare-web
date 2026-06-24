@@ -423,7 +423,7 @@ export default function AttendancePage() {
                     <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">#</th>
                     <th className="w-16 px-2 py-3 text-xs text-warm-muted font-medium text-center">Roll</th>
                     <th className="text-left px-4 py-3 text-xs text-warm-muted font-medium">Student Name</th>
-                    <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">%</th>
+                    {viewMode !== 'day' && <th className="w-12 px-2 py-3 text-xs text-warm-muted font-medium text-center">%</th>}
                     <th className="w-48 px-4 py-3 text-xs text-warm-muted font-medium text-center">
                       {viewMode === 'day' ? 'Status' : 'Sum'}
                     </th>
@@ -533,11 +533,13 @@ export default function AttendancePage() {
                         <p className="text-sm text-warm-cream">{s.name}</p>
                         <p className="text-[10px] text-warm-muted/50">{s.admissionNumber || ''}{s.groupId ? ' · ' + groupLabel(sections, s.groupId) : ''}</p>
                       </td>
-                      <td className="px-2 py-3 text-xs text-center font-mono">
-                        <span className={`font-medium ${attColor(attPercent(s.attendances || []))}`}>
-                          {attPercent(s.attendances || [])}%
-                        </span>
-                      </td>
+                      {!dayView && (
+                        <td className="px-2 py-3 text-xs text-center font-mono">
+                          <span className={`font-medium ${attColor(attPercent(s.attendances || []))}`}>
+                            {attPercent(s.attendances || [])}%
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
                           <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
