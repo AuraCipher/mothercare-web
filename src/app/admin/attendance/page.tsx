@@ -174,7 +174,15 @@ export default function AttendancePage() {
       const current = s.attendances?.[0]?.status || 'unmarked';
       const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'function', function: 'present' };
       const newStatus = next[current] || 'present';
-      return { ...s, attendances: [{ status: newStatus }] };
+      const note = newStatus === 'present' ? '' : (s.attendances?.[0]?.note || '');
+      return { ...s, attendances: [{ status: newStatus, note }] };
+    }));
+  };
+
+  const setNote = (studentId: string, note: string) => {
+    setStudents((prev: any[]) => prev.map((s: any) => {
+      if (s.id !== studentId) return s;
+      return { ...s, attendances: [{ status: s.attendances?.[0]?.status || 'unmarked', note }] };
     }));
   };
 
@@ -204,7 +212,7 @@ export default function AttendancePage() {
     setSaving(true);
     const records = students
       .filter((s: any) => s.attendances?.[0]?.status && s.attendances[0].status !== 'unmarked')
-      .map((s: any) => ({ studentId: s.id, status: s.attendances[0].status }));
+      .map((s: any) => ({ studentId: s.id, status: s.attendances[0].status, note: s.attendances[0]?.note || '' }));
     try {
       const res = await fetch(`${API_URL}/admin/attendance/batch`, {
         method: 'POST',
@@ -542,9 +550,19 @@ export default function AttendancePage() {
                       )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
-                            {getDayStatus(s).label}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(s).status)}`}
+                              onClick={() => toggleStatus(s.id)}>
+                              {getDayStatus(s).label}
+                            </span>
+                            {['absent','late','leave'].includes(s.attendances?.[0]?.status || '') && (
+                              <input type="text" value={s.attendances?.[0]?.note || ''}
+                                onChange={(e) => setNote(s.id, e.target.value)}
+                                placeholder="Reason…"
+                                className="w-40 rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-[10px] text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent text-center"
+                                onClick={(e) => e.stopPropagation()} />
+                            )}
+                          </div>
                         ) : (
                           (() => {
                             const atts = s.attendances || [];
