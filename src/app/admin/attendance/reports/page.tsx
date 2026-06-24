@@ -170,7 +170,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div>
+          <div className={period === 'monthly' ? '' : 'opacity-30 pointer-events-none'}>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Month</label>
             <select value={month} onChange={e => setMonth(Number(e.target.value))}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
@@ -178,7 +178,7 @@ export default function ReportsPage() {
             </select>
           </div>
 
-          <div>
+          <div className={period === 'yearly' ? '' : 'opacity-30 pointer-events-none'}>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Year</label>
             <select value={year} onChange={e => setYear(Number(e.target.value))}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
