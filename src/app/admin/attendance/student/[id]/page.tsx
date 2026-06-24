@@ -16,6 +16,7 @@ const statusColors: Record<string, string> = {
   leave: 'bg-blue-900/20 text-blue-400 border-blue-900/30',
   holiday: 'bg-purple-900/20 text-purple-400 border-purple-900/30',
   function: 'bg-pink-900/20 text-pink-400 border-pink-900/30',
+  future: 'bg-warm-card/30 text-warm-muted/30 border-warm-card-border',
 };
 
 function fmtDate(d: string): string {
@@ -34,6 +35,13 @@ function thisMonthRange() {
   return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` };
 }
 
+function isFutureDate(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T23:59:59');
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return d > today;
+}
+
 export default function StudentAttendanceDetail() {
   const params = useParams();
   const router = useRouter();
@@ -43,31 +51,50 @@ export default function StudentAttendanceDetail() {
   const [records, setRecords] = useState<AttRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [ayId, setAyId] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const { from, to } = thisMonthRange();
 
   useEffect(() => {
     if (!id || !token) return;
-    fetch(`${API_URL}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(res => { if (res.success) setStudent(res.data); })
-      .catch(() => {});
-  }, [id, token]);
+    setAyId(localStorage.getItem('activeAYId') || '');
 
-  useEffect(() => {
-    if (!id || !token) return;
     setLoading(true);
-    fetch(`${API_URL}/admin/students/${id}/attendance?from=${from}&to=${to}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()).then(res => {
-      if (res.success) { setRecords(res.data.records || []); }
+    Promise.all([
+      fetch(`${API_URL}/admin/students/${id}/attendance?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${API_URL}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([attRes, stuRes]) => {
+      if (stuRes.success) setStudent(stuRes.data);
+
+      // Build full month day list merged with existing records
+      const attMap: Record<string, AttRecord> = {};
+      if (attRes.success) {
+        for (const r of (attRes.data?.records || [])) {
+          const key = (r.date || '').split('T')[0];
+          attMap[key] = { date: key, status: r.status, note: r.note };
+        }
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const allDays: AttRecord[] = [];
+      const cursor = new Date(from);
+      while (cursor.toISOString().split('T')[0] <= to) {
+        const key = cursor.toISOString().split('T')[0];
+        if (attMap[key]) {
+          allDays.push(attMap[key]);
+        } else {
+          allDays.push({ date: key, status: key > todayStr ? 'future' : 'unmarked', note: '' });
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      setRecords(allDays);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id, token, from, to]);
 
   const toggleStatus = (idx: number) => {
     setRecords(prev => prev.map((r, i) => {
-      if (i !== idx) return r;
+      if (i !== idx || r.status === 'future' || isFutureDate(r.date)) return r;
       const current = r.status || 'unmarked';
       const next: Record<string, string> = { unmarked: 'present', present: 'absent', absent: 'late', late: 'leave', leave: 'function', function: 'present' };
       const ns = next[current] || 'present';
@@ -76,22 +103,27 @@ export default function StudentAttendanceDetail() {
   };
 
   const setNote = (idx: number, note: string) => {
-    setRecords(prev => prev.map((r, i) => i === idx ? { ...r, note } : r));
+    setRecords(prev => prev.map((r, i) => {
+      if (i !== idx || r.status === 'future' || isFutureDate(r.date)) return r;
+      return { ...r, note };
+    }));
   };
 
   const handleSave = async () => {
     if (!id || !token) return;
     setSaving(true);
-    const changed = records.filter(r => r.status && r.status !== 'unmarked');
+    const changed = records.filter(r => r.status && !['unmarked', 'future'].includes(r.status));
     let saved = 0;
     for (const rec of changed) {
+      // Skip future dates
+      if (isFutureDate(rec.date)) continue;
       try {
         const res = await fetch(`${API_URL}/admin/attendance/batch`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             date: rec.date, groupId: student?.groupId || 'temp',
-            academicYearId: localStorage.getItem('activeAYId'),
+            academicYearId: ayId,
             records: [{ studentId: id, status: rec.status, note: rec.note || '' }],
           }),
         });
@@ -107,8 +139,9 @@ export default function StudentAttendanceDetail() {
   const totalA = records.filter(r => r.status === 'absent').length;
   const totalL = records.filter(r => r.status === 'late').length;
   const totalLv = records.filter(r => r.status === 'leave').length;
-  const totalRec = records.length;
-  const pct = totalRec ? Math.round((totalP / totalRec) * 100) : 0;
+  const totalRec = records.filter(r => r.status !== 'future').length;
+  const totalF = records.filter(r => r.status === 'function').length;
+  const pct = totalRec ? Math.round(((totalP) / (totalP + totalA + totalL + totalLv + totalF)) * 100) : 0;
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -140,26 +173,31 @@ export default function StudentAttendanceDetail() {
               </tr>
             </thead>
             <tbody>
-              {records.map((rec, idx) => (
-                <tr key={rec.date} className="border-t border-warm-card-border/30 hover:bg-warm-card/20 transition-colors">
-                  <td className="px-4 py-3 text-xs text-warm-muted/70">{fmtDate(rec.date)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={() => toggleStatus(idx)}
-                      className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[90px] ${statusColors[rec.status] || 'bg-warm-card/50 text-warm-muted/50 border-warm-card-border'}`}>
-                      {rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : '—'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    {['absent','late','leave'].includes(rec.status) ? (
-                      <input type="text" value={rec.note || ''} onChange={e => setNote(idx, e.target.value)}
-                        placeholder="Enter reason…"
-                        className="w-full rounded border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent" />
-                    ) : (
-                      <span className="text-xs text-warm-muted/30">{rec.note || '—'}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {records.map((rec, idx) => {
+                const fut = rec.status === 'future' || isFutureDate(rec.date);
+                return (
+                  <tr key={rec.date} className={`border-t border-warm-card-border/30 transition-colors ${fut ? 'opacity-50' : 'hover:bg-warm-card/20'}`}>
+                    <td className="px-4 py-3 text-xs text-warm-muted/70">{fmtDate(rec.date)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => toggleStatus(idx)} disabled={fut}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[90px] ${statusColors[rec.status] || 'bg-warm-card/50 text-warm-muted/50 border-warm-card-border'}`}>
+                        {rec.status === 'future' ? '—' : rec.status ? rec.status.charAt(0).toUpperCase() + rec.status.slice(1) : '—'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      {fut ? (
+                        <span className="text-xs text-warm-muted/20">Upcoming</span>
+                      ) : ['absent','late','leave'].includes(rec.status) ? (
+                        <input type="text" value={rec.note || ''} onChange={e => setNote(idx, e.target.value)}
+                          placeholder="Enter reason…"
+                          className="w-full rounded border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent" />
+                      ) : (
+                        <span className="text-xs text-warm-muted/30">{rec.note || '—'}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {records.length === 0 && <div className="p-12 text-center text-sm text-warm-muted">No attendance records this month.</div>}
