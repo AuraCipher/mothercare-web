@@ -24,7 +24,7 @@ export default function StudentsPage() {
         search: search || undefined,
         groupId: groupId || undefined,
         rollNumber: rollNumber || undefined,
-        limit: 50,
+        limit: 500,
       });
       if (res.success) setStudents(res.data);
     } catch {} finally { setLoading(false); }

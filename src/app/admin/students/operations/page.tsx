@@ -99,7 +99,7 @@ export default function StudentCredentialsPage() {
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents({ limit: 200, groupId: groupId || undefined, rollNumber: rollNumber || undefined });
+      const res = await api.getStudents({ limit: 500, groupId: groupId || undefined, rollNumber: rollNumber || undefined });
       if (res.success) {
         let filtered = res.data;
         // Apply status filter
