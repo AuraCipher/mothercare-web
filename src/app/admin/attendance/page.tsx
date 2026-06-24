@@ -546,7 +546,8 @@ export default function AttendancePage() {
                       )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] ${statusClass(getDayStatus(s).status)}`}>
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(s).status)}`}
+                            onClick={() => toggleStatus(s.id)}>
                             {getDayStatus(s).label}
                           </span>
                         ) : (
