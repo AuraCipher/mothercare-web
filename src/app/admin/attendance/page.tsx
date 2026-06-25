@@ -30,6 +30,7 @@ export default function AttendanceDashboard() {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+  const [filteredStatus, setFilteredStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashGroupId, setDashGroupId] = useState('');
 
@@ -168,8 +169,16 @@ export default function AttendanceDashboard() {
 
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
+  // Reset donut filter when period changes
+  useEffect(() => { setFilteredStatus(null); }, [dashPeriod, dashGroupId]);
+
+  // Students filtered by donut legend click
+  const displayStudents = filteredStatus
+    ? students.filter((s: any) => s.attendances?.some((a: any) => a.status === filteredStatus))
+    : students;
+
   // Stats from current period data
-  const allAtts = students.flatMap((s: any) => s.attendances || []);
+  const allAtts = displayStudents.flatMap((s: any) => s.attendances || []);
   const periodP = allAtts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
   const periodA = allAtts.filter((a: any) => a.status === 'absent').length;
   const periodL = allAtts.filter((a: any) => a.status === 'late').length;
@@ -189,16 +198,16 @@ export default function AttendanceDashboard() {
   const distData = bins.slice(0, -1).map((b, i) => {
     const rangeStart = b;
     const rangeEnd = bins[i + 1];
-    const count = students.filter((s: any) => {
+    const count = displayStudents.filter((s: any) => {
       const pct = attPercent(s.attendances || []);
       return pct >= rangeStart && pct < rangeEnd;
     }).length;
-    return { label: `${rangeStart}-${rangeEnd}%`, count, pct: students.length ? Math.round((count / students.length) * 100) : 0 };
+    return { label: `${rangeStart}-${rangeEnd}%`, count, pct: displayStudents.length ? Math.round((count / displayStudents.length) * 100) : 0 };
   });
 
   // Class breakdown
   const classData = sections.map(sec => {
-    const classStudents = students.filter((s: any) => s.groupId === sec.id);
+    const classStudents = displayStudents.filter((s: any) => s.groupId === sec.id);
     const atts = classStudents.flatMap((s: any) => s.attendances || []);
     const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
     const a = atts.filter((a: any) => a.status === 'absent').length;
@@ -210,7 +219,7 @@ export default function AttendanceDashboard() {
   }).filter(d => d.total > 0).sort((a, b) => b.pct - a.pct);
 
   // Top absentees
-  const absenteeData = students.map((s: any) => {
+  const absenteeData = displayStudents.map((s: any) => {
     const atts = s.attendances || [];
     const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
     const total = atts.length;
@@ -325,7 +334,9 @@ export default function AttendanceDashboard() {
               </div>
               <div className="mt-3 space-y-1 w-full">
                 {donutSegments.map(([key, val]) => (
-                  <div key={key} className="flex justify-between text-[10px]">
+                  <div key={key}
+                    onClick={() => setFilteredStatus(filteredStatus === key ? null : key)}
+                    className={`flex justify-between text-[10px] cursor-pointer rounded px-1 py-0.5 transition-colors ${filteredStatus === key ? 'bg-warm-accent/15 text-warm-accent' : filteredStatus ? 'opacity-40 hover:opacity-100' : 'hover:bg-warm-card/50'}`}>
                     <span className="flex items-center gap-1.5 text-warm-muted/70">
                       <span className="w-2 h-2 rounded-full" style={{background: statusColors[key]}} />
                       {statusLabels[key]}
@@ -339,8 +350,18 @@ export default function AttendanceDashboard() {
         </div>
       </div>
 
+      {/* Donut filter banner */}
+      {filteredStatus && (
+        <div className="flex items-center justify-between rounded-lg border border-warm-accent/20 bg-warm-accent/5 px-4 py-2 mb-6">
+          <span className="text-xs text-warm-accent">
+            Showing students with <strong>{statusLabels[filteredStatus] || filteredStatus}</strong> status · <strong>{displayStudents.length}</strong> students
+          </span>
+          <button onClick={() => setFilteredStatus(null)} className="text-xs text-warm-muted hover:text-warm-cream transition-colors">✕ Clear</button>
+        </div>
+      )}
+
       {/* Distribution histogram */}
-      {students.length > 0 && (
+      {displayStudents.length > 0 && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
           <h2 className="text-sm font-medium text-warm-cream mb-4">Attendance Distribution</h2>
           <div className="flex items-end gap-1 h-32">
