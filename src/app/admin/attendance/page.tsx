@@ -207,6 +207,21 @@ export default function AttendanceDashboard() {
             <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
           ))}
         </select>
+        <div className="flex gap-1">
+          {(['daily', 'weekly', 'monthly', 'full', 'custom'] as const).map(p => (
+            <button key={p} onClick={() => setDashPeriod(p)}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${dashPeriod === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
+              {p === 'daily' ? 'Daily' : p === 'weekly' ? 'Weekly' : p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
+            </button>
+          ))}
+        </div>
+        {dashPeriod === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+            <span className="text-xs text-warm-muted/50">to</span>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+          </div>
+        )}
       </div>
 
       {/* Top row: today progress + donut */}
@@ -284,13 +299,7 @@ export default function AttendanceDashboard() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-medium text-warm-cream">Attendance Trend</h2>
           <div className="flex items-center gap-1">
-            {(['daily', 'weekly', 'monthly', 'full', 'custom'] as const).map(m => (
-              <button key={m} onClick={() => setDashPeriod(m)}
-                className={`px-3 py-1 text-xs rounded-lg transition-colors ${dashPeriod === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
-                {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : m === 'monthly' ? 'Monthly' : dashPeriod === 'full' ? 'Full AY' : 'Custom'}
-              </button>
-            ))}
-            <button onClick={loadTrend} className="ml-1 p-1.5 text-warm-muted hover:text-warm-cream transition-colors"><RefreshCw size={13} /></button>
+            <button onClick={loadTrend} className="p-1.5 text-warm-muted hover:text-warm-cream transition-colors" title="Refresh"><RefreshCw size={13} /></button>
           </div>
         </div>
         {trendData.length > 0 ? (
@@ -314,16 +323,7 @@ export default function AttendanceDashboard() {
           <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
         )}
 
-      {dashPeriod === "custom" && (
-        <div className="flex items-center gap-2 mb-6 -mt-4">
-          <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
-          <span className="text-xs text-warm-muted/50">to</span>
-          <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
-          <button onClick={loadTrend} className="text-xs text-warm-accent hover:underline">Apply</button>
-        </div>
-      )}
       </div>
-
       {/* Bottom grid: class breakdown + absentees */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
@@ -370,7 +370,7 @@ export default function AttendanceDashboard() {
           <h2 className="text-sm font-medium text-warm-cream mb-4">System Overview</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Students</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalStudents || 0}</p></div>
-            <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Teachers</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalTeachers || 0}</p></div>
+            <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Teachers</p><p className="text-lg font-light text-warm-cream mt-1">{stats.byRole?.teacher || 0}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Classes</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalGroups || 0}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Users</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalUsers || 0}</p></div>
           </div>
