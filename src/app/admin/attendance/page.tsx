@@ -5,7 +5,6 @@ import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw } from 'l
 import { useRouter } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -27,10 +26,10 @@ export default function AttendanceDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  const [trendMode, setTrendMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [trendMode, setTrendMode] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
   const [trendData, setTrendData] = useState<any[]>([]);
-  const [teacherTrend, setTeacherTrend] = useState<any[]>([]);
-  const [showTeacherTrend, setShowTeacherTrend] = useState(false);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [loading, setLoading] = useState(true);
   const [dashGroupId, setDashGroupId] = useState('');
 
@@ -51,9 +50,16 @@ export default function AttendanceDashboard() {
 
   const loadTrend = useCallback(async () => {
     if (!token) return;
-    const to = todayStr();
-    const days = trendMode === 'daily' ? 7 : trendMode === 'weekly' ? 35 : 365;
-    const from = localDateStr(new Date(Date.now() - days * 86400000));
+    let to = todayStr();
+    let from: string;
+    let days = 30;
+    if (trendMode === 'custom') {
+      if (!customFrom || !customTo) return;
+      from = customFrom; to = customTo;
+    } else {
+      days = trendMode === 'daily' ? 7 : trendMode === 'weekly' ? 35 : 365;
+      from = localDateStr(new Date(Date.now() - days * 86400000));
+    }
     const groupParam = dashGroupId ? `&groupId=${dashGroupId}` : '';
 
     try {
@@ -101,7 +107,7 @@ export default function AttendanceDashboard() {
       }
       setTrendData(data);
     } catch {}
-  }, [token, trendMode, dashGroupId]);
+  }, [token, trendMode, dashGroupId, customFrom, customTo]);
 
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
@@ -281,7 +287,7 @@ export default function AttendanceDashboard() {
             {(['daily', 'weekly', 'monthly'] as const).map(m => (
               <button key={m} onClick={() => setTrendMode(m)}
                 className={`px-3 py-1 text-xs rounded-lg transition-colors ${trendMode === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
-                {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : 'Monthly'}
+                {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : m === 'monthly' ? 'Monthly' : 'Custom'}
               </button>
             ))}
             <button onClick={loadTrend} className="ml-1 p-1.5 text-warm-muted hover:text-warm-cream transition-colors"><RefreshCw size={13} /></button>
@@ -307,6 +313,15 @@ export default function AttendanceDashboard() {
         ) : (
           <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
         )}
+
+      {trendMode === "custom" && (
+        <div className="flex items-center gap-2 mb-6 -mt-4">
+          <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+          <span className="text-xs text-warm-muted/50">to</span>
+          <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+          <button onClick={loadTrend} className="text-xs text-warm-accent hover:underline">Apply</button>
+        </div>
+      )}
       </div>
 
       {/* Bottom grid: class breakdown + absentees */}
