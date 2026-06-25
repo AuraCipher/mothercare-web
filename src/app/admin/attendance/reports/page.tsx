@@ -16,7 +16,10 @@ type ReportData = {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const STATUS_LABELS: Record<string, string> = { present: 'Present', absent: 'Absent', late: 'Late', leave: 'Leave', 'half-day': 'Half-Day', holiday: 'Holiday', function: 'Function' };
+
 export default function ReportsPage() {
+  const [reportTarget, setReportTarget] = useState<'student' | 'teacher'>('student');
   const [groupId, setGroupId] = useState('');
   const [period, setPeriod] = useState<'monthly' | 'full' | 'custom'>('monthly');
   const [reportType, setReportType] = useState<'standard' | 'absentee' | 'class-summary'>('standard');
@@ -64,20 +67,23 @@ export default function ReportsPage() {
     if (!from || !to) { showToast('error', 'Select date range'); setLoading(false); return; }
 
     // Load attendance data
-    const url = groupId
-      ? `${API_URL}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
-      : `${API_URL}/admin/attendance?from=${from}&to=${to}`;
+    const isTeacher = reportTarget === 'teacher';
+    const url = isTeacher
+      ? `${API_URL}/admin/attendance/teachers?from=${from}&to=${to}`
+      : groupId
+        ? `${API_URL}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
+        : `${API_URL}/admin/attendance?from=${from}&to=${to}`;
 
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (!json.success) { showToast('error', 'Failed to load data'); setLoading(false); return; }
 
-      const students = json.data || [];
+      const items = json.data || [];
       const summary = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0, holiday: 0, function: 0, total: 0, percentage: 0 };
       const rows: any[] = [];
 
-      for (const s of students) {
+      for (const s of items) {
         const atts = s.attendances || [];
         const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
         const a = atts.filter((a: any) => a.status === 'absent').length;
@@ -86,14 +92,15 @@ export default function ReportsPage() {
         const totalRec = p + a + l + lv;
         summary.present += p; summary.absent += a; summary.late += l;
         summary.leave += lv; summary.total += totalRec;
-        rows.push({ name: s.name, roll: s.rollNumber || '—', present: p, absent: a, late: l, percent: totalRec ? Math.round((p / totalRec) * 100) : 0 });
+        rows.push({ name: s.name, roll: isTeacher ? '—' : (s.rollNumber || '—'), present: p, absent: a, late: l, percent: totalRec ? Math.round((p / totalRec) * 100) : 0 });
       }
       rows.sort((a, b) => b.percent - a.percent);
       summary.percentage = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
 
       const periodLabel = period === 'monthly' ? MONTHS[month] + ' ' + now.getFullYear() : period === 'full' ? 'Full Academic Year' : from + ' to ' + to;
-      const groupLabel = groupId ? sections.find((s: any) => s.id === groupId) : null;
-      const title = (groupLabel ? groupLabel.name + (groupLabel.section ? ' — ' + groupLabel.section : '') + ' · ' : 'All Students · ') + periodLabel;
+      const label = isTeacher ? null : (groupId ? sections.find((s: any) => s.id === groupId) : null);
+      const prefix = isTeacher ? 'All Teachers' : (label?.name ? label.name + (label.section ? ' — ' + label.section : '') : 'All Students');
+      const title = prefix + ' · ' + periodLabel;
 
       setReport({ title, generatedAt: new Date().toLocaleString(), total: rows.length, summary, students: rows });
       setGenerated(true);
@@ -103,8 +110,11 @@ export default function ReportsPage() {
 
   const downloadCSV = () => {
     if (!report) return;
-    let csv = 'Roll,Name,Present,Absent,Late,Percent\n';
-    for (const s of report.students) csv += s.roll + ',' + s.name + ',' + s.present + ',' + s.absent + ',' + s.late + ',' + s.percent + '\n';
+    const isTeacher = reportTarget === 'teacher';
+    let csv = isTeacher ? 'Name,Present,Absent,Late,Percent\n' : 'Roll,Name,Present,Absent,Late,Percent\n';
+    for (const s of report.students) csv += isTeacher
+      ? s.name + ',' + s.present + ',' + s.absent + ',' + s.late + ',' + s.percent + '\n'
+      : s.roll + ',' + s.name + ',' + s.present + ',' + s.absent + ',' + s.late + ',' + s.percent + '\n';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = (report.title || 'report').replace(/[^a-z0-9]/gi, '_') + '.csv';
@@ -113,10 +123,12 @@ export default function ReportsPage() {
 
   const downloadPDF = () => {
     if (!report) return;
-    // Build a print-friendly page and trigger download
+    const isTeacher = reportTarget === 'teacher';
     const win = window.open('', '_blank');
     if (!win) return;
-    const rows = report.students.map(s => `<tr><td>${s.roll}</td><td>${s.name}</td><td>${s.present}</td><td>${s.absent}</td><td>${s.late}</td><td class="pct">${s.percent}%</td></tr>`).join('');
+    const thRoll = isTeacher ? '' : '<th>Roll</th>';
+    const tdRoll = (s: any) => isTeacher ? '' : `<td>${s.roll}</td>`;
+    const rows = report.students.map(s => `<tr>${tdRoll(s)}<td>${s.name}</td><td>${s.present}</td><td>${s.absent}</td><td>${s.late}</td><td class="pct">${s.percent}%</td></tr>`).join('');
     win.document.write(`
       <html><head><title>${report.title}</title>
       <style>
@@ -133,7 +145,7 @@ export default function ReportsPage() {
         @media print { body { padding: 20px; } }
       </style></head><body>
       <h1>${report.title}</h1>
-      <div class="meta">Generated: ${report.generatedAt} · ${report.total} students</div>
+      <div class="meta">Generated: ${report.generatedAt} · ${report.total} ${isTeacher ? 'teachers' : 'students'}</div>
       <div class="summary">
         <span class="green">P ${report.summary.present}</span>
         <span class="red">A ${report.summary.absent}</span>
@@ -141,7 +153,7 @@ export default function ReportsPage() {
         <span>Lv ${report.summary.leave}</span>
         <span>%: <strong>${report.summary.percentage}%</strong></span>
       </div>
-      <table><thead><tr><th>Roll</th><th>Name</th><th>P</th><th>A</th><th>L</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr>${thRoll}<th>Name</th><th>P</th><th>A</th><th>L</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>
       </body></html>
     `);
     win.document.close();
@@ -160,10 +172,22 @@ export default function ReportsPage() {
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Report For</label>
+            <div className="flex gap-1">
+              {(['student', 'teacher'] as const).map(t => (
+                <button key={t} onClick={() => { setReportTarget(t); setReport(null); }}
+                  className={`flex-1 rounded-lg py-2 text-xs transition-colors ${reportTarget === t ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
+                  {t === 'student' ? 'Students' : 'Teachers'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={reportTarget === 'teacher' ? 'opacity-30 pointer-events-none' : ''}>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Class</label>
-            <select value={groupId} onChange={e => setGroupId(e.target.value)}
+            <select value={reportTarget === 'teacher' ? '' : groupId} onChange={e => setGroupId(e.target.value)}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-              <option value="">All Students</option>
+              <option value="">{reportTarget === 'teacher' ? 'N/A for teachers' : 'All Students'}</option>
               {sections.map((s: any) => (
                 <option key={s.id} value={s.id}>{s.name}{s.section ? ' — ' + s.section : ''}</option>
               ))}
@@ -239,7 +263,7 @@ export default function ReportsPage() {
           <div className="bg-warm-card/70 px-5 py-4 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-medium text-warm-cream">{report.title}</h2>
-              <p className="text-[10px] text-warm-muted/50 mt-0.5">{report.generatedAt} · {report.total} students</p>
+              <p className="text-[10px] text-warm-muted/50 mt-0.5">{report.generatedAt} · {report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={downloadCSV}
@@ -271,7 +295,7 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-warm-card/50">
-                  <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>
+                  {reportTarget !== 'teacher' && <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>}
                   <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th>
                   <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">P</th>
                   <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">A</th>
@@ -282,7 +306,7 @@ export default function ReportsPage() {
               <tbody>
                 {report.students.map((s, i) => (
                   <tr key={i} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
-                    <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>
+                    {reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}
                     <td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td>
                     <td className="px-3 py-2 text-xs text-green-400 text-center">{s.present}</td>
                     <td className="px-3 py-2 text-xs text-red-400 text-center">{s.absent}</td>
