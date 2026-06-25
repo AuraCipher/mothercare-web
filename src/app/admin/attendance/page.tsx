@@ -83,8 +83,8 @@ export default function AttendanceDashboard() {
         }
       }
 
-      // Build student trend
-      const dateMap: Record<string, any> = {};
+      // Build daily dateMap from fetched data
+      const dateMap: Record<string, { total: number; present: number }> = {};
       for (const s of sRes.data || []) {
         for (const a of (s.attendances || [])) {
           const d = (a.date || '').split('T')[0];
@@ -93,18 +93,75 @@ export default function AttendanceDashboard() {
           if (a.status === 'present' || a.status === 'holiday') dateMap[d].present++;
         }
       }
-      const days2 = Math.min(days, 30);
-      const today = new Date();
-      const data: any[] = [];
-      for (let i = days2 - 1; i >= 0; i--) {
-        const d = localDateStr(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
-        const day = dateMap[d];
-        data.push({
-          label: dashPeriod === 'daily' ? d.slice(5) : dashPeriod === 'weekly' ? d.slice(5) : d.slice(0, 7),
-          pct: day ? Math.round((day.present / day.total) * 100) : null,
-          total: day?.total || 0,
-        });
+
+      // Build trend data appropriate for each period
+      let data: any[] = [];
+
+      if (dashPeriod === 'full') {
+        // Full AY: one bar per month (Aug 2025 — Jun 2026)
+        const months = [
+          { label: 'Aug', m: 7, y: 2025 }, { label: 'Sep', m: 8, y: 2025 },
+          { label: 'Oct', m: 9, y: 2025 }, { label: 'Nov', m: 10, y: 2025 },
+          { label: 'Dec', m: 11, y: 2025 }, { label: 'Jan', m: 0, y: 2026 },
+          { label: 'Feb', m: 1, y: 2026 }, { label: 'Mar', m: 2, y: 2026 },
+          { label: 'Apr', m: 3, y: 2026 }, { label: 'May', m: 4, y: 2026 },
+          { label: 'Jun', m: 5, y: 2026 },
+        ];
+        for (const month of months) {
+          const daysInMonth = new Date(month.y, month.m + 1, 0).getDate();
+          let total = 0, present = 0;
+          for (let d = 1; d <= daysInMonth; d++) {
+            const ds = `${month.y}-${String(month.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const day = dateMap[ds];
+            if (day) { total += day.total; present += day.present; }
+          }
+          data.push({ label: month.label, pct: total ? Math.round((present / total) * 100) : null, total });
+        }
+      } else if (dashPeriod === 'monthly') {
+        // Monthly: daily bars for current month (day 1 — today)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const lastDay = today.getDate();
+        for (let d = 1; d <= lastDay; d++) {
+          const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const day = dateMap[ds];
+          data.push({ label: String(d), pct: day ? Math.round((day.present / day.total) * 100) : null, total: day?.total || 0 });
+        }
+      } else if (dashPeriod === 'custom') {
+        // Custom: compute range length, aggregate by month if > 60 days
+        const rangeDays = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+        if (rangeDays > 60) {
+          const monthMap: Record<string, { total: number; present: number }> = {};
+          for (const [dateStr, day] of Object.entries(dateMap)) {
+            const mk = dateStr.slice(0, 7);
+            if (!monthMap[mk]) monthMap[mk] = { total: 0, present: 0 };
+            monthMap[mk].total += day.total;
+            monthMap[mk].present += day.present;
+          }
+          data = Object.entries(monthMap).sort(([a], [b]) => a.localeCompare(b)).map(([key, val]) => ({
+            label: key, pct: val.total ? Math.round((val.present / val.total) * 100) : null, total: val.total,
+          }));
+        } else {
+          const start = new Date(from);
+          const end = new Date(to);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const ds = localDateStr(new Date(d));
+            const day = dateMap[ds];
+            data.push({ label: ds.slice(5), pct: day ? Math.round((day.present / day.total) * 100) : null, total: day?.total || 0 });
+          }
+        }
+      } else {
+        // Daily or Weekly: daily data points (last N days)
+        const points = Math.min(days, 31);
+        const today = new Date();
+        for (let i = points - 1; i >= 0; i--) {
+          const ds = localDateStr(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
+          const day = dateMap[ds];
+          data.push({ label: ds.slice(5), pct: day ? Math.round((day.present / day.total) * 100) : null, total: day?.total || 0 });
+        }
       }
+
       setTrendData(data);
     } catch {}
   }, [token, dashPeriod, dashGroupId, customFrom, customTo]);
@@ -248,7 +305,7 @@ export default function AttendanceDashboard() {
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ec4899'}} /> F {periodF}</span>
               </div>
             </>
-          ) : <p className="text-xs text-warm-muted/40 py-6 text-center">No attendance marked today</p>}
+          ) : <p className="text-xs text-warm-muted/40 py-6 text-center">No attendance data for this period</p>}
         </div>
 
         {/* Donut chart */}
@@ -273,7 +330,7 @@ export default function AttendanceDashboard() {
                 ))}
               </div>
             </div>
-          ) : <p className="text-xs text-warm-muted/40 py-8 text-center">No data today</p>}
+          ) : <p className="text-xs text-warm-muted/40 py-8 text-center">No data for this period</p>}
         </div>
       </div>
 
@@ -303,54 +360,82 @@ export default function AttendanceDashboard() {
           </div>
         </div>
         {trendData.length > 1 ? (
-          <div className="relative" style={{ height: '180px' }}>
-            <svg className="w-full h-full" viewBox={'0 0 ' + (60 + Math.max(trendData.length - 1, 2) * 2 + 20) + ' 160'}>
-              {/* Grid lines + Y-axis labels */}
-              {[0, 25, 50, 75, 100].map(pct => {
-                const y = 140 - (pct / 100) * 120;
+          <div className="relative" style={{ height: '260px' }}>
+            <svg className="w-full h-full" preserveAspectRatio="xMidYMid meet" viewBox="0 0 700 260">
+              {/* Grid lines */}
+              <defs>
+                <linearGradient id="areaGrad" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#b39a76" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#b39a76" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {[0, 20, 40, 60, 80, 100].map(pct => {
+                const y = 230 - (pct / 100) * 180;
                 return (
                   <g key={pct}>
-                    <line x1="50" y1={y} x2={50 + Math.max(trendData.length - 1, 2) * 2} y2={y} stroke="#333" strokeWidth="0.5" />
-                    <text x="48" y={y + 3} textAnchor="end" fill="#888" fontSize="9">{pct}%</text>
+                    <line x1="55" y1={y} x2="690" y2={y} stroke="#2a2725" strokeWidth="1" strokeDasharray={pct === 0 ? '0' : '4,4'} />
+                    <text x="50" y={y + 4} textAnchor="end" fill="#888" fontSize="10">{pct}%</text>
                   </g>
                 );
               })}
-              {/* X-axis line */}
-              <line x1="50" y1="140" x2={50 + Math.max(trendData.length - 1, 2) * 2} y2="140" stroke="#555" strokeWidth="1" />
+              {/* X-axis */}
+              <line x1="55" y1="230" x2="690" y2="230" stroke="#444" strokeWidth="1" />
+              {/* Area fill under line — gradient */}
+              <polyline
+                fill="url(#areaGrad)"
+                stroke="none"
+                points={'55,230 ' + trendData.map((d, i) => {
+                  const x = 55 + (i / Math.max(trendData.length - 1, 1)) * 635;
+                  const y = d.pct != null ? 230 - (d.pct / 100) * 180 : 230;
+                  return x + ',' + y;
+                }).join(' ') + ' ' + (55 + 635) + ',230'}
+              />
               {/* Data line */}
               <polyline
                 fill="none"
                 stroke="#b39a76"
-                strokeWidth="2"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
                 points={trendData.map((d, i) => {
-                  if (d.pct == null) return '';
-                  return (50 + i * 2) + ',' + (140 - (d.pct / 100) * 120);
+                  const x = 55 + (i / Math.max(trendData.length - 1, 1)) * 635;
+                  const y = d.pct != null ? 230 - (d.pct / 100) * 180 : 230;
+                  return x + ',' + y;
                 }).join(' ')}
               />
-              {/* Data dots */}
+              {/* Data dots — larger, with glow */}
               {trendData.map((d, i) => {
                 if (d.pct == null) return null;
-                const cx = 50 + i * 2;
-                const cy = 140 - (d.pct / 100) * 120;
+                const x = 55 + (i / Math.max(trendData.length - 1, 1)) * 635;
+                const y = 230 - (d.pct / 100) * 180;
                 const color = d.pct >= 80 ? '#22c55e' : d.pct >= 70 ? '#eab308' : '#ef4444';
-                return <circle key={i} cx={cx} cy={cy} r="3" fill={color} stroke="#1a1614" strokeWidth="1" />;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="6" fill={color} stroke="#1a1614" strokeWidth="2.5" />
+                    <circle cx={x} cy={y} r="8" fill={color} opacity="0.15" />
+                  </g>
+                );
               })}
-              {/* X-axis dates */}
-              {trendData.filter((_, i) => i % Math.ceil(trendData.length / 10) === 0).map((d, i) => (
-                <text key={i} x={50 + (trendData.indexOf(d) * 2)} y="153" textAnchor="middle" fill="#666" fontSize="7">{d.label}</text>
-              ))}
+              {/* X-axis labels — spaced evenly */}
+              {(() => {
+                const step = Math.max(1, Math.floor(trendData.length / 12));
+                return trendData.filter((_, i) => i % step === 0).map((d, i) => {
+                  const idx = trendData.indexOf(d);
+                  const x = 55 + (idx / Math.max(trendData.length - 1, 1)) * 635;
+                  return <text key={i} x={x} y="248" textAnchor="middle" fill="#888" fontSize="10">{d.label}</text>;
+                });
+              })()}
+              {/* Period label in top-right */}
+              <text x="688" y="18" textAnchor="end" fill="#555" fontSize="10">
+                {dashPeriod === 'daily' ? 'Last 7 Days' : dashPeriod === 'weekly' ? 'Last 5 Weeks' : dashPeriod === 'monthly' ? 'This Month' : dashPeriod === 'full' ? 'Full Academic Year' : 'Custom Range'}
+              </text>
             </svg>
-            <div className="absolute -bottom-4 left-0 right-0 flex justify-between text-[7px] text-warm-muted/30 px-1">
-              {trendData.filter((_, i) => i % Math.ceil(trendData.length / 8) === 0).map((d, i) => (
-                <span key={i}>{d.label}</span>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
         )}
-
       </div>
+
       {/* Bottom grid: class breakdown + absentees */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
@@ -370,7 +455,7 @@ export default function AttendanceDashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">Select a class to see data</div>
+            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data</div>
           )}
         </div>
 
@@ -391,7 +476,6 @@ export default function AttendanceDashboard() {
         </div>
       </div>
 
-      {/* System overview */}
       {stats && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <h2 className="text-sm font-medium text-warm-cream mb-4">System Overview</h2>
