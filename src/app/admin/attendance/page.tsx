@@ -284,7 +284,9 @@ export default function AttendanceDashboard() {
       {/* Top row: today progress + donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 lg:col-span-2">
-          <h2 className="text-sm font-medium text-warm-cream mb-3">Attendance</h2>
+          <h2 className="text-sm font-medium text-warm-cream mb-3">
+            {dashPeriod === 'daily' ? 'Today' : dashPeriod === 'weekly' ? 'This Week' : dashPeriod === 'monthly' ? 'This Month' : dashPeriod === 'full' ? 'Full Year' : 'Period'} Attendance
+          </h2>
           {periodTotal > 0 ? (
             <>
               <div className="flex items-end justify-between mb-3">
