@@ -28,6 +28,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [absenteeThreshold, setAbsenteeThreshold] = useState(75);
+  const [reportStatusFilter, setReportStatusFilter] = useState('');
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
@@ -290,6 +291,28 @@ export default function ReportsPage() {
             <span className="font-medium">{report.summary.percentage}%</span>
           </div>
 
+          {/* Status filter buttons for report table */}
+          <div className="px-5 py-2 border-t border-warm-card-border/30 flex flex-wrap items-center gap-1">
+            {['', 'present', 'absent', 'late', 'leave'].map(st => (
+              <button key={st} onClick={() => setReportStatusFilter(reportStatusFilter === st ? '' : st)}
+                className={`rounded-lg px-2.5 py-1 text-[10px] transition-colors ${
+                  reportStatusFilter === st
+                    ? 'bg-warm-accent text-[#1a1614] font-medium'
+                    : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
+                }`}>
+                {st ? (st.charAt(0).toUpperCase() + st.slice(1)) : 'All'}
+              </button>
+            ))}
+            {reportStatusFilter && (
+              <span className="text-[10px] text-warm-muted/50 ml-1">
+                {(() => {
+                  const filtered = report.students.filter(s => (s as any)[reportStatusFilter] > 0);
+                  return `${filtered.length} of ${report.students.length}`;
+                })()}
+              </span>
+            )}
+          </div>
+
           {/* Table */}
           <div className="overflow-x-auto border-t border-warm-card-border/30">
             <table className="w-full text-sm">
@@ -304,7 +327,9 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {report.students.map((s, i) => (
+                {report.students
+                  .filter(s => !reportStatusFilter || (s as any)[reportStatusFilter] > 0)
+                  .map((s, i) => (
                   <tr key={i} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                     {reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}
                     <td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td>
