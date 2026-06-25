@@ -26,7 +26,7 @@ export default function AttendanceDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  const [trendMode, setTrendMode] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
+  const [dashPeriod, setDashPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'full' | 'custom'>('daily');
   const [trendData, setTrendData] = useState<any[]>([]);
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -53,11 +53,11 @@ export default function AttendanceDashboard() {
     let to = todayStr();
     let from: string;
     let days = 30;
-    if (trendMode === 'custom') {
+    if (dashPeriod === 'custom') {
       if (!customFrom || !customTo) return;
       from = customFrom; to = customTo;
     } else {
-      days = trendMode === 'daily' ? 7 : trendMode === 'weekly' ? 35 : 365;
+      days = dashPeriod === 'daily' ? 7 : dashPeriod === 'weekly' ? 35 : dashPeriod === 'full' ? 365 : 365;
       from = localDateStr(new Date(Date.now() - days * 86400000));
     }
     const groupParam = dashGroupId ? `&groupId=${dashGroupId}` : '';
@@ -100,14 +100,14 @@ export default function AttendanceDashboard() {
         const d = localDateStr(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
         const day = dateMap[d];
         data.push({
-          label: trendMode === 'daily' ? d.slice(5) : trendMode === 'weekly' ? d.slice(5) : d.slice(0, 7),
+          label: dashPeriod === 'daily' ? d.slice(5) : dashPeriod === 'weekly' ? d.slice(5) : d.slice(0, 7),
           pct: day ? Math.round((day.present / day.total) * 100) : null,
           total: day?.total || 0,
         });
       }
       setTrendData(data);
     } catch {}
-  }, [token, trendMode, dashGroupId, customFrom, customTo]);
+  }, [token, dashPeriod, dashGroupId, customFrom, customTo]);
 
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
@@ -284,10 +284,10 @@ export default function AttendanceDashboard() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-medium text-warm-cream">Attendance Trend</h2>
           <div className="flex items-center gap-1">
-            {(['daily', 'weekly', 'monthly', 'custom'] as const).map(m => (
-              <button key={m} onClick={() => setTrendMode(m)}
-                className={`px-3 py-1 text-xs rounded-lg transition-colors ${trendMode === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
-                {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : m === 'monthly' ? 'Monthly' : 'Custom'}
+            {(['daily', 'weekly', 'monthly', 'full', 'custom'] as const).map(m => (
+              <button key={m} onClick={() => setDashPeriod(m)}
+                className={`px-3 py-1 text-xs rounded-lg transition-colors ${dashPeriod === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
+                {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : m === 'monthly' ? 'Monthly' : dashPeriod === 'full' ? 'Full AY' : 'Custom'}
               </button>
             ))}
             <button onClick={loadTrend} className="ml-1 p-1.5 text-warm-muted hover:text-warm-cream transition-colors"><RefreshCw size={13} /></button>
@@ -314,7 +314,7 @@ export default function AttendanceDashboard() {
           <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
         )}
 
-      {trendMode === "custom" && (
+      {dashPeriod === "custom" && (
         <div className="flex items-center gap-2 mb-6 -mt-4">
           <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent" />
           <span className="text-xs text-warm-muted/50">to</span>
