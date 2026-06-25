@@ -284,7 +284,7 @@ export default function AttendanceDashboard() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-medium text-warm-cream">Attendance Trend</h2>
           <div className="flex items-center gap-1">
-            {(['daily', 'weekly', 'monthly'] as const).map(m => (
+            {(['daily', 'weekly', 'monthly', 'custom'] as const).map(m => (
               <button key={m} onClick={() => setTrendMode(m)}
                 className={`px-3 py-1 text-xs rounded-lg transition-colors ${trendMode === m ? 'bg-warm-accent/20 text-warm-accent font-medium' : 'text-warm-muted hover:text-warm-cream'}`}>
                 {m === 'daily' ? '7 Days' : m === 'weekly' ? '5 Weeks' : m === 'monthly' ? 'Monthly' : 'Custom'}
