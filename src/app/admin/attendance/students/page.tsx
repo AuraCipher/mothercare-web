@@ -44,6 +44,7 @@ export default function AttendancePage() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [threshold, setThreshold] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -147,15 +148,26 @@ export default function AttendancePage() {
     return map;
   }, [students]);
 
-  // Filter students by search query (name or roll number, partial match)
+  // Filter students by search query, attendance threshold, and status
   const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) return students;
-    const q = searchQuery.toLowerCase();
-    return students.filter((s: any) =>
-      s.name?.toLowerCase().includes(q) ||
-      s.rollNumber?.toLowerCase().includes(q)
-    );
-  }, [students, searchQuery]);
+    let result = students;
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((s: any) =>
+        s.name?.toLowerCase().includes(q) ||
+        s.rollNumber?.toLowerCase().includes(q)
+      );
+    }
+    // Threshold filter (min attendance %)
+    if (threshold > 0) {
+      result = result.filter((s: any) => {
+        const pct = attPercent(s.attendances || []);
+        return pct < threshold;
+      });
+    }
+    return result;
+  }, [students, searchQuery, threshold]);
 
   // Check if a date string is Sunday
   const isSunday = (dateStr: string) => new Date(dateStr + 'T00:00:00').getDay() === 0;
@@ -345,6 +357,12 @@ export default function AttendancePage() {
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-warm-muted/50 hover:text-warm-cream text-xs">✕</button>
           )}
+        </div>
+
+        <div className="min-w-[90px]">
+          <input type="number" min="0" max="100" value={threshold || ''} onChange={(e) => setThreshold(Number(e.target.value) || 0)}
+            placeholder="Min %"
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" title="Show students below this attendance %" />
         </div>
 
         <div className="flex items-center gap-2">
