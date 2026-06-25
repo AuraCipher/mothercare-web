@@ -19,10 +19,12 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 export default function ReportsPage() {
   const [groupId, setGroupId] = useState('');
   const [period, setPeriod] = useState<'monthly' | 'full' | 'custom'>('monthly');
+  const [reportType, setReportType] = useState<'standard' | 'absentee' | 'class-summary'>('standard');
   const [sections, setSections] = useState<any[]>([]);
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [absenteeThreshold, setAbsenteeThreshold] = useState(75);
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
@@ -97,6 +99,16 @@ export default function ReportsPage() {
       setGenerated(true);
     } catch { showToast('error', 'Failed to generate report'); }
     finally { setLoading(false); }
+  };
+
+  const downloadCSV = () => {
+    if (!report) return;
+    let csv = 'Roll,Name,Present,Absent,Late,Percent\n';
+    for (const s of report.students) csv += s.roll + ',' + s.name + ',' + s.present + ',' + s.absent + ',' + s.late + ',' + s.percent + '\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = (report.title || 'report').replace(/[^a-z0-9]/gi, '_') + '.csv';
+    a.click(); URL.revokeObjectURL(url);
   };
 
   const downloadPDF = () => {
@@ -192,6 +204,26 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
+
+          {/* Report type selector */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="flex gap-1">
+              {(['standard', 'absentee', 'class-summary'] as const).map(t => (
+                <button key={t} onClick={() => setReportType(t)}
+                  className={`rounded-lg py-2 px-3 text-xs transition-colors ${reportType === t ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
+                  {t === 'standard' ? 'Standard' : t === 'absentee' ? 'Absentee List' : 'Class Summary'}
+                </button>
+              ))}
+            </div>
+            {reportType === 'absentee' && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider">Below</span>
+                <input type="number" value={absenteeThreshold} onChange={e => setAbsenteeThreshold(Number(e.target.value))}
+                  min={0} max={100} className="w-16 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream text-center outline-none focus:border-warm-accent" />
+                <span className="text-[10px] text-warm-muted/60">%</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <button onClick={generateReport} disabled={loading}
@@ -210,6 +242,10 @@ export default function ReportsPage() {
               <p className="text-[10px] text-warm-muted/50 mt-0.5">{report.generatedAt} · {report.total} students</p>
             </div>
             <div className="flex items-center gap-2">
+              <button onClick={downloadCSV}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:bg-warm-card transition-colors">
+                CSV
+              </button>
               <button onClick={downloadPDF}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:bg-warm-card transition-colors">
                 <Download size={13} /> Download / Print
