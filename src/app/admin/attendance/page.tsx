@@ -5,11 +5,22 @@ import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw } from 'l
 import { useRouter } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function todayStr(): string { return localDateStr(new Date()); }
+
+function attPercent(atts: any[]): number {
+  const total = atts.length;
+  if (!total) return 0;
+  const present = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+  return Math.round((present / total) * 100);
+}
+function attColor(pct: number): string {
+  return pct >= 80 ? 'text-green-400' : pct >= 70 ? 'text-yellow-400' : 'text-red-400';
+}
 
 export default function AttendanceDashboard() {
   const router = useRouter();
@@ -18,13 +29,15 @@ export default function AttendanceDashboard() {
   const [sections, setSections] = useState<any[]>([]);
   const [trendMode, setTrendMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [trendData, setTrendData] = useState<any[]>([]);
+  const [teacherTrend, setTeacherTrend] = useState<any[]>([]);
+  const [showTeacherTrend, setShowTeacherTrend] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dashGroupId, setDashGroupId] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
-  // Load sections and stats
   useEffect(() => {
     if (!token) return;
     Promise.all([
@@ -36,21 +49,37 @@ export default function AttendanceDashboard() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [token, branchId, ayId]);
 
-  // Load trend data
   const loadTrend = useCallback(async () => {
     if (!token) return;
     const to = todayStr();
     const days = trendMode === 'daily' ? 7 : trendMode === 'weekly' ? 35 : 365;
     const from = localDateStr(new Date(Date.now() - days * 86400000));
-    try {
-      const res = await fetch(`${API_URL}/admin/attendance?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } });
-      const json = await res.json();
-      if (!json.success) return;
-      setStudents(json.data || []);
+    const groupParam = dashGroupId ? `&groupId=${dashGroupId}` : '';
 
-      // Group attendance by date
+    try {
+      const [sRes, tRes] = await Promise.all([
+        fetch(`${API_URL}/admin/attendance?from=${from}&to=${to}${groupParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${API_URL}/admin/attendance/teachers?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      ]);
+
+      if (sRes.success) setStudents(sRes.data || []);
+      if (tRes.success) {
+        const teacherAtts: Record<string, number> = {};
+        let tTotal = 0, tPresent = 0;
+        for (const t of tRes.data || []) {
+          for (const a of (t.attendances || [])) {
+            const d = (a.date || '').split('T')[0];
+            teacherAtts[d] = (teacherAtts[d] || 0) + 1;
+            if (a.status === 'present' || a.status === 'holiday') tTotal++;
+            else tTotal++;
+          }
+          tPresent += (t.attendances || []).filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+        }
+      }
+
+      // Build student trend
       const dateMap: Record<string, any> = {};
-      for (const s of json.data || []) {
+      for (const s of sRes.data || []) {
         for (const a of (s.attendances || [])) {
           const d = (a.date || '').split('T')[0];
           if (!dateMap[d]) dateMap[d] = { total: 0, present: 0 };
@@ -72,11 +101,39 @@ export default function AttendanceDashboard() {
       }
       setTrendData(data);
     } catch {}
-  }, [token, trendMode]);
+  }, [token, trendMode, dashGroupId]);
 
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
-  // Class-wise breakdown
+  // Stats from today's data
+  const todayAtts = students.flatMap((s: any) => (s.attendances || []).filter((a: any) => (a.date || '').split('T')[0] === todayStr()));
+  const todayP = todayAtts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+  const todayA = todayAtts.filter((a: any) => a.status === 'absent').length;
+  const todayL = todayAtts.filter((a: any) => a.status === 'late').length;
+  const todayLv = todayAtts.filter((a: any) => a.status === 'leave').length;
+  const todayHd = todayAtts.filter((a: any) => a.status === 'half-day').length;
+  const todayF = todayAtts.filter((a: any) => a.status === 'function').length;
+  const todayTotal = todayAtts.length;
+  const todayPct = todayTotal ? Math.round((todayP / todayTotal) * 100) : 0;
+
+  // Status breakdown donut data
+  const statusCounts = { present: todayP, absent: todayA, late: todayL, leave: todayLv, 'half-day': todayHd, function: todayF };
+  const statusColors: Record<string, string> = { present: '#22c55e', absent: '#ef4444', late: '#eab308', leave: '#3b82f6', 'half-day': '#06b6d4', function: '#ec4899' };
+  const statusLabels: Record<string, string> = { present: 'Present', absent: 'Absent', late: 'Late', leave: 'Leave', 'half-day': 'Half-Day', function: 'Function' };
+
+  // Distribution histogram: bin students by % ranges
+  const bins = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const distData = bins.slice(0, -1).map((b, i) => {
+    const rangeStart = b;
+    const rangeEnd = bins[i + 1];
+    const count = students.filter((s: any) => {
+      const pct = attPercent(s.attendances || []);
+      return pct >= rangeStart && pct < rangeEnd;
+    }).length;
+    return { label: `${rangeStart}-${rangeEnd}%`, count, pct: students.length ? Math.round((count / students.length) * 100) : 0 };
+  });
+
+  // Class breakdown
   const classData = sections.map(sec => {
     const classStudents = students.filter((s: any) => s.groupId === sec.id);
     const atts = classStudents.flatMap((s: any) => s.attendances || []);
@@ -94,12 +151,17 @@ export default function AttendanceDashboard() {
     return { name: s.name, pct: total ? Math.round((p / total) * 100) : 0, total };
   }).filter(d => d.total > 0).sort((a, b) => a.pct - b.pct).slice(0, 10);
 
-  const todayAtts = students.flatMap((s: any) => (s.attendances || []).filter((a: any) => (a.date || '').split('T')[0] === todayStr()));
-  const todayP = todayAtts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
-  const todayTotal = todayAtts.length;
-  const todayPct = todayTotal ? Math.round((todayP / todayTotal) * 100) : 0;
-
-  const maxPct = Math.max(...trendData.map(d => d.pct || 0), 100);
+  // Build conic gradient for donut
+  const donutSegments = Object.entries(statusCounts).filter(([, v]) => v > 0);
+  const totalCount = donutSegments.reduce((s, [, v]) => s + v, 0);
+  let conicStr = '';
+  let curDeg = 0;
+  for (const [key, val] of donutSegments) {
+    const pct = totalCount > 0 ? (val / totalCount) * 360 : 0;
+    conicStr += ` ${statusColors[key]} ${curDeg}deg ${curDeg + pct}deg,`;
+    curDeg += pct;
+  }
+  conicStr = conicStr.slice(0, -1);
 
   const cards = [
     { icon: Users, label: 'Student Attendance', desc: 'Mark and view student attendance', href: '/admin/attendance/students', color: 'text-green-400' },
@@ -130,17 +192,84 @@ export default function AttendanceDashboard() {
         })}
       </div>
 
-      {/* Today's snapshot */}
-      {todayTotal > 0 && (
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <select value={dashGroupId} onChange={e => setDashGroupId(e.target.value)}
+          className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+          <option value="">All Classes</option>
+          {sections.map((s: any) => (
+            <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Top row: today progress + donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 lg:col-span-2">
+          <h2 className="text-sm font-medium text-warm-cream mb-3">Today&apos;s Attendance</h2>
+          {todayTotal > 0 ? (
+            <>
+              <div className="flex items-end justify-between mb-3">
+                <div>
+                  <span className="text-3xl font-light text-warm-accent">{todayPct}%</span>
+                  <p className="text-xs text-warm-muted/50 mt-1">{todayP} present · {todayA} absent · {todayL} late · {todayTotal} total</p>
+                </div>
+              </div>
+              <div className="w-full h-2.5 bg-warm-card-border/20 rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-warm-accent transition-all" style={{ width: `${todayPct}%` }} />
+              </div>
+              <div className="flex gap-4 mt-3 text-[10px] text-warm-muted/50">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#22c55e'}} /> P {todayP}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ef4444'}} /> A {todayA}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#eab308'}} /> L {todayL}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#3b82f6'}} /> Lv {todayLv}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#06b6d4'}} /> Hd {todayHd}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ec4899'}} /> F {todayF}</span>
+              </div>
+            </>
+          ) : <p className="text-xs text-warm-muted/40 py-6 text-center">No attendance marked today</p>}
+        </div>
+
+        {/* Donut chart */}
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <h2 className="text-sm font-medium text-warm-cream mb-3">Status Breakdown</h2>
+          {donutSegments.length > 0 ? (
+            <div className="flex flex-col items-center">
+              <div className="w-28 h-28 rounded-full relative" style={{ background: `conic-gradient(${conicStr})` }}>
+                <div className="absolute inset-3 rounded-full bg-[#1a1614] flex items-center justify-center">
+                  <span className="text-lg font-light text-warm-cream">{todayPct}%</span>
+                </div>
+              </div>
+              <div className="mt-3 space-y-1 w-full">
+                {donutSegments.map(([key, val]) => (
+                  <div key={key} className="flex justify-between text-[10px]">
+                    <span className="flex items-center gap-1.5 text-warm-muted/70">
+                      <span className="w-2 h-2 rounded-full" style={{background: statusColors[key]}} />
+                      {statusLabels[key]}
+                    </span>
+                    <span className="text-warm-cream">{val} ({Math.round((val / totalCount) * 100)}%)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : <p className="text-xs text-warm-muted/40 py-8 text-center">No data today</p>}
+        </div>
+      </div>
+
+      {/* Distribution histogram */}
+      {students.length > 0 && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-warm-cream">Today&apos;s Attendance</h2>
-            <span className="text-lg font-light text-warm-accent">{todayPct}%</span>
+          <h2 className="text-sm font-medium text-warm-cream mb-4">Attendance Distribution</h2>
+          <div className="flex items-end gap-1 h-32">
+            {distData.map((d, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                <div className="w-full rounded-sm bg-warm-accent/60 hover:bg-warm-accent/80 transition-all"
+                  style={{ height: `${Math.max(d.pct, 2)}%` }}
+                  title={`${d.label}: ${d.count} students (${d.pct}%)`} />
+                <span className="text-[7px] text-warm-muted/30 mt-1 whitespace-nowrap">{d.label}</span>
+              </div>
+            ))}
           </div>
-          <div className="w-full h-2 bg-warm-card-border/20 rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-warm-accent transition-all" style={{ width: `${todayPct}%` }} />
-          </div>
-          <p className="mt-2 text-xs text-warm-muted/50">{todayP} present · {todayTotal - todayP} absent · {todayTotal} total</p>
         </div>
       )}
 
@@ -167,7 +296,7 @@ export default function AttendanceDashboard() {
                 <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative min-w-[8px]">
                   <div className="w-full rounded-sm hover:opacity-80 transition-opacity"
                     style={{ height: `${Math.max(h, 3)}%`, backgroundColor: '#b39a76' + alpha }}
-                    title={`${d.label}: ${d.pct != null ? d.pct + '%' : 'No data'}`} />
+                    title={`${d.label}: ${d.pct != null ? d.pct + '%' : 'No data'} (${d.total})`} />
                   {trendData.length <= 31 && i % Math.ceil(trendData.length / 8) === 0 && (
                     <span className="text-[7px] text-warm-muted/30 mt-1.5 whitespace-nowrap">{d.label}</span>
                   )}
@@ -180,12 +309,12 @@ export default function AttendanceDashboard() {
         )}
       </div>
 
-      {/* Bottom grid */}
+      {/* Bottom grid: class breakdown + absentees */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <h2 className="text-sm font-medium text-warm-cream mb-4">By Class</h2>
           {classData.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
               {classData.map((c, i) => (
                 <div key={i}>
                   <div className="flex justify-between text-xs mb-1">
@@ -199,23 +328,23 @@ export default function AttendanceDashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data</div>
+            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">Select a class to see data</div>
           )}
         </div>
 
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <h2 className="text-sm font-medium text-warm-cream mb-4">Lowest Attendance</h2>
           {absenteeData.length > 0 ? (
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-2">
               {absenteeData.map((s, i) => (
                 <div key={i} className="flex items-center justify-between border-b border-warm-card-border/5 pb-2 last:border-0">
                   <span className="text-xs text-warm-muted/70 truncate flex-1">{i + 1}. {s.name}</span>
-                  <span className="text-xs text-warm-accent/70 ml-2">{s.pct}%</span>
+                  <span className={`text-xs font-medium ml-2 ${s.pct >= 80 ? 'text-green-400' : s.pct >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.pct}%</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data</div>
+            <div className="flex items-center justify-center h-32 text-xs text-warm-muted/40">No data yet</div>
           )}
         </div>
       </div>
@@ -228,7 +357,7 @@ export default function AttendanceDashboard() {
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Students</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalStudents || 0}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Teachers</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalTeachers || 0}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Classes</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalGroups || 0}</p></div>
-            <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Records</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalAttendanceRecords || '—'}</p></div>
+            <div><p className="text-[10px] text-warm-muted/50 uppercase tracking-wider">Users</p><p className="text-lg font-light text-warm-cream mt-1">{stats.totalUsers || 0}</p></div>
           </div>
         </div>
       )}
