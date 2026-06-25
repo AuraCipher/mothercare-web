@@ -303,26 +303,42 @@ export default function AttendanceDashboard() {
           </div>
         </div>
         {trendData.length > 1 ? (
-          <div className="relative h-36">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox={'0 0 ' + Math.max(trendData.length - 1, 1) + ' 100'}>
+          <div className="relative" style={{ height: '180px' }}>
+            <svg className="w-full h-full" viewBox={'0 0 ' + (60 + Math.max(trendData.length - 1, 2) * 2 + 20) + ' 160'}>
+              {/* Grid lines + Y-axis labels */}
+              {[0, 25, 50, 75, 100].map(pct => {
+                const y = 140 - (pct / 100) * 120;
+                return (
+                  <g key={pct}>
+                    <line x1="50" y1={y} x2={50 + Math.max(trendData.length - 1, 2) * 2} y2={y} stroke="#333" strokeWidth="0.5" />
+                    <text x="48" y={y + 3} textAnchor="end" fill="#888" fontSize="9">{pct}%</text>
+                  </g>
+                );
+              })}
+              {/* X-axis line */}
+              <line x1="50" y1="140" x2={50 + Math.max(trendData.length - 1, 2) * 2} y2="140" stroke="#555" strokeWidth="1" />
+              {/* Data line */}
               <polyline
                 fill="none"
                 stroke="#b39a76"
-                strokeWidth="1.5"
-                vectorEffect="non-scaling-stroke"
+                strokeWidth="2"
                 points={trendData.map((d, i) => {
-                  const x = i;
-                  const y = d.pct != null ? 100 - d.pct : 100;
-                  return x + ',' + y;
+                  if (d.pct == null) return '';
+                  return (50 + i * 2) + ',' + (140 - (d.pct / 100) * 120);
                 }).join(' ')}
               />
+              {/* Data dots */}
               {trendData.map((d, i) => {
                 if (d.pct == null) return null;
-                const cx = i;
-                const cy = 100 - d.pct;
+                const cx = 50 + i * 2;
+                const cy = 140 - (d.pct / 100) * 120;
                 const color = d.pct >= 80 ? '#22c55e' : d.pct >= 70 ? '#eab308' : '#ef4444';
-                return <circle key={i} cx={cx} cy={cy} r="2" fill={color} />;
+                return <circle key={i} cx={cx} cy={cy} r="3" fill={color} stroke="#1a1614" strokeWidth="1" />;
               })}
+              {/* X-axis dates */}
+              {trendData.filter((_, i) => i % Math.ceil(trendData.length / 10) === 0).map((d, i) => (
+                <text key={i} x={50 + (trendData.indexOf(d) * 2)} y="153" textAnchor="middle" fill="#666" fontSize="7">{d.label}</text>
+              ))}
             </svg>
             <div className="absolute -bottom-4 left-0 right-0 flex justify-between text-[7px] text-warm-muted/30 px-1">
               {trendData.filter((_, i) => i % Math.ceil(trendData.length / 8) === 0).map((d, i) => (
