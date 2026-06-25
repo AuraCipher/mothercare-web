@@ -57,7 +57,7 @@ export default function AttendanceDashboard() {
       if (!customFrom || !customTo) return;
       from = customFrom; to = customTo;
     } else {
-      days = dashPeriod === 'daily' ? 7 : dashPeriod === 'weekly' ? 35 : dashPeriod === 'full' ? 365 : 365;
+      days = dashPeriod === 'daily' ? 7 : dashPeriod === 'weekly' ? 35 : dashPeriod === 'monthly' ? new Date().getDate() : 365;
       from = localDateStr(new Date(Date.now() - days * 86400000));
     }
     const groupParam = dashGroupId ? `&groupId=${dashGroupId}` : '';
@@ -227,7 +227,7 @@ export default function AttendanceDashboard() {
       {/* Top row: today progress + donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 lg:col-span-2">
-          <h2 className="text-sm font-medium text-warm-cream mb-3">Today&apos;s Attendance</h2>
+          <h2 className="text-sm font-medium text-warm-cream mb-3">Attendance</h2>
           {periodTotal > 0 ? (
             <>
               <div className="flex items-end justify-between mb-3">
