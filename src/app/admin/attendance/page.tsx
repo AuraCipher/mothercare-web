@@ -222,7 +222,7 @@ export default function AttendanceDashboard() {
                 </div>
               </div>
               <div className="w-full h-2.5 bg-warm-card-border/20 rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-warm-accent transition-all" style={{ width: `${todayPct}%` }} />
+                <div className="h-full rounded-full bg-warm-accent transition-all duration-500" style={{ width: `${todayPct}%` }} />
               </div>
               <div className="flex gap-4 mt-3 text-[10px] text-warm-muted/50">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#22c55e'}} /> P {todayP}</span>
@@ -269,7 +269,7 @@ export default function AttendanceDashboard() {
           <div className="flex items-end gap-1 h-32">
             {distData.map((d, i) => (
               <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                <div className="w-full rounded-sm bg-warm-accent/60 hover:bg-warm-accent/80 transition-all"
+                <div className="w-full rounded-sm bg-warm-accent/60 hover:bg-warm-accent/80 transition-all duration-500"
                   style={{ height: `${Math.max(d.pct, 2)}%` }}
                   title={`${d.label}: ${d.count} students (${d.pct}%)`} />
                 <span className="text-[7px] text-warm-muted/30 mt-1 whitespace-nowrap">{d.label}</span>
@@ -300,7 +300,7 @@ export default function AttendanceDashboard() {
               const alpha = d.pct != null ? (d.pct >= 80 ? 'cc' : d.pct >= 70 ? '99' : '66') : '20';
               return (
                 <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative min-w-[8px]">
-                  <div className="w-full rounded-sm hover:opacity-80 transition-opacity"
+                  <div className="w-full rounded-sm hover:opacity-80 transition-opacity duration-300"
                     style={{ height: `${Math.max(h, 3)}%`, backgroundColor: '#b39a76' + alpha }}
                     title={`${d.label}: ${d.pct != null ? d.pct + '%' : 'No data'} (${d.total})`} />
                   {trendData.length <= 31 && i % Math.ceil(trendData.length / 8) === 0 && (
@@ -337,7 +337,7 @@ export default function AttendanceDashboard() {
                     <span className="text-warm-accent font-medium">{c.pct}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-warm-card-border/20 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-warm-accent/70 transition-all" style={{ width: `${c.pct}%` }} />
+                    <div className="h-full rounded-full bg-warm-accent/70 transition-all duration-500" style={{ width: `${c.pct}%` }} />
                   </div>
                 </div>
               ))}
