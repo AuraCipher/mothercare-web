@@ -31,6 +31,7 @@ export default function TeacherAttendancePage() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -119,12 +120,19 @@ export default function TeacherAttendancePage() {
   }, [teachers]);
 
   const filteredTeachers = useMemo(() => {
-    if (!searchQuery.trim()) return teachers;
-    const q = searchQuery.toLowerCase();
-    return teachers.filter((t: any) =>
-      t.name?.toLowerCase().includes(q)
-    );
-  }, [teachers, searchQuery]);
+    let result = teachers;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((t: any) => t.name?.toLowerCase().includes(q));
+    }
+    if (statusFilter && viewMode === 'day') {
+      result = result.filter((t: any) => {
+        const st = t.attendances?.[0]?.status || 'unmarked';
+        return st === statusFilter;
+      });
+    }
+    return result;
+  }, [teachers, searchQuery, statusFilter, viewMode]);
 
   const isSunday = (dateStr: string) => new Date(dateStr + 'T00:00:00').getDay() === 0;
 
@@ -323,6 +331,25 @@ export default function TeacherAttendancePage() {
           ))}
         </div>
       </div>
+
+      {/* Status filter buttons — day view only */}
+      {viewMode === 'day' && (
+        <div className="mb-4 flex flex-wrap items-center gap-1">
+          {['', 'present', 'absent', 'late', 'leave', 'half-day', 'function'].map(st => (
+            <button key={st} onClick={() => setStatusFilter(statusFilter === st ? '' : st)}
+              className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                statusFilter === st
+                  ? 'bg-warm-accent text-[#1a1614] font-medium'
+                  : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
+              }`}>
+              {st ? (st === 'half-day' ? 'Half-Day' : st.charAt(0).toUpperCase() + st.slice(1)) : 'All'}
+            </button>
+          ))}
+          {statusFilter && (
+            <span className="text-[10px] text-warm-muted/50 ml-2">{filteredTeachers.length} teacher{filteredTeachers.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-lg bg-warm-card" />)}</div>
