@@ -45,6 +45,7 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [threshold, setThreshold] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -166,8 +167,15 @@ export default function AttendancePage() {
         return pct < threshold;
       });
     }
+    // Status filter (only in day view)
+    if (statusFilter && viewMode === 'day') {
+      result = result.filter((s: any) => {
+        const st = s.attendances?.[0]?.status || 'unmarked';
+        return st === statusFilter;
+      });
+    }
     return result;
-  }, [students, searchQuery, threshold]);
+  }, [students, searchQuery, threshold, statusFilter, viewMode]);
 
   // Check if a date string is Sunday
   const isSunday = (dateStr: string) => new Date(dateStr + 'T00:00:00').getDay() === 0;
@@ -382,6 +390,25 @@ export default function AttendancePage() {
           ))}
         </div>
       </div>
+
+      {/* Status filter buttons — day view only */}
+      {viewMode === 'day' && (
+        <div className="mb-4 flex flex-wrap items-center gap-1">
+          {['', 'present', 'absent', 'late', 'leave', 'half-day', 'function'].map(st => (
+            <button key={st} onClick={() => setStatusFilter(statusFilter === st ? '' : st)}
+              className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                statusFilter === st
+                  ? 'bg-warm-accent text-[#1a1614] font-medium'
+                  : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
+              }`}>
+              {st ? (st === 'half-day' ? 'Half-Day' : st.charAt(0).toUpperCase() + st.slice(1)) : 'All'}
+            </button>
+          ))}
+          {statusFilter && (
+            <span className="text-[10px] text-warm-muted/50 ml-2">{filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-lg bg-warm-card" />)}</div>
