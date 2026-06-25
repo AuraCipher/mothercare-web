@@ -111,19 +111,19 @@ export default function AttendanceDashboard() {
 
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
-  // Stats from today's data
-  const todayAtts = students.flatMap((s: any) => (s.attendances || []).filter((a: any) => (a.date || '').split('T')[0] === todayStr()));
-  const todayP = todayAtts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
-  const todayA = todayAtts.filter((a: any) => a.status === 'absent').length;
-  const todayL = todayAtts.filter((a: any) => a.status === 'late').length;
-  const todayLv = todayAtts.filter((a: any) => a.status === 'leave').length;
-  const todayHd = todayAtts.filter((a: any) => a.status === 'half-day').length;
-  const todayF = todayAtts.filter((a: any) => a.status === 'function').length;
-  const todayTotal = todayAtts.length;
-  const todayPct = todayTotal ? Math.round((todayP / todayTotal) * 100) : 0;
+  // Stats from current period data
+  const allAtts = students.flatMap((s: any) => s.attendances || []);
+  const periodP = allAtts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+  const periodA = allAtts.filter((a: any) => a.status === 'absent').length;
+  const periodL = allAtts.filter((a: any) => a.status === 'late').length;
+  const periodLv = allAtts.filter((a: any) => a.status === 'leave').length;
+  const periodHd = allAtts.filter((a: any) => a.status === 'half-day').length;
+  const periodF = allAtts.filter((a: any) => a.status === 'function').length;
+  const periodTotal = allAtts.length;
+  const periodPct = periodTotal ? Math.round((periodP / periodTotal) * 100) : 0;
 
   // Status breakdown donut data
-  const statusCounts = { present: todayP, absent: todayA, late: todayL, leave: todayLv, 'half-day': todayHd, function: todayF };
+  const statusCounts = { present: periodP, absent: periodA, late: periodL, leave: periodLv, 'half-day': periodHd, function: periodF };
   const statusColors: Record<string, string> = { present: '#22c55e', absent: '#ef4444', late: '#eab308', leave: '#3b82f6', 'half-day': '#06b6d4', function: '#ec4899' };
   const statusLabels: Record<string, string> = { present: 'Present', absent: 'Absent', late: 'Late', leave: 'Leave', 'half-day': 'Half-Day', function: 'Function' };
 
@@ -228,24 +228,24 @@ export default function AttendanceDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 lg:col-span-2">
           <h2 className="text-sm font-medium text-warm-cream mb-3">Today&apos;s Attendance</h2>
-          {todayTotal > 0 ? (
+          {periodTotal > 0 ? (
             <>
               <div className="flex items-end justify-between mb-3">
                 <div>
-                  <span className="text-3xl font-light text-warm-accent">{todayPct}%</span>
-                  <p className="text-xs text-warm-muted/50 mt-1">{todayP} present · {todayA} absent · {todayL} late · {todayTotal} total</p>
+                  <span className="text-3xl font-light text-warm-accent">{periodPct}%</span>
+                  <p className="text-xs text-warm-muted/50 mt-1">{periodP} present · {periodA} absent · {periodL} late · {periodTotal} total</p>
                 </div>
               </div>
               <div className="w-full h-2.5 bg-warm-card-border/20 rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-warm-accent transition-all duration-500" style={{ width: `${todayPct}%` }} />
+                <div className="h-full rounded-full bg-warm-accent transition-all duration-500" style={{ width: `${periodPct}%` }} />
               </div>
               <div className="flex gap-4 mt-3 text-[10px] text-warm-muted/50">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#22c55e'}} /> P {todayP}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ef4444'}} /> A {todayA}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#eab308'}} /> L {todayL}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#3b82f6'}} /> Lv {todayLv}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#06b6d4'}} /> Hd {todayHd}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ec4899'}} /> F {todayF}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#22c55e'}} /> P {periodP}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ef4444'}} /> A {periodA}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#eab308'}} /> L {periodL}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#3b82f6'}} /> Lv {periodLv}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#06b6d4'}} /> Hd {periodHd}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background: '#ec4899'}} /> F {periodF}</span>
               </div>
             </>
           ) : <p className="text-xs text-warm-muted/40 py-6 text-center">No attendance marked today</p>}
@@ -258,7 +258,7 @@ export default function AttendanceDashboard() {
             <div className="flex flex-col items-center">
               <div className="w-28 h-28 rounded-full relative" style={{ background: `conic-gradient(${conicStr})` }}>
                 <div className="absolute inset-3 rounded-full bg-[#1a1614] flex items-center justify-center">
-                  <span className="text-lg font-light text-warm-cream">{todayPct}%</span>
+                  <span className="text-lg font-light text-warm-cream">{periodPct}%</span>
                 </div>
               </div>
               <div className="mt-3 space-y-1 w-full">
@@ -302,22 +302,33 @@ export default function AttendanceDashboard() {
             <button onClick={loadTrend} className="p-1.5 text-warm-muted hover:text-warm-cream transition-colors" title="Refresh"><RefreshCw size={13} /></button>
           </div>
         </div>
-        {trendData.length > 0 ? (
-          <div className="flex items-end gap-[2px] h-36">
-            {trendData.map((d, i) => {
-              const h = d.pct != null ? (d.pct / 100) * 100 : 2;
-              const alpha = d.pct != null ? (d.pct >= 80 ? 'cc' : d.pct >= 70 ? '99' : '66') : '20';
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative min-w-[8px]">
-                  <div className="w-full rounded-sm hover:opacity-80 transition-opacity duration-300"
-                    style={{ height: `${Math.max(h, 3)}%`, backgroundColor: '#b39a76' + alpha }}
-                    title={`${d.label}: ${d.pct != null ? d.pct + '%' : 'No data'} (${d.total})`} />
-                  {trendData.length <= 31 && i % Math.ceil(trendData.length / 8) === 0 && (
-                    <span className="text-[7px] text-warm-muted/30 mt-1.5 whitespace-nowrap">{d.label}</span>
-                  )}
-                </div>
-              );
-            })}
+        {trendData.length > 1 ? (
+          <div className="relative h-36">
+            <svg className="w-full h-full" preserveAspectRatio="none" viewBox={'0 0 ' + Math.max(trendData.length - 1, 1) + ' 100'}>
+              <polyline
+                fill="none"
+                stroke="#b39a76"
+                strokeWidth="1.5"
+                vectorEffect="non-scaling-stroke"
+                points={trendData.map((d, i) => {
+                  const x = i;
+                  const y = d.pct != null ? 100 - d.pct : 100;
+                  return x + ',' + y;
+                }).join(' ')}
+              />
+              {trendData.map((d, i) => {
+                if (d.pct == null) return null;
+                const cx = i;
+                const cy = 100 - d.pct;
+                const color = d.pct >= 80 ? '#22c55e' : d.pct >= 70 ? '#eab308' : '#ef4444';
+                return <circle key={i} cx={cx} cy={cy} r="2" fill={color} />;
+              })}
+            </svg>
+            <div className="absolute -bottom-4 left-0 right-0 flex justify-between text-[7px] text-warm-muted/30 px-1">
+              {trendData.filter((_, i) => i % Math.ceil(trendData.length / 8) === 0).map((d, i) => (
+                <span key={i}>{d.label}</span>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center h-36 text-xs text-warm-muted/40">No trend data for this period</div>
