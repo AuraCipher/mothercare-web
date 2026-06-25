@@ -369,7 +369,7 @@ export default function AttendancePage() {
 
         <div className="min-w-[90px]">
           <input type="number" min="0" max="100" value={threshold || ''} onChange={(e) => setThreshold(Number(e.target.value) || 0)}
-            placeholder="Min %"
+            placeholder="Below %"
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" title="Show students below this attendance %" />
         </div>
 
