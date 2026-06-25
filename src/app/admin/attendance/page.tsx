@@ -201,9 +201,12 @@ export default function AttendanceDashboard() {
     const classStudents = students.filter((s: any) => s.groupId === sec.id);
     const atts = classStudents.flatMap((s: any) => s.attendances || []);
     const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
+    const a = atts.filter((a: any) => a.status === 'absent').length;
+    const l = atts.filter((a: any) => a.status === 'late').length;
+    const lv = atts.filter((a: any) => a.status === 'leave').length;
     const total = atts.length;
     const pct = total ? Math.round((p / total) * 100) : 0;
-    return { name: sec.section ? `${sec.name} — ${sec.section}` : sec.name, pct, total };
+    return { name: sec.section ? `${sec.name} — ${sec.section}` : sec.name, pct, total, p, a, l, lv };
   }).filter(d => d.total > 0).sort((a, b) => b.pct - a.pct);
 
   // Top absentees
@@ -449,6 +452,12 @@ export default function AttendanceDashboard() {
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-warm-cream/80 truncate pr-2">{c.name}</span>
                     <span className="text-warm-accent font-medium">{c.pct}%</span>
+                  </div>
+                  <div className="flex gap-2 text-[9px] text-warm-muted/40 mb-1">
+                    <span className="text-green-400/60">P {c.p}</span>
+                    <span className="text-red-400/60">A {c.a}</span>
+                    <span className="text-yellow-400/60">L {c.l}</span>
+                    <span className="text-blue-400/60">Lv {c.lv}</span>
                   </div>
                   <div className="w-full h-1.5 bg-warm-card-border/20 rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-warm-accent/70 transition-all duration-500" style={{ width: `${c.pct}%` }} />
