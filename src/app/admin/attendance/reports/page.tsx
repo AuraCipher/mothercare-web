@@ -92,6 +92,7 @@ export default function ReportsPage() {
       if (!json.success) { showToast('error', 'Failed to load data'); setLoading(false); return; }
 
       const items = json.data || [];
+      const totalItems = items.length;
       const summary: any = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0, holiday: 0, function: 0, total: 0, percentage: 0, statusCount: 0, statusPercent: 0 };
       const rows: any[] = [];
       const sf = statusFilter;
@@ -130,7 +131,7 @@ export default function ReportsPage() {
 
       if (sf) {
         rows.sort((a: any, b: any) => (b.statusCount || 0) - (a.statusCount || 0));
-        summary.statusPercent = summary.total ? Math.round(((summary.statusCount || 0) / summary.total) * 100) : 0;
+        summary.statusPercent = totalItems ? Math.round(((summary.statusCount || 0) / totalItems) * 100) : 0;
         summary.percentage = summary.statusPercent;
       } else {
         rows.sort((a, b) => b.percent - a.percent);
@@ -390,7 +391,7 @@ export default function ReportsPage() {
           {/* Summary row */}
           <div className="px-5 py-3 border-t border-warm-card-border/30 flex flex-wrap gap-4 text-xs text-warm-muted/70">
             {report.statusFilter ? (
-              <span><span className="font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{report.summary.statusCount || 0}</span> {STATUS_LABELS[report.statusFilter] || report.statusFilter} · {(report.summary.statusPercent || 0)}% · {report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
+              <span><span className="font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{report.summary.statusCount || 0}</span> {STATUS_LABELS[report.statusFilter] || report.statusFilter} · {(report.summary.statusPercent || 0)}% of all · {report.total} listed {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
             ) : report.isSingleDay ? (
               <span><span className="text-green-400 font-medium">{report.summary.present}</span> Present · <span className="text-red-400 font-medium">{report.summary.absent}</span> Absent · <span className="text-yellow-400 font-medium">{report.summary.late}</span> Late · <span className="text-blue-400 font-medium">{report.summary.leave}</span> Leave · {report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
             ) : (
