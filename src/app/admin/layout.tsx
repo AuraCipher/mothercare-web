@@ -40,9 +40,6 @@ const navItems = [
   { href: '/admin/classes', icon: BookOpen, label: 'Classes / Sections' },
   { href: '/admin/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/admin/attendance', icon: CheckSquare, label: 'Attendance' },
-  { href: '/admin/attendance/students', icon: CheckSquare, label: '── Students', indent: true },
-  { href: '/admin/attendance/teachers', icon: CheckSquare, label: '── Teachers', indent: true },
-  { href: '/admin/attendance/reports', icon: CheckSquare, label: '── Reports', indent: true },
   { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
 ];
 
