@@ -31,7 +31,7 @@ export default function CollectionsPage() {
     setLoading(true);
     try {
       const [fRes, sRes] = await Promise.all([
-        fetch(`${API_URL}/admin/student-fees?month=${month + 1}&year=${year}`, {
+        fetch(`${API_URL}/admin/fees/students-list?month=${month + 1}&year=${year}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()),
         branchId && ayId ? fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
@@ -164,28 +164,29 @@ export default function CollectionsPage() {
             <tbody>
               {displayFees.map((f: any, idx: number) => {
                 const s = f.student || {};
-                const due = (f.netAmount - f.paidAmount) / 100;
+                const due = f.status !== 'NO_FEE' ? (f.netAmount - f.paidAmount) / 100 : 0;
                 const father = getFather(s);
                 return (
-                  <tr key={f.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
+                  <tr key={s.id || f.id || idx} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{idx + 1}</td>
                     <td className="px-2 py-2.5 text-xs text-warm-muted">{s.rollNumber || '—'}</td>
                     <td className="px-3 py-2.5">
                       <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
                         className="text-xs text-warm-cream hover:text-warm-accent transition-colors text-left">{s.name || 'Unknown'}</button>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-warm-muted/60">{s.group?.name || s.groupId?.slice(0,8) || ''}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
+                    <td className="px-3 py-2.5 text-xs text-warm-muted/60">{s.group?.name || ''}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{father}</td>
-                    <td className="px-3 py-2.5 text-xs text-warm-muted text-right">{(f.netAmount / 100).toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-xs text-green-400 text-right">{(f.paidAmount / 100).toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-xs text-red-400 text-right font-medium">{due > 0 ? due.toLocaleString() : '0'}</td>
+                    <td className="px-3 py-2.5 text-xs text-warm-muted text-right">{f.status !== 'NO_FEE' ? (f.netAmount / 100).toLocaleString() : '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-green-400 text-right">{f.status !== 'NO_FEE' ? (f.paidAmount / 100).toLocaleString() : '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-red-400 text-right font-medium">{f.status !== 'NO_FEE' && due > 0 ? due.toLocaleString() : f.status !== 'NO_FEE' ? '0' : '—'}</td>
                     <td className="px-2 py-2.5 text-xs text-center">
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         f.status === 'PAID' ? 'bg-green-900/20 text-green-400' :
                         f.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
                         f.status === 'OVERPAID' ? 'bg-blue-900/20 text-blue-400' :
+                        f.status === 'NO_FEE' ? 'bg-warm-card/50 text-warm-muted/40' :
                         'bg-red-900/20 text-red-400'
-                      }`}>{f.status}</span>
+                      }`}>{f.status === 'NO_FEE' ? '—' : f.status}</span>
                     </td>
                     <td className="px-2 py-2.5 text-center">
                       <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
