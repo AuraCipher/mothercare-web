@@ -110,6 +110,7 @@ export default function ReportsPage() {
         if (sf) {
           // Status filter mode: count matching records
           const statusCount = atts.filter((a: any) => a.status === sf).length;
+          if (statusCount === 0) continue; // Skip students not matching the filter
           const totalRec = atts.length;
           summary.statusCount = (summary.statusCount || 0) + statusCount;
           summary.total += totalRec;
