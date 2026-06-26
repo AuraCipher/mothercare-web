@@ -44,12 +44,6 @@ const navItems = [
   { href: '/admin/attendance/teachers', icon: CheckSquare, label: '── Teachers', indent: true },
   { href: '/admin/attendance/reports', icon: CheckSquare, label: '── Reports', indent: true },
   { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
-  { href: '/admin/fees/heads', icon: DollarSign, label: '── Heads', indent: true },
-  { href: '/admin/fees/structures', icon: DollarSign, label: '── Structures', indent: true },
-  { href: '/admin/fees/generate', icon: DollarSign, label: '── Generate', indent: true },
-  { href: '/admin/fees/collections', icon: DollarSign, label: '── Collections', indent: true },
-  { href: '/admin/fees/collections/family-pay', icon: DollarSign, label: '── Family Pay', indent: true },
-  { href: '/admin/fees/reports', icon: DollarSign, label: '── Reports', indent: true },
 ];
 
 /* ── Layout ── */

@@ -2,28 +2,36 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, Users, FileText, Calendar } from 'lucide-react';
+import { DollarSign, Users, FileText, Calendar, Printer, BarChart, ArrowRight } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function FeesDashboardPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<any>(null);
+  const [defaulters, setDefaulters] = useState<any[]>([]);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
     if (!token) return;
     const now = new Date();
-    fetch(`${API_URL}/admin/fees/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`, {
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    fetch(`${API_URL}/admin/fees/summary?month=${m}&year=${y}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(j => { if (j.success) setSummary(j.data); }).catch(() => {});
+    fetch(`${API_URL}/admin/fees/defaulter?month=${m}&year=${y}&take=5`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()).then(j => { if (j.success) setDefaulters(j.data.slice(0, 5)); }).catch(() => {});
   }, []);
 
   const cards = [
     { icon: DollarSign, label: 'Fee Heads', desc: 'Manage what to charge', href: '/admin/fees/heads', color: 'text-green-400' },
     { icon: Users, label: 'Fee Structures', desc: 'Set amounts per class', href: '/admin/fees/structures', color: 'text-blue-400' },
     { icon: Calendar, label: 'Generate Fees', desc: 'Create monthly fees', href: '/admin/fees/generate', color: 'text-yellow-400' },
-    { icon: FileText, label: 'Collections', desc: 'Record payments & due list', href: '/admin/fees/collections', color: 'text-pink-400' },
+    { icon: FileText, label: 'Collections', desc: 'Record payments & dues', href: '/admin/fees/collections', color: 'text-pink-400' },
+    { icon: Printer, label: 'Family Pay', desc: 'Pay for siblings together', href: '/admin/fees/collections/family-pay', color: 'text-purple-400' },
+    { icon: BarChart, label: 'Reports', desc: 'Collection stats & defaulters', href: '/admin/fees/reports', color: 'text-cyan-400' },
   ];
 
   return (
@@ -33,7 +41,8 @@ export default function FeesDashboardPage() {
         <h1 className="text-xl font-light text-warm-cream">Fees & Payments</h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* All 6 cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {cards.map(c => {
           const Icon = c.icon;
           return (
@@ -47,14 +56,59 @@ export default function FeesDashboardPage() {
         })}
       </div>
 
+      {/* Quick Actions — most used */}
+      <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
+        <h2 className="text-sm font-medium text-warm-cream mb-3">Quick Actions</h2>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => router.push('/admin/fees/collections')}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent/20 px-4 py-2 text-xs text-warm-accent hover:bg-warm-accent/30 transition-colors">
+            <FileText size={13} /> Record Payment <ArrowRight size={12} />
+          </button>
+          <button onClick={() => router.push('/admin/fees/generate')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            <Calendar size={13} /> Generate Monthly Fees
+          </button>
+          <button onClick={() => router.push('/admin/fees/collections/family-pay')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            <Printer size={13} /> Combined Family Pay
+          </button>
+          <button onClick={() => router.push('/admin/fees/reports')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            <BarChart size={13} /> View Reports
+          </button>
+        </div>
+      </div>
+
+      {/* This Month Summary */}
       {summary && (
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
           <h2 className="text-sm font-medium text-warm-cream mb-4">This Month Summary</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div><p className="text-[10px] text-warm-muted/50 uppercase">Total Due</p><p className="text-lg font-light text-warm-cream mt-1">{(summary.totalDue / 100).toLocaleString()}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase">Collected</p><p className="text-lg font-light text-green-400 mt-1">{(summary.totalCollected / 100).toLocaleString()}</p></div>
-            <div><p className="text-[10px] text-warm-muted/50 uppercase">Pending</p><p className="text-lg font-light text-red-400 mt-1">{summary.pendingCount}</p></div>
+            <div><p className="text-[10px] text-warm-muted/50 uppercase">Pending</p><p className="text-lg font-light text-red-400 mt-1">{summary.pendingCount} students</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase">Rate</p><p className="text-lg font-light text-warm-accent mt-1">{summary.collectionRate}%</p></div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Defaulters */}
+      {defaulters.length > 0 && (
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-warm-cream">Top Defaulters</h2>
+            <button onClick={() => router.push('/admin/fees/reports')} className="text-[10px] text-warm-accent hover:underline">View All</button>
+          </div>
+          <div className="space-y-2.5">
+            {defaulters.map((f: any) => {
+              const due = ((f.netAmount - f.paidAmount) / 100).toLocaleString();
+              return (
+                <div key={f.id} className="flex items-center justify-between border-b border-warm-card-border/5 pb-2 last:border-0">
+                  <span className="text-xs text-warm-muted/70">{f.student?.name}</span>
+                  <span className="text-xs text-red-400 font-medium">{due} PKR</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
