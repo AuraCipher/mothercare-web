@@ -35,9 +35,9 @@ export default function StudentFeeDetailPage() {
 
   useEffect(() => { loadData(); }, [params.id]);
 
-  // Compute totals
   const fees = data?.studentFees || [];
-  const totalDue = fees.reduce((s: number, f: any) => s + (f.netAmount - f.paidAmount), 0);
+  const totalRemainingPaise = fees.reduce((s: number, f: any) => s + (f.netAmount - f.paidAmount), 0);
+  const totalRemainingPkr = totalRemainingPaise / 100;
 
   const openPayModal = () => {
     setPayAmount(0);
@@ -49,8 +49,9 @@ export default function StudentFeeDetailPage() {
 
   const handleWaterfallPay = async () => {
     if (!token || !params.id || payAmount <= 0) return;
-    if (payAmount * 100 > totalDue) {
-      showToast('error', `Amount exceeds total due (${(totalDue / 100).toLocaleString()} PKR)`);
+    const amountPaise = Math.round(payAmount * 100);
+    if (amountPaise > totalRemainingPaise) {
+      showToast('error', `Amount exceeds total due (${totalRemainingPkr.toLocaleString()} PKR)`);
       return;
     }
     setSaving(true);
@@ -60,14 +61,16 @@ export default function StudentFeeDetailPage() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentId: params.id,
-          amount: Math.round(payAmount * 100),
+          amount: amountPaise,
           paymentMethod: payMethod,
           reference: payRef,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        setLastReceipt(json.data);
+        // Compute remaining after payment
+        const newTotalRemaining = Math.max(0, totalRemainingPaise - amountPaise);
+        setLastReceipt({ ...json.data, newRemainingPaise: newTotalRemaining });
         showToast('success', `Receipt: ${json.data.receiptNumber} · ${json.data.monthsCovered} month(s) covered`);
         loadData();
       } else showToast('error', json.message || 'Failed');
@@ -75,12 +78,13 @@ export default function StudentFeeDetailPage() {
     finally { setSaving(false); }
   };
 
-  const printReceipt = (payment: any, studentFee?: any) => {
+  const printReceipt = (payment: any, studentFee?: any, remainingOverride?: number) => {
     const win = window.open('', '_blank');
     if (!win) return;
-    const isWaterfall = payment.amount === undefined && payment.allocations;
+    const isWaterfall = payment.allocations !== undefined;
+    const remaining = remainingOverride ?? 0;
     win.document.write(`
-      <html><head><title>Receipt ${isWaterfall ? payment.receiptNumber : payment.receiptNumber}</title>
+      <html><head><title>Receipt ${payment.receiptNumber}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 40px; color: #222; }
         h1 { font-size: 18px; margin-bottom: 4px; }
@@ -89,12 +93,13 @@ export default function StudentFeeDetailPage() {
         th { background: #f0f0f0; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
         td { padding: 6px 8px; border-bottom: 1px solid #eee; }
         .total { font-size: 16px; margin-top: 16px; text-align: right; }
+        .balance { font-size: 14px; margin-top: 8px; text-align: right; }
         .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
         hr { border: none; border-top: 1px dashed #ccc; margin: 12px 0; }
         @media print { body { padding: 20px; } }
       </style></head><body>
       <h1>Mother Care School — Payment Receipt</h1>
-      <h2>Receipt: ${isWaterfall ? payment.receiptNumber : payment.receiptNumber}</h2>
+      <h2>Receipt: ${payment.receiptNumber}</h2>
       <div class="meta">
         Student: ${data?.name || ''} | ${data?.group?.name || ''} ${data?.group?.section || ''}<br>
         Date: ${new Date().toLocaleDateString()}<br>
@@ -109,6 +114,7 @@ export default function StudentFeeDetailPage() {
           }).join('')}
         </table>
         <div class="total">Total Paid: <strong>${(payment.totalAmount / 100).toLocaleString()} PKR</strong></div>
+        <div class="balance">Balance Remaining: <strong>${remaining > 0 ? (remaining / 100).toLocaleString() + ' PKR' : '0 PKR ✅'}</strong></div>
       ` : `
         <table>
           <tr><th>Description</th><th style="text-align:right">Amount</th></tr>
@@ -116,6 +122,7 @@ export default function StudentFeeDetailPage() {
           <tr><td><strong>Paid</strong></td><td style="text-align:right"><strong>${(payment.amount / 100).toLocaleString()}</strong></td></tr>
         </table>
         <div class="total">Total Paid: <strong>${(payment.amount / 100).toLocaleString()} PKR</strong></div>
+        <div class="balance">Balance Remaining: <strong>${remaining > 0 ? (remaining / 100).toLocaleString() + ' PKR' : '0 PKR ✅'}</strong></div>
       `}
       <div class="meta" style="margin-top:20px">Method: ${payment.paymentMethod || 'CASH'} | Received by: Admin</div>
       </body></html>
@@ -128,7 +135,7 @@ export default function StudentFeeDetailPage() {
   if (loading) return <main className="mx-auto max-w-4xl px-6 py-10"><div className="h-48 animate-pulse rounded-xl bg-warm-card" /></main>;
   if (!data) return <main className="mx-auto max-w-4xl px-6 py-10"><p className="text-sm text-warm-muted">Student not found</p></main>;
 
-  const father = data.parents?.find((p: any) => p.parent?.relation === 'Father' || p.parent?.relation === 'Father');
+  const father = data.parents?.find((p: any) => p.parent?.relation === 'Father');
   const fatherName = father?.parent?.user?.name || father?.parent?.phone || '—';
 
   return (
@@ -148,16 +155,15 @@ export default function StudentFeeDetailPage() {
         {data.customFeeAmount && (
           <div className="mt-3 pt-3 border-t border-warm-card-border/30">
             <p className="text-[10px] text-warm-muted/50 uppercase">Custom Fee</p>
-            <p className="text-xs text-warm-accent mt-0.5">{(data.customFeeAmount / 100).toLocaleString()} PKR (scholarship/discount)</p>
+            <p className="text-xs text-warm-accent mt-0.5">{(data.customFeeAmount / 100).toLocaleString()} PKR</p>
           </div>
         )}
-        {/* Total Due + Pay button */}
         <div className="mt-4 pt-4 border-t border-warm-card-border/30 flex items-center justify-between">
           <div>
             <p className="text-[10px] text-warm-muted/50 uppercase">Total Remaining</p>
-            <p className="text-2xl font-light text-warm-accent">{(totalDue / 100).toLocaleString()} PKR</p>
+            <p className="text-2xl font-light text-warm-accent">{totalRemainingPkr.toLocaleString()} PKR</p>
           </div>
-          {totalDue > 0 && (
+          {totalRemainingPaise > 0 && (
             <button onClick={openPayModal}
               className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
               <Save size={15} /> Pay Now
@@ -166,19 +172,17 @@ export default function StudentFeeDetailPage() {
         </div>
       </div>
 
-      {/* Fee History */}
+      {/* Fee History (newest first) */}
       <h2 className="text-sm font-medium text-warm-cream mb-3">Fee History</h2>
       <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-warm-card/70">
-              <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
-              <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Fee</th>
-              <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
-              <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Due</th>
-              <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Status</th>
-            </tr>
-          </thead>
+          <thead><tr className="bg-warm-card/70">
+            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
+            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Fee</th>
+            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
+            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Due</th>
+            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Status</th>
+          </tr></thead>
           <tbody>
             {fees.map((sf: any) => {
               const due = sf.netAmount - sf.paidAmount;
@@ -202,20 +206,18 @@ export default function StudentFeeDetailPage() {
         </table>
       </div>
 
-      {/* Payment History */}
+      {/* Payment History (newest first — API returns desc) */}
       <h2 className="text-sm font-medium text-warm-cream mb-3">Payment History</h2>
       <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-warm-card/70">
-              <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Date</th>
-              <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Receipt</th>
-              <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Allocation</th>
-              <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Amount</th>
-              <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Method</th>
-              <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Print</th>
-            </tr>
-          </thead>
+          <thead><tr className="bg-warm-card/70">
+            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Date</th>
+            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Receipt</th>
+            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
+            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Amount</th>
+            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Method</th>
+            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Print</th>
+          </tr></thead>
           <tbody>
             {fees.flatMap((sf: any) =>
               (sf.payments || []).map((p: any) => (
@@ -226,7 +228,7 @@ export default function StudentFeeDetailPage() {
                   <td className="px-4 py-3 text-xs text-green-400 text-right">{(p.amount / 100).toLocaleString()}</td>
                   <td className="px-4 py-3 text-xs text-warm-muted">{p.paymentMethod}</td>
                   <td className="px-3 py-3 text-center">
-                    <button onClick={() => printReceipt(p, sf)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors">
+                    <button onClick={() => printReceipt(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors">
                       <Printer size={13} />
                     </button>
                   </td>
@@ -240,7 +242,7 @@ export default function StudentFeeDetailPage() {
         </table>
       </div>
 
-      {/* Waterfall Pay Modal */}
+      {/* Pay Modal */}
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowPayModal(false)}>
           <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
@@ -248,16 +250,20 @@ export default function StudentFeeDetailPage() {
               <>
                 <h3 className="text-sm font-medium text-green-400 mb-2">✓ Payment Recorded</h3>
                 <p className="text-xs text-warm-muted/70 mb-1">Receipt: {lastReceipt.receiptNumber}</p>
-                <p className="text-xs text-warm-muted/70 mb-4">{lastReceipt.monthsCovered} month(s) covered · {(lastReceipt.totalAmount / 100).toLocaleString()} PKR</p>
+                <p className="text-xs text-warm-muted/70 mb-3">{lastReceipt.monthsCovered} month(s) covered · {(lastReceipt.totalAmount / 100).toLocaleString()} PKR</p>
                 <div className="space-y-1 mb-4">
                   {lastReceipt.allocations?.map((a: any) => {
                     const sf = data?.studentFees?.find((f: any) => f.id === a.studentFeeId);
                     const label = sf ? MONTHS[(sf.month || 1) - 1] + ' ' + (sf.year || '') : '';
                     return <div key={a.id} className="flex justify-between text-xs"><span className="text-warm-muted/70">{label}</span><span className="text-green-400">{(a.amount / 100).toLocaleString()}</span></div>;
                   })}
+                  <div className="flex justify-between text-xs pt-2 border-t border-warm-card-border/30 mt-2">
+                    <span className="text-warm-muted/70">Remaining</span>
+                    <span className={lastReceipt.newRemainingPaise > 0 ? 'text-red-400' : 'text-green-400'}>{lastReceipt.newRemainingPaise > 0 ? (lastReceipt.newRemainingPaise / 100).toLocaleString() + ' PKR' : '0 PKR ✅'}</span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => printReceipt(lastReceipt)} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                  <button onClick={() => printReceipt(lastReceipt, undefined, lastReceipt.newRemainingPaise)} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
                     <Printer size={13} className="inline mr-1" /> Print Receipt
                   </button>
                   <button onClick={() => { setShowPayModal(false); setLastReceipt(null); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Close</button>
@@ -266,13 +272,13 @@ export default function StudentFeeDetailPage() {
             ) : (
               <>
                 <h3 className="text-sm font-medium text-warm-cream mb-1">Record Payment</h3>
-                <p className="text-xs text-warm-muted/50 mb-4">Total remaining: <strong className="text-warm-accent">{(totalDue / 100).toLocaleString()} PKR</strong></p>
+                <p className="text-xs text-warm-muted/50 mb-4">Total remaining: <strong className="text-warm-accent">{totalRemainingPkr.toLocaleString()} PKR</strong></p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Pay Amount (PKR)</label>
-                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Math.max(0, Math.min(Number(e.target.value) || 0, totalDue / 100)))}
+                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
+                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Math.max(0, Math.min(Number(e.target.value) || 0, totalRemainingPkr)))}
                       className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
-                    {payAmount * 100 > totalDue ? <p className="text-[10px] text-red-400 mt-1">Exceeds remaining balance</p> : payAmount > 0 && <p className="text-[10px] text-green-400/60 mt-1">Clears {(payAmount * 100 / totalDue * 100).toFixed(0)}% of dues</p>}
+                    {payAmount > 0 && <p className="text-[10px] text-green-400/60 mt-1">{((payAmount / totalRemainingPkr) * 100).toFixed(0)}% of dues</p>}
                   </div>
                   <div>
                     <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Method</label>
@@ -284,17 +290,16 @@ export default function StudentFeeDetailPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Reference</label>
+                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Cheque # / Transaction ID</label>
                     <input value={payRef} onChange={e => setPayRef(e.target.value)}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="Optional" />
+                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="Optional reference number" />
                   </div>
-                  {/* Waterfall preview */}
                   {payAmount > 0 && (
                     <div className="rounded-lg bg-warm-card/50 p-3">
                       <p className="text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Will Clear (oldest first)</p>
                       {(() => {
                         let remaining = payAmount * 100;
-                        return fees.filter((f: any) => f.netAmount - f.paidAmount > 0).map((f: any) => {
+                        return [...fees].reverse().filter((f: any) => f.netAmount - f.paidAmount > 0).map((f: any) => {
                           const due = f.netAmount - f.paidAmount;
                           const alloc = Math.min(remaining, due);
                           if (alloc <= 0) return null;
@@ -311,7 +316,7 @@ export default function StudentFeeDetailPage() {
                   )}
                 </div>
                 <div className="flex gap-2 mt-5">
-                  <button onClick={handleWaterfallPay} disabled={saving || payAmount <= 0 || payAmount * 100 > totalDue}
+                  <button onClick={handleWaterfallPay} disabled={saving || payAmount <= 0}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
                     <Save size={13} /> {saving ? 'Processing...' : `Pay ${payAmount.toLocaleString()} PKR`}
                   </button>
