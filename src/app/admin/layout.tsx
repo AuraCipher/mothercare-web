@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
 import {
-  LogOut, BookOpen, LayoutDashboard, Building2, Menu, X,
+  LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
 } from 'lucide-react';
 
@@ -43,6 +43,13 @@ const navItems = [
   { href: '/admin/attendance/students', icon: CheckSquare, label: '── Students', indent: true },
   { href: '/admin/attendance/teachers', icon: CheckSquare, label: '── Teachers', indent: true },
   { href: '/admin/attendance/reports', icon: CheckSquare, label: '── Reports', indent: true },
+  { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
+  { href: '/admin/fees/heads', icon: DollarSign, label: '── Heads', indent: true },
+  { href: '/admin/fees/structures', icon: DollarSign, label: '── Structures', indent: true },
+  { href: '/admin/fees/generate', icon: DollarSign, label: '── Generate', indent: true },
+  { href: '/admin/fees/collections', icon: DollarSign, label: '── Collections', indent: true },
+  { href: '/admin/fees/collections/family-pay', icon: DollarSign, label: '── Family Pay', indent: true },
+  { href: '/admin/fees/reports', icon: DollarSign, label: '── Reports', indent: true },
 ];
 
 /* ── Layout ── */
