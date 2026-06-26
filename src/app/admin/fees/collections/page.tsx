@@ -18,6 +18,7 @@ export default function CollectionsPage() {
   const [classFilter, setClassFilter] = useState('');
   const [rollFilter, setRollFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
   // Pay is handled via the student detail page (/admin/fees/student/[id])
@@ -31,7 +32,7 @@ export default function CollectionsPage() {
     setLoading(true);
     try {
       const [fRes, sRes] = await Promise.all([
-        fetch(`${API_URL}/admin/fees/students-list?month=${month + 1}&year=${year}`, {
+        fetch(`${API_URL}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()),
         branchId && ayId ? fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
@@ -43,7 +44,7 @@ export default function CollectionsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [month, year]);
+  useEffect(() => { loadData(); }, [month, year, period]);
 
   // Get father name from parents array
   const getFather = (student: any) => {
@@ -100,12 +101,24 @@ export default function CollectionsPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-light text-warm-cream">Collections</h1>
         <div className="flex items-center gap-3">
-          <select value={month} onChange={e => setMonth(Number(e.target.value))}
-            className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-            {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
-          <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
-            className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent w-20" />
+          <div className="flex gap-1">
+            {(['monthly', 'full'] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
+                {p === 'monthly' ? 'Monthly' : 'Full AY'}
+              </button>
+            ))}
+          </div>
+          {period === 'monthly' && (
+            <>
+              <select value={month} onChange={e => setMonth(Number(e.target.value))}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent w-20" />
+            </>
+          )}
         </div>
       </div>
 
