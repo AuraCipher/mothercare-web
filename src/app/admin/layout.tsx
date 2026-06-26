@@ -355,7 +355,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const isIndent = (item as any).indent;
                 const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
                 return (
-                  <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)}
+                  <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}
                     className={`flex items-center gap-2.5 rounded-lg text-xs transition-colors ${isIndent ? 'pl-8 py-1.5' : 'px-3 py-2'} ${active ? 'text-warm-cream bg-warm-accent/10' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
                     {isIndent ? null : <Icon size={14} className="text-warm-accent" />}
                     <span className={isIndent ? 'text-[11px] text-warm-muted/70' : ''}>{item.label.replace('── ', '')}</span>
