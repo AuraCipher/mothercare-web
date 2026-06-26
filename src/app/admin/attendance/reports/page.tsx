@@ -14,7 +14,7 @@ type ReportData = {
   isSingleDay: boolean;
   showSection: boolean;
   summary: { present: number; absent: number; late: number; leave: number; halfDay: number; holiday: number; function: number; total: number; percentage: number; statusCount?: number; statusPercent?: number };
-  students: { name: string; roll: string; section?: string; present: number; absent: number; late: number; percent: number; statusCount?: number; statusPercent?: number; status?: string }[];
+  students: { name: string; roll: string; section?: string; present: number; absent: number; late: number; percent: number; statusCount?: number; statusPercent?: number; status?: string; count?: number }[];
 };
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -94,7 +94,7 @@ export default function ReportsPage() {
       const items = json.data || [];
       const totalItems = items.length;
       const summary: any = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0, holiday: 0, function: 0, total: 0, percentage: 0, statusCount: 0, statusPercent: 0 };
-      const rows: any[] = [];
+      let rows: any[] = [];
       const sf = statusFilter;
       const sfLabel = STATUS_LABELS[sf] || sf;
 
@@ -138,10 +138,39 @@ export default function ReportsPage() {
         summary.percentage = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
       }
 
+      // Apply report type post-processing
+      if (reportType === 'absentee' && !sf) {
+        rows = rows.filter((r: any) => r.percent < absenteeThreshold);
+        rows.sort((a: any, b: any) => a.percent - b.percent);
+      } else if (reportType === 'class-summary' && !sf && showSection) {
+        const classMap: Record<string, any> = {};
+        for (const r of rows) {
+          const sec = r.section || 'Unassigned';
+          if (!classMap[sec]) classMap[sec] = { total: 0, present: 0, absent: 0, late: 0, leave: 0, count: 0 };
+          classMap[sec].total += (r.present || 0) + (r.absent || 0) + (r.late || 0) + (r.leave || 0);
+          classMap[sec].present += r.present || 0;
+          classMap[sec].absent += r.absent || 0;
+          classMap[sec].late += r.late || 0;
+          classMap[sec].leave += r.leave || 0;
+          classMap[sec].count++;
+        }
+        const newRows: any[] = [];
+        for (const [sec, d] of Object.entries(classMap)) {
+          newRows.push({ name: sec, roll: '—', section: sec, present: d.present, absent: d.absent, late: d.late, percent: d.total ? Math.round((d.present / d.total) * 100) : 0, count: d.count });
+        }
+        rows = newRows.sort((a, b) => b.percent - a.percent);
+        summary.present = rows.reduce((s: number, r: any) => s + r.present, 0);
+        summary.absent = rows.reduce((s: number, r: any) => s + r.absent, 0);
+        summary.late = rows.reduce((s: number, r: any) => s + r.late, 0);
+        summary.leave = rows.reduce((s: number, r: any) => s + r.leave, 0);
+        summary.total = rows.reduce((s: number, r: any) => s + r.present + r.absent + r.late + r.leave, 0);
+        summary.percentage = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
+      }
+
       const periodLabel = period === 'monthly' ? MONTHS[month] + ' ' + now.getFullYear() : period === 'full' ? 'Full Academic Year' : from + ' to ' + to;
       const label = isTeacher ? null : (groupId ? sections.find((s: any) => s.id === groupId) : null);
       const prefix = isTeacher ? 'All Teachers' : (label?.name ? label.name + (label.section ? ' — ' + label.section : '') : 'All Students');
-      const title = prefix + ' · ' + (sf ? sfLabel + ' · ' : '') + periodLabel;
+      const title = prefix + ' · ' + (sf ? sfLabel + ' · ' : '') + (reportType === 'class-summary' ? 'Class Summary · ' : reportType === 'absentee' ? 'Absentee List · ' : '') + periodLabel;
       const statusFilterLabel = sf;
 
       setReport({ title, generatedAt: new Date().toLocaleString(), total: rows.length, statusFilter: statusFilterLabel, isSingleDay, showSection, summary, students: rows });
@@ -169,6 +198,9 @@ export default function ReportsPage() {
       for (const s of report.students) csv += isTeacher
         ? s.name + ',' + (STATUS_LABELS[(s as any).status] || (s as any).status || '—') + '\n'
         : s.roll + ',' + s.name + ',' + (STATUS_LABELS[(s as any).status] || (s as any).status || '—') + '\n';
+    } else if ((report.students as any)[0]?.count !== undefined) {
+      csv = 'Class,Students,P,A,L,Percent\n';
+      for (const s of report.students) csv += (s as any).name + ',' + (s as any).count + ',' + s.present + ',' + s.absent + ',' + s.late + ',' + s.percent + '\n';
     } else {
       csv = isTeacher ? 'Name,Present,Absent,Late,Percent\n' : 'Roll,Name,Present,Absent,Late,Percent\n';
       for (const s of report.students) csv += isTeacher
@@ -205,6 +237,10 @@ export default function ReportsPage() {
       thExtra = '<th>Status</th>';
       tdExtra = (s: any) => `<td>${STATUS_LABELS[(s as any).status] || (s as any).status || '—'}</td>`;
       rows = report.students.map(s => `<tr>${tdRoll(s)}<td>${s.name}</td>${tdExtra(s)}</tr>`).join('');
+    } else if ((report.students[0] as any)?.count !== undefined) {
+      thExtra = '<th>Students</th><th>P</th><th>A</th><th>L</th><th>%</th>';
+      tdExtra = (s: any) => `<td>${s.count}</td><td>${s.present}</td><td>${s.absent}</td><td>${s.late}</td><td class="pct">${s.percent}%</td>`;
+      rows = report.students.map(s => `<tr><td class="pct">${s.name}</td>${tdExtra(s)}</tr>`).join('');
     } else {
       thExtra = '<th>P</th><th>A</th><th>L</th><th>%</th>';
       tdExtra = (s: any) => `<td>${s.present}</td><td>${s.absent}</td><td>${s.late}</td><td class="pct">${s.percent}%</td>`;
@@ -252,16 +288,19 @@ export default function ReportsPage() {
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Report For</label>
             <div className="flex gap-1">
-              {(['student', 'teacher'] as const).map(t => (
-                <button key={t} onClick={() => { setReportTarget(t); setReport(null); }}
-                  className={`flex-1 rounded-lg py-2 text-xs transition-colors ${reportTarget === t ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
-                  {t === 'student' ? 'Students' : 'Teachers'}
-                </button>
-              ))}
+              {(['student', 'teacher'] as const).map(t => {
+                const disabled = t === 'teacher' && reportType === 'class-summary';
+                return (
+                  <button key={t} onClick={() => { if (!disabled) { setReportTarget(t); setReport(null); } }}
+                    className={`flex-1 rounded-lg py-2 text-xs transition-colors ${reportTarget === t ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                    {t === 'student' ? 'Students' : 'Teachers'}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className={reportTarget === 'teacher' ? 'opacity-30 pointer-events-none' : ''}>
+          <div className={(reportTarget === 'teacher' || reportType === 'class-summary') ? 'opacity-30 pointer-events-none' : ''}>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Class</label>
             <select value={reportTarget === 'teacher' ? '' : groupId} onChange={e => setGroupId(e.target.value)}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
@@ -275,18 +314,21 @@ export default function ReportsPage() {
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Period</label>
             <div className="flex gap-1">
-              {(['daily', 'monthly', 'full', 'custom'] as const).map(p => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
-                  {p === 'daily' ? 'Daily' : p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
-                </button>
-              ))}
+              {(['daily', 'monthly', 'full', 'custom'] as const).map(p => {
+                const disabled = p === 'daily' && (reportType === 'absentee' || reportType === 'class-summary');
+                return (
+                  <button key={p} onClick={() => { if (!disabled) setPeriod(p); }}
+                    className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                    {p === 'daily' ? 'Daily' : p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
         {/* Row 2: Status filter */}
-        <div className="mb-4">
+        <div className={'mb-4' + (reportType === 'absentee' ? ' opacity-30 pointer-events-none' : '')}>
           <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Filter by Status</label>
           <div className="flex flex-wrap items-center gap-1">
             {['', 'present', 'absent', 'late', 'leave', 'half-day', 'function'].map(st => (
@@ -413,6 +455,9 @@ export default function ReportsPage() {
                   ) : report.isSingleDay ? (
                     // Standard + single day: roll, name, status text
                     <>{reportTarget !== 'teacher' && <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>}{report.showSection && <th className="text-left px-3 py-2.5 text-[10px] text-warm-muted font-medium">Class</th>}<th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th><th className="text-left px-3 py-2.5 text-[10px] text-warm-muted font-medium">Status</th></>
+                  ) : report.students[0]?.count !== undefined ? (
+                    // Class summary: class, students, P, A, L, %
+                    <><th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Class</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">Students</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">P</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">A</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">L</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">%</th></>
                   ) : (
                     // Standard multi-day: roll, name, P, A, L, %
                     <>{reportTarget !== 'teacher' && <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>}{report.showSection && <th className="text-left px-3 py-2.5 text-[10px] text-warm-muted font-medium">Class</th>}<th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">P</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">A</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">L</th><th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">%</th></>
@@ -428,7 +473,11 @@ export default function ReportsPage() {
                       <>{reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}{report.showSection && <td className="px-3 py-2 text-xs text-warm-muted/60">{s.section || '—'}</td>}<td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td><td className="px-3 py-2 text-xs text-center font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{s.statusCount || 0}</td><td className={`px-3 py-2 text-xs text-center font-medium ${s.statusPercent >= 80 ? 'text-green-400' : s.statusPercent >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.statusPercent || 0}%</td></>
                     ) : report.isSingleDay ? (
                       <>{reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}{report.showSection && <td className="px-3 py-2 text-xs text-warm-muted/60">{s.section || '—'}</td>}<td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td><td className="px-3 py-2 text-xs text-warm-muted">{s.status ? (STATUS_LABELS[s.status as string] || s.status) : '— Not Marked'}</td></>
+                    ) : s.count !== undefined ? (
+                      // Class summary row
+                      <><td className="px-4 py-2 text-xs text-warm-cream font-medium">{s.name}</td><td className="px-3 py-2 text-xs text-warm-muted text-center">{s.count}</td><td className="px-3 py-2 text-xs text-green-400 text-center">{s.present}</td><td className="px-3 py-2 text-xs text-red-400 text-center">{s.absent}</td><td className="px-3 py-2 text-xs text-yellow-400 text-center">{s.late}</td><td className={`px-3 py-2 text-xs text-center font-medium ${s.percent >= 80 ? 'text-green-400' : s.percent >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.percent}%</td></>
                     ) : (
+                      // Standard multi-day
                       <>{reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}{report.showSection && <td className="px-3 py-2 text-xs text-warm-muted/60">{s.section || '—'}</td>}<td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td><td className="px-3 py-2 text-xs text-green-400 text-center">{s.present}</td><td className="px-3 py-2 text-xs text-red-400 text-center">{s.absent}</td><td className="px-3 py-2 text-xs text-yellow-400 text-center">{s.late}</td><td className={`px-3 py-2 text-xs text-center font-medium ${s.percent >= 80 ? 'text-green-400' : s.percent >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.percent}%</td></>
                     )}
                   </tr>
