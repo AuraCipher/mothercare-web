@@ -13,7 +13,7 @@ type ReportData = {
   statusFilter: string;
   isSingleDay: boolean;
   summary: { present: number; absent: number; late: number; leave: number; halfDay: number; holiday: number; function: number; total: number; percentage: number; statusCount?: number; statusPercent?: number };
-  students: { name: string; roll: string; present: number; absent: number; late: number; percent: number; statusCount?: number; statusPercent?: number }[];
+  students: { name: string; roll: string; present: number; absent: number; late: number; percent: number; statusCount?: number; statusPercent?: number; status?: string }[];
 };
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -98,13 +98,14 @@ export default function ReportsPage() {
 
       for (const s of items) {
         const atts = s.attendances || [];
+        const dayStatus = isSingleDay && atts.length > 0 ? atts[0].status : '';
         if (sf) {
           // Status filter mode: count matching records
           const statusCount = atts.filter((a: any) => a.status === sf).length;
           const totalRec = atts.length;
           summary.statusCount = (summary.statusCount || 0) + statusCount;
           summary.total += totalRec;
-          rows.push({ name: s.name, roll: isTeacher ? '—' : (s.rollNumber || '—'), present: 0, absent: 0, late: 0, statusCount, statusPercent: totalRec ? Math.round((statusCount / totalRec) * 100) : 0, percent: totalRec ? Math.round((statusCount / totalRec) * 100) : 0 });
+          rows.push({ name: s.name, roll: isTeacher ? '—' : (s.rollNumber || '—'), status: dayStatus, present: 0, absent: 0, late: 0, statusCount, statusPercent: totalRec ? Math.round((statusCount / totalRec) * 100) : 0, percent: totalRec ? Math.round((statusCount / totalRec) * 100) : 0 });
         } else {
           // Standard mode: full P/A/L breakdown
           const p = atts.filter((a: any) => a.status === 'present' || a.status === 'holiday').length;
@@ -114,7 +115,7 @@ export default function ReportsPage() {
           const totalRec = p + a + l + lv;
           summary.present += p; summary.absent += a; summary.late += l;
           summary.leave += lv; summary.total += totalRec;
-          rows.push({ name: s.name, roll: isTeacher ? '—' : (s.rollNumber || '—'), present: p, absent: a, late: l, percent: totalRec ? Math.round((p / totalRec) * 100) : 0 });
+          rows.push({ name: s.name, roll: isTeacher ? '—' : (s.rollNumber || '—'), status: dayStatus, present: p, absent: a, late: l, percent: totalRec ? Math.round((p / totalRec) * 100) : 0 });
         }
       }
 
@@ -153,6 +154,11 @@ export default function ReportsPage() {
       for (const s of report.students) csv += isTeacher
         ? s.name + ',' + (s as any).statusCount + ',' + (s as any).statusPercent + '\n'
         : s.roll + ',' + s.name + ',' + (s as any).statusCount + ',' + (s as any).statusPercent + '\n';
+    } else if (report.isSingleDay) {
+      csv = isTeacher ? 'Name,Status\n' : 'Roll,Name,Status\n';
+      for (const s of report.students) csv += isTeacher
+        ? s.name + ',' + (STATUS_LABELS[(s as any).status] || (s as any).status || '—') + '\n'
+        : s.roll + ',' + s.name + ',' + (STATUS_LABELS[(s as any).status] || (s as any).status || '—') + '\n';
     } else {
       csv = isTeacher ? 'Name,Present,Absent,Late,Percent\n' : 'Roll,Name,Present,Absent,Late,Percent\n';
       for (const s of report.students) csv += isTeacher
@@ -184,6 +190,10 @@ export default function ReportsPage() {
     } else if (sf) {
       thExtra = `<th>${sfLabel}</th><th>%</th>`;
       tdExtra = (s: any) => `<td>${s.statusCount || 0}</td><td class="pct">${s.statusPercent || 0}%</td>`;
+      rows = report.students.map(s => `<tr>${tdRoll(s)}<td>${s.name}</td>${tdExtra(s)}</tr>`).join('');
+    } else if (report.isSingleDay) {
+      thExtra = '<th>Status</th>';
+      tdExtra = (s: any) => `<td>${STATUS_LABELS[(s as any).status] || (s as any).status || '—'}</td>`;
       rows = report.students.map(s => `<tr>${tdRoll(s)}<td>${s.name}</td>${tdExtra(s)}</tr>`).join('');
     } else {
       thExtra = '<th>P</th><th>A</th><th>L</th><th>%</th>';
@@ -371,19 +381,11 @@ export default function ReportsPage() {
           {/* Summary row */}
           <div className="px-5 py-3 border-t border-warm-card-border/30 flex flex-wrap gap-4 text-xs text-warm-muted/70">
             {report.statusFilter ? (
-              <>
-                <span><span className="font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{report.summary.statusCount || 0}</span> {STATUS_LABELS[report.statusFilter] || report.statusFilter}</span>
-                <span>{(report.summary.statusPercent || 0)}%</span>
-                <span className="text-warm-muted/40">{report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
-              </>
+              <span><span className="font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{report.summary.statusCount || 0}</span> {STATUS_LABELS[report.statusFilter] || report.statusFilter} · {(report.summary.statusPercent || 0)}% · {report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
+            ) : report.isSingleDay ? (
+              <span><span className="text-green-400 font-medium">{report.summary.present}</span> Present · <span className="text-red-400 font-medium">{report.summary.absent}</span> Absent · <span className="text-yellow-400 font-medium">{report.summary.late}</span> Late · <span className="text-blue-400 font-medium">{report.summary.leave}</span> Leave · {report.total} {reportTarget === 'teacher' ? 'teachers' : 'students'}</span>
             ) : (
-              <>
-                <span><span className="text-green-400 font-medium">{report.summary.present}</span> P</span>
-                <span><span className="text-red-400 font-medium">{report.summary.absent}</span> A</span>
-                <span><span className="text-yellow-400 font-medium">{report.summary.late}</span> L</span>
-                <span><span className="text-blue-400 font-medium">{report.summary.leave}</span> Lv</span>
-                <span className="font-medium">{report.summary.percentage}%</span>
-              </>
+              <><span><span className="text-green-400 font-medium">{report.summary.present}</span> P</span><span><span className="text-red-400 font-medium">{report.summary.absent}</span> A</span><span><span className="text-yellow-400 font-medium">{report.summary.late}</span> L</span><span><span className="text-blue-400 font-medium">{report.summary.leave}</span> Lv</span><span className="font-medium">{report.summary.percentage}%</span></>
             )}
           </div>
 
@@ -406,8 +408,15 @@ export default function ReportsPage() {
                       <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">{STATUS_LABELS[report.statusFilter] || report.statusFilter}</th>
                       <th className="text-center px-3 py-2.5 text-[10px] text-warm-muted font-medium">%</th>
                     </>
+                  ) : report.isSingleDay ? (
+                    // Standard + single day: roll, name, status text
+                    <>
+                      {reportTarget !== 'teacher' && <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>}
+                      <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] text-warm-muted font-medium">Status</th>
+                    </>
                   ) : (
-                    // Standard: roll, name, P, A, L, %
+                    // Standard multi-day: roll, name, P, A, L, %
                     <>
                       {reportTarget !== 'teacher' && <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Roll</th>}
                       <th className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium">Name</th>
@@ -436,8 +445,15 @@ export default function ReportsPage() {
                         <td className="px-3 py-2 text-xs text-center font-medium" style={{color: report.statusFilter === 'absent' ? '#ef4444' : report.statusFilter === 'present' ? '#22c55e' : report.statusFilter === 'late' ? '#eab308' : '#3b82f6'}}>{s.statusCount || 0}</td>
                         <td className={`px-3 py-2 text-xs text-center font-medium ${s.statusPercent >= 80 ? 'text-green-400' : s.statusPercent >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>{s.statusPercent || 0}%</td>
                       </>
+                    ) : report.isSingleDay ? (
+                      // Standard + single day: roll, name, status text
+                      <>
+                        {reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}
+                        <td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td>
+                        <td className="px-3 py-2 text-xs text-warm-muted">{s.status ? (STATUS_LABELS[s.status] || s.status) : '— Not Marked'}</td>
+                      </>
                     ) : (
-                      // Standard: roll, name, P, A, L, %
+                      // Standard multi-day: roll, name, P, A, L, %
                       <>
                         {reportTarget !== 'teacher' && <td className="px-4 py-2 text-xs text-warm-muted">{s.roll}</td>}
                         <td className="px-4 py-2 text-xs text-warm-cream">{s.name}</td>
