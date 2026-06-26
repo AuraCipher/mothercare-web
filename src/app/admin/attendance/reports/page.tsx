@@ -18,12 +18,18 @@ type ReportData = {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+function todayStr(): string {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 const STATUS_LABELS: Record<string, string> = { present: 'Present', absent: 'Absent', late: 'Late', leave: 'Leave', 'half-day': 'Half-Day', holiday: 'Holiday', function: 'Function' };
 
 export default function ReportsPage() {
   const [reportTarget, setReportTarget] = useState<'student' | 'teacher'>('student');
   const [groupId, setGroupId] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'full' | 'custom'>('monthly');
+  const [period, setPeriod] = useState<'daily' | 'monthly' | 'full' | 'custom'>('monthly');
+  const [reportDate, setReportDate] = useState(todayStr());
   const [reportType, setReportType] = useState<'standard' | 'absentee' | 'class-summary'>('standard');
   const [sections, setSections] = useState<any[]>([]);
   const [report, setReport] = useState<ReportData | null>(null);
@@ -50,6 +56,7 @@ export default function ReportsPage() {
   }, [branchId, ayId, token]);
 
   const buildDateRange = () => {
+    if (period === 'daily') return { from: reportDate, to: reportDate };
     if (period === 'monthly') {
       const y = now.getFullYear();
       const m = String(month + 1).padStart(2, '0');
@@ -248,10 +255,10 @@ export default function ReportsPage() {
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Period</label>
             <div className="flex gap-1">
-              {(['monthly', 'full', 'custom'] as const).map(p => (
+              {(['daily', 'monthly', 'full', 'custom'] as const).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
                   className={`flex-1 rounded-lg py-2 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
-                  {p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
+                  {p === 'daily' ? 'Daily' : p === 'monthly' ? 'Monthly' : p === 'full' ? 'Full AY' : 'Custom'}
                 </button>
               ))}
             </div>
@@ -275,7 +282,14 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Row 3: Month picker (for monthly) OR Custom date range (for custom) */}
+        {/* Row 3: Date picker (daily) OR Month picker (monthly) OR Custom date range (custom) */}
+        {period === 'daily' && (
+          <div className="mb-4">
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Date</label>
+            <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)}
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+          </div>
+        )}
         {period === 'monthly' && (
           <div className="mb-4">
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Month</label>
