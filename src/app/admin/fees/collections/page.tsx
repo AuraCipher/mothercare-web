@@ -16,13 +16,11 @@ export default function CollectionsPage() {
   const [fees, setFees] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [classFilter, setClassFilter] = useState('');
+  const [rollFilter, setRollFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
-  const [payModal, setPayModal] = useState<any>(null);
-  const [payAmount, setPayAmount] = useState(0);
-  const [payMethod, setPayMethod] = useState('CASH');
-  const [payRef, setPayRef] = useState('');
+  // Pay is handled via the student detail page (/admin/fees/student/[id])
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -62,6 +60,11 @@ export default function CollectionsPage() {
       result = result.filter(f => f.student?.groupId === classFilter);
     }
 
+    // Roll number filter (exact match)
+    if (rollFilter.trim()) {
+      result = result.filter(f => (f.student?.rollNumber || '') === rollFilter.trim());
+    }
+
     // Search: match name, roll, father name
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -90,21 +93,7 @@ export default function CollectionsPage() {
     }
 
     return result;
-  }, [fees, classFilter, searchQuery, viewMode]);
-
-  const handlePay = async () => {
-    if (!token || !payModal) return;
-    try {
-      const res = await fetch(`${API_URL}/admin/payments`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentFeeId: payModal.id, amount: Math.round(payAmount * 100), paymentMethod: payMethod, reference: payRef }),
-      });
-      const json = await res.json();
-      if (json.success) { showToast('success', `Receipt: ${json.data.receiptNumber}`); setPayModal(null); loadData(); }
-      else showToast('error', json.message || 'Failed');
-    } catch { showToast('error', 'Failed'); }
-  };
+  }, [fees, classFilter, rollFilter, searchQuery, viewMode]);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -130,6 +119,11 @@ export default function CollectionsPage() {
                 placeholder="Search by name, roll, or father name..."
                 className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-8 pr-3 py-2 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
             </div>
+          </div>
+          <div className="min-w-[80px]">
+            <input value={rollFilter} onChange={e => setRollFilter(e.target.value)}
+              placeholder="Roll no"
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
           </div>
           <select value={classFilter} onChange={e => setClassFilter(e.target.value)}
             className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
