@@ -40,7 +40,7 @@ export default function StudentFeeDetailPage() {
   const totalDue = fees.reduce((s: number, f: any) => s + (f.netAmount - f.paidAmount), 0);
 
   const openPayModal = () => {
-    setPayAmount(totalDue / 100);
+    setPayAmount(0);
     setPayMethod('CASH');
     setPayRef('');
     setLastReceipt(null);
@@ -270,13 +270,9 @@ export default function StudentFeeDetailPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Pay Amount (PKR)</label>
-                    <input type="number" value={payAmount || ''} onChange={e => {
-                      const val = Number(e.target.value);
-                      if (val * 100 > totalDue) return;
-                      setPayAmount(val);
-                    }} min={0} max={totalDue / 100} step={100}
+                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Math.max(0, Math.min(Number(e.target.value) || 0, totalDue / 100)))}
                       className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
-                    {payAmount * 100 > totalDue && <p className="text-[10px] text-red-400 mt-1">Exceeds remaining balance</p>}
+                    {payAmount * 100 > totalDue ? <p className="text-[10px] text-red-400 mt-1">Exceeds remaining balance</p> : payAmount > 0 && <p className="text-[10px] text-green-400/60 mt-1">Clears {(payAmount * 100 / totalDue * 100).toFixed(0)}% of dues</p>}
                   </div>
                   <div>
                     <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Method</label>
