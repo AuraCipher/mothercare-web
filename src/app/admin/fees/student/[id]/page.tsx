@@ -19,6 +19,9 @@ export default function StudentFeeDetailPage() {
   const [payRef, setPayRef] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const [extraModal, setExtraModal] = useState<any>(null);
+  const [extraAmount, setExtraAmount] = useState(0);
+  const [extraReason, setExtraReason] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -36,7 +39,7 @@ export default function StudentFeeDetailPage() {
   useEffect(() => { loadData(); }, [params.id]);
 
   const fees = data?.studentFees || [];
-  const totalRemainingPaise = fees.reduce((s: number, f: any) => s + (f.netAmount - f.paidAmount), 0);
+  const totalRemainingPaise = fees.reduce((s: number, f: any) => s + (f.netAmount + (f.extraCharges || 0) - f.paidAmount), 0);
   const totalRemainingPkr = totalRemainingPaise / 100;
 
   const openPayModal = () => {
@@ -179,17 +182,21 @@ export default function StudentFeeDetailPage() {
           <thead><tr className="bg-warm-card/70">
             <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
             <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Fee</th>
+            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Extra</th>
             <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
             <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Due</th>
             <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Status</th>
+            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Action</th>
           </tr></thead>
           <tbody>
             {fees.map((sf: any) => {
-              const due = sf.netAmount - sf.paidAmount;
+              const extra = sf.extraCharges || 0;
+              const due = sf.netAmount + extra - sf.paidAmount;
               return (
                 <tr key={sf.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                   <td className="px-4 py-3 text-xs text-warm-cream">{MONTHS[(sf.month || 1) - 1]} {sf.year}</td>
                   <td className="px-4 py-3 text-xs text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-warm-muted text-right">{extra > 0 ? <span className="text-orange-400">+{(extra / 100).toLocaleString()}</span> : '—'}</td>
                   <td className="px-4 py-3 text-xs text-green-400 text-right">{(sf.paidAmount / 100).toLocaleString()}</td>
                   <td className="px-4 py-3 text-xs text-red-400 text-right font-medium">{due > 0 ? (due / 100).toLocaleString() : '0'}</td>
                   <td className="px-3 py-3 text-xs text-center">
@@ -198,6 +205,12 @@ export default function StudentFeeDetailPage() {
                       sf.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
                       'bg-red-900/20 text-red-400'
                     }`}>{sf.status}</span>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-center">
+                    <button onClick={() => { setExtraModal(sf); setExtraAmount(extra / 100); setExtraReason(sf.extraReason || ''); }}
+                      className="rounded bg-warm-accent/20 px-2 py-1 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
+                      Extra
+                    </button>
                   </td>
                 </tr>
               );
@@ -251,6 +264,44 @@ export default function StudentFeeDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Extra Charges Modal */}
+      {extraModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setExtraModal(null)}>
+          <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-medium text-warm-cream mb-1">Extra Charges</h3>
+            <p className="text-xs text-warm-muted/50 mb-4">{MONTHS[(extraModal.month || 1) - 1]} {extraModal.year} · Base fee: {(extraModal.netAmount / 100).toLocaleString()} PKR</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
+                <input type="number" value={extraAmount} onChange={e => setExtraAmount(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="0 = remove" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Reason</label>
+                <input value={extraReason} onChange={e => setExtraReason(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="e.g., Late fee, Lab charges" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={async () => {
+                if (!token) return;
+                try {
+                  const res = await fetch(`${API_URL}/admin/student-fees/${extraModal.id}/extra`, {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ extraCharges: Math.round(extraAmount * 100), extraReason }),
+                  });
+                  const json = await res.json();
+                  if (json.success) { showToast('success', 'Extra charges updated'); setExtraModal(null); loadData(); }
+                  else showToast('error', json.message || 'Failed');
+                } catch { showToast('error', 'Failed'); }
+              }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+              <button onClick={() => setExtraModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pay Modal */}
       {showPayModal && (
