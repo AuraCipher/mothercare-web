@@ -219,8 +219,18 @@ export default function StudentFeeDetailPage() {
             <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Print</th>
           </tr></thead>
           <tbody>
-            {[...fees].sort((a: any, b: any) => (b.year - a.year) || (b.month - a.month)).flatMap((sf: any) =>
-              (sf.payments || []).map((p: any) => (
+            {fees.flatMap((sf: any) =>
+              (sf.payments || []).map((p: any) => ({ payment: p, fee: sf }))
+            ).sort((a: any, b: any) => {
+              // Primary: payment date (newest first)
+              const dateCmp = new Date(b.payment.createdAt).getTime() - new Date(a.payment.createdAt).getTime();
+              if (dateCmp !== 0) return dateCmp;
+              // Secondary: fee month (newest first)
+              return (b.fee.year - a.fee.year) || (b.fee.month - a.fee.month);
+            }).map((pair: any) => {
+              const p = pair.payment;
+              const sf = pair.fee;
+              return (
                 <tr key={p.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                   <td className="px-4 py-3 text-xs text-warm-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-xs text-warm-cream font-mono">{p.receiptNumber}</td>
@@ -233,8 +243,8 @@ export default function StudentFeeDetailPage() {
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
+              );
+            })}
             {fees.every((sf: any) => !sf.payments?.length) && (
               <tr><td colSpan={6} className="p-6 text-center text-xs text-warm-muted/40">No payments yet</td></tr>
             )}
