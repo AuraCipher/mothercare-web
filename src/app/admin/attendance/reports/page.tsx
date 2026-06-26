@@ -171,7 +171,8 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Row 1: Target, Class, Period */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Report For</label>
             <div className="flex gap-1">
@@ -206,32 +207,37 @@ export default function ReportsPage() {
               ))}
             </div>
           </div>
+        </div>
 
-          <div className={period === 'monthly' ? '' : 'opacity-30 pointer-events-none'}>
+        {/* Row 2: Month picker (for monthly) OR Custom date range (for custom) */}
+        {period === 'monthly' && (
+          <div className="mb-4">
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Month</label>
             <select value={month} onChange={e => setMonth(Number(e.target.value))}
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+              className="w-full max-w-[200px] rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
               {MONTHS.map((m, i) => <option key={i} value={i}>{m} 2026</option>)}
             </select>
           </div>
-
-          {period === 'custom' && (
-            <div className="col-span-2 grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">From</label>
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">To</label>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
-              </div>
+        )}
+        {period === 'custom' && (
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">From</label>
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
             </div>
-          )}
+            <div>
+              <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">To</label>
+              <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+            </div>
+          </div>
+        )}
 
-          {/* Report type selector */}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+        {/* Row 3: Report type + absentee threshold */}
+        <div className="flex flex-wrap items-center gap-4 mb-1">
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Report Type</label>
             <div className="flex gap-1">
               {(['standard', 'absentee', 'class-summary'] as const).map(t => (
                 <button key={t} onClick={() => setReportType(t)}
@@ -240,19 +246,19 @@ export default function ReportsPage() {
                 </button>
               ))}
             </div>
-            {reportType === 'absentee' && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider">Below</span>
-                <input type="number" value={absenteeThreshold} onChange={e => setAbsenteeThreshold(Number(e.target.value))}
-                  min={0} max={100} className="w-16 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream text-center outline-none focus:border-warm-accent" />
-                <span className="text-[10px] text-warm-muted/60">%</span>
-              </div>
-            )}
           </div>
+          {reportType === 'absentee' && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider">Below</span>
+              <input type="number" value={absenteeThreshold} onChange={e => setAbsenteeThreshold(Number(e.target.value))}
+                min={0} max={100} className="w-16 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream text-center outline-none focus:border-warm-accent" />
+              <span className="text-[10px] text-warm-muted/60">%</span>
+            </div>
+          )}
         </div>
 
         <button onClick={generateReport} disabled={loading}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+          className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
           {loading ? <RefreshCw size={15} className="animate-spin" /> : <FileText size={15} />}
           {loading ? 'Generating…' : 'Generate Report'}
         </button>
