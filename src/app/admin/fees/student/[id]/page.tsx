@@ -219,7 +219,7 @@ export default function StudentFeeDetailPage() {
             <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Print</th>
           </tr></thead>
           <tbody>
-            {fees.flatMap((sf: any) =>
+            {[...fees].sort((a: any, b: any) => (b.year - a.year) || (b.month - a.month)).flatMap((sf: any) =>
               (sf.payments || []).map((p: any) => (
                 <tr key={p.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                   <td className="px-4 py-3 text-xs text-warm-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
