@@ -28,7 +28,7 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-import AttendancePage from '@/app/admin/attendance/page';
+import AttendancePage from '@/app/admin/attendance/students/page';
 
 describe('Attendance API — empty state and errors', () => {
   beforeEach(() => {

@@ -29,8 +29,9 @@ vi.mock('@/lib/api', () => mockApi);
 // Mock framer-motion-like components / lucide
 vi.mock('lucide-react', () => ({
   LogOut: 'div', BookOpen: 'div', LayoutDashboard: 'div', Building2: 'div',
-  Menu: 'div', X: 'div', ChevronDown: 'div', Check: 'div', MapPin: 'div',
-  Users: 'div', Key: 'div', GraduationCap: 'div', UserPlus: 'div', Settings: 'div', CalendarDays: 'div',
+  Menu: 'div', X: 'div', DollarSign: 'div', ChevronDown: 'div', Check: 'div',
+  MapPin: 'div', Users: 'div', Key: 'div', GraduationCap: 'div', UserPlus: 'div',
+  Settings: 'div', Calendar: 'div', CalendarDays: 'div', Send: 'div', CheckSquare: 'div',
 }));
 
 import AdminLayout from '@/app/admin/layout';

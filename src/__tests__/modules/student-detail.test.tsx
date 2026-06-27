@@ -75,7 +75,7 @@ describe('StudentDetailPage — header', () => {
     expect(badges.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows status', async () => { render(<StudentDetailPage />); expect(await screen.findByText('ACTIVE')).toBeInTheDocument(); });
+  it('shows status', async () => { render(<StudentDetailPage />); const statuses = await screen.findAllByText('ACTIVE'); expect(statuses.length).toBeGreaterThanOrEqual(1); });
 });
 
 describe('StudentDetailPage — 7 sections', () => {

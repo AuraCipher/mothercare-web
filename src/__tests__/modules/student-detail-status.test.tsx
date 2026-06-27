@@ -47,7 +47,8 @@ describe('StudentDetailPage — Status Management', () => {
 
   it('renders student name', async () => {
     render(<StudentDetailPage />);
-    expect(await screen.findByText('Ali Hassan')).toBeInTheDocument();
+    const names = await screen.findAllByText((content: string) => content.includes('Ali Hassan'));
+    expect(names.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Student Status section heading', async () => {
@@ -58,7 +59,8 @@ describe('StudentDetailPage — Status Management', () => {
   it('shows current status badge', async () => {
     render(<StudentDetailPage />);
     await screen.findByText('Student Status');
-    expect(screen.getByText('ACTIVE')).toBeTruthy();
+    const statuses = screen.getAllByText('ACTIVE');
+    expect(statuses.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows status change dropdown', async () => {

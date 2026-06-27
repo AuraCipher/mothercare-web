@@ -34,7 +34,7 @@ const mockStudents = [
   { id: 's2', name: 'Fatima', rollNumber: '2', admissionNumber: 'ADM-2', groupId: 'g1', attendances: [] },
 ];
 
-import AttendancePage from '@/app/admin/attendance/page';
+import AttendancePage from '@/app/admin/attendance/students/page';
 
 describe('Student Attendance Page', () => {
   beforeEach(() => {
