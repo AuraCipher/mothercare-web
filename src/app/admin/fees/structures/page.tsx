@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function FeeStructuresPage() {
+  const router = useRouter();
   const [sections, setSections] = useState<any[]>([]);
   const [heads, setHeads] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
@@ -75,7 +77,10 @@ export default function FeeStructuresPage() {
                 const total = heads.reduce((s, h) => s + getAmount(sec.id, h.id), 0);
                 return (
                   <tr key={sec.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
-                    <td className="px-4 py-3 text-xs text-warm-cream font-medium">{sec.section ? `${sec.name} — ${sec.section}` : sec.name}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => router.push(`/admin/fees/structures/${sec.id}`)}
+                        className="text-xs text-warm-cream font-medium hover:text-warm-accent transition-colors text-left">{sec.section ? `${sec.name} — ${sec.section}` : sec.name}</button>
+                    </td>
                     {heads.map(h => {
                       const amt = getAmount(sec.id, h.id);
                       const editing = editCell?.groupId === sec.id && editCell?.feeHeadId === h.id;
