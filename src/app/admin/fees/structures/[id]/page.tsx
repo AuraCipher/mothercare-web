@@ -17,9 +17,6 @@ export default function ClassStudentsFeePage() {
   const [students, setStudents] = useState<any[]>([]);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [editStudent, setEditStudent] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editReason, setEditReason] = useState('');
   const [editHead, setEditHead] = useState<{ studentId: string; headId: string } | null>(null);
   const [headValues, setHeadValues] = useState<any>({});
 
@@ -55,29 +52,6 @@ export default function ClassStudentsFeePage() {
     return s ? s.amount : 0;
   };
 
-  const getStudentTotal = (student: any) => {
-    if (student.customFeeAmount != null) return student.customFeeAmount;
-    return heads.reduce((sum, h) => sum + getBaseAmount(h.id), 0);
-  };
-
-  const handleSave = async (studentId: string) => {
-    if (!token) return;
-    const amt = parseInt(editAmount, 10);
-    try {
-      const res = await fetch(`${API_URL}/admin/students/${studentId}/custom-fee`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customFeeAmount: amt > 0 ? Math.round(amt * 100) : null,
-          concessionReason: editReason || null,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) { showToast('success', amt > 0 ? 'Custom fee set' : 'Custom fee removed'); setEditStudent(null); loadData(); }
-      else showToast('error', json.message || 'Failed');
-    } catch { showToast('error', 'Failed'); }
-  };
-
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <button onClick={() => router.push('/admin/fees/structures')} className="inline-flex items-center gap-1 text-xs text-warm-accent hover:underline mb-4">
@@ -95,22 +69,18 @@ export default function ClassStudentsFeePage() {
                 {heads.map(h => (
                   <th key={h.id} className="text-center px-2 py-3 text-[10px] text-warm-muted font-medium min-w-[70px]">{h.name}</th>
                 ))}
-                <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium min-w-[80px]">Base Total</th>
-                <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium min-w-[100px]">Custom Fee</th>
-                <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium w-16">Action</th>
+                <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium min-w-[80px]">Total</th>
               </tr>
             </thead>
             <tbody>
               {[...students]
                 .sort((a: any, b: any) => (parseInt(a.rollNumber, 10) || 0) - (parseInt(b.rollNumber, 10) || 0))
                 .map((s: any) => {
-                  const baseTotal = heads.reduce((sum, h) => sum + getBaseAmount(h.id), 0);
-                  const hasCustom = s.customFeeAmount != null;
                   const stuHeadValues = heads.map(h => ({
                     headId: h.id,
                     value: headValues[s.id]?.[h.id] ?? getBaseAmount(h.id),
                   }));
-                  const customTotal = stuHeadValues.reduce((sum, h) => sum + h.value, 0);
+                  const rowTotal = stuHeadValues.reduce((sum, h) => sum + h.value, 0);
                   return (
                     <tr key={s.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                       <td className="px-3 py-2.5 text-xs text-warm-muted">{s.rollNumber || '—'}</td>
@@ -150,41 +120,14 @@ export default function ClassStudentsFeePage() {
                               </div>
                             ) : (
                               <button onClick={() => setEditHead({ studentId: s.id, headId: h.id })}
-                                className={`text-xs px-1 py-0.5 rounded transition-colors ${hasCustom || headValues[s.id]?.[h.id] != null ? 'text-warm-accent hover:bg-warm-accent/20' : 'text-warm-muted hover:text-warm-cream'}`}>
+                                className={`text-xs px-1 py-0.5 rounded transition-colors ${headValues[s.id]?.[h.id] != null ? 'text-warm-accent hover:bg-warm-accent/20' : 'text-warm-muted hover:text-warm-cream'}`}>
                                 {val > 0 ? (val / 100).toLocaleString() : '—'}
                               </button>
                             )}
                           </td>
                         );
                       })}
-                      <td className="px-3 py-2.5 text-xs text-warm-muted text-center">{(baseTotal / 100).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-xs text-center font-medium">
-                        {editStudent === s.id ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                              className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-0.5 text-xs text-warm-cream text-center outline-none" placeholder="Total PKR" />
-                            <input value={editReason} onChange={e => setEditReason(e.target.value)}
-                              className="w-24 rounded border border-warm-card-border bg-[#1a1614] px-2 py-0.5 text-[9px] text-warm-cream text-center outline-none" placeholder="Reason" />
-                          </div>
-                        ) : (
-                          <span className={`text-xs ${hasCustom || customTotal !== baseTotal ? 'text-warm-accent' : 'text-warm-muted/40'}`}>
-                            {(customTotal / 100).toLocaleString()}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        {editStudent === s.id ? (
-                          <div className="flex gap-1 justify-center">
-                            <button onClick={() => handleSave(s.id)} className="text-xs text-green-400 hover:underline">✓</button>
-                            <button onClick={() => setEditStudent(null)} className="text-xs text-warm-muted hover:underline">✕</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setEditStudent(s.id); setEditAmount(String(hasCustom ? s.customFeeAmount / 100 : String(customTotal / 100))); setEditReason(s.concessionReason || ''); }}
-                            className="text-xs text-warm-accent hover:underline">
-                            {hasCustom ? 'Edit' : 'Set'}
-                          </button>
-                        )}
-                      </td>
+                      <td className="px-3 py-2.5 text-xs text-warm-muted text-center">{(rowTotal / 100).toLocaleString()}</td>
                     </tr>
                   );
                 })}
