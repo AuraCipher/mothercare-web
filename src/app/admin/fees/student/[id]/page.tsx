@@ -236,16 +236,26 @@ export default function StudentFeeDetailPage() {
                   {/* Expanded rows — individual items */}
                   {isExpanded && (
                     <>
-                      {/* Base fee row */}
-                      <tr className="bg-warm-card/30 border-t border-warm-card-border/10">
-                        <td className="px-2 py-2"></td>
-                        <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
-                        <td className="px-2 py-2 text-[11px] text-warm-muted/70">Base Fee</td>
-                        <td className="px-3 py-2 text-[11px] text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
-                        <td className="px-3 py-2 text-[11px] text-green-400/80 text-right">{sf.paidAmount > 0 ? `${(sf.paidAmount / 100).toLocaleString()}` : '—'}</td>
-                        <td className="px-3 py-2 text-[11px] text-red-400/80 text-right">{(sf.netAmount - sf.paidAmount > 0 ? ((sf.netAmount - sf.paidAmount) / 100).toLocaleString() : '0')}</td>
-                        <td colSpan={2}></td>
-                      </tr>
+                      {/* Fee head breakdown rows */}
+                      {(sf.feeHeadBreakdown && Array.isArray(sf.feeHeadBreakdown) ? sf.feeHeadBreakdown : []).map((fh: any, fhi: number) => (
+                        <tr key={`fh-${fhi}`} className="bg-warm-card/30 border-t border-warm-card-border/10">
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
+                          <td className="px-2 py-2 text-[11px] text-warm-muted/70">{fh.name}</td>
+                          <td className="px-3 py-2 text-[11px] text-warm-muted text-right">{(fh.amount / 100).toLocaleString()}</td>
+                          <td colSpan={4}></td>
+                        </tr>
+                      ))}
+                      {/* Fallback for old records without breakdown */}
+                      {(!sf.feeHeadBreakdown || !Array.isArray(sf.feeHeadBreakdown) || sf.feeHeadBreakdown.length === 0) && (
+                        <tr className="bg-warm-card/30 border-t border-warm-card-border/10">
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
+                          <td className="px-2 py-2 text-[11px] text-warm-muted/70">Base Fee</td>
+                          <td className="px-3 py-2 text-[11px] text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
+                          <td colSpan={4}></td>
+                        </tr>
+                      )}
                       {/* Extra items */}
                       {extraItems.map((ei: any) => (
                         <tr key={ei.id} className="bg-warm-card/30 border-t border-warm-card-border/5">
@@ -253,9 +263,7 @@ export default function StudentFeeDetailPage() {
                           <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
                           <td className="px-2 py-2 text-[11px] text-orange-400/80">{ei.name}</td>
                           <td className="px-3 py-2 text-[11px] text-orange-400/80 text-right">+{(ei.amount / 100).toLocaleString()}</td>
-                          <td className="px-3 py-2 text-[11px] text-green-400/60 text-right">—</td>
-                          <td className="px-3 py-2 text-[11px] text-red-400/80 text-right">{(ei.amount / 100).toLocaleString()}</td>
-                          <td colSpan={1}></td>
+                          <td colSpan={3}></td>
                           <td className="px-3 py-2 text-center">
                             <button onClick={async () => {
                               if (!token) return;
