@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Search, DollarSign, Plus, Save } from 'lucide-react';
+import { Search, DollarSign } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -21,10 +21,7 @@ export default function CollectionsPage() {
   const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
-  const [customModal, setCustomModal] = useState<any>(null);
-  const [customAmount, setCustomAmount] = useState(0);
-  const [customReason, setCustomReason] = useState('');
-  // Pay is handled via the student detail page (/admin/fees/student/[id])
+  // Pay & custom fee handled via the student detail page (/admin/fees/student/[id])
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -205,16 +202,10 @@ export default function CollectionsPage() {
                       }`}>{f.status === 'NO_FEE' ? '—' : f.status}</span>
                     </td>
                     <td className="px-2 py-2.5 text-center">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
-                          className="rounded bg-warm-accent/20 px-2 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
-                          Pay
-                        </button>
-                        <button onClick={() => { setCustomModal(s); setCustomAmount((s.customFeeAmount || 0) / 100); setCustomReason(s.concessionReason || ''); }}
-                          className="rounded border border-warm-card-border px-2 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">
-                          Custom
-                        </button>
-                      </div>
+                      <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
+                        className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
+                        Pay
+                      </button>
                     </td>
                   </tr>
                 );
@@ -225,44 +216,6 @@ export default function CollectionsPage() {
         {displayFees.length === 0 && <div className="p-8 text-center text-xs text-warm-muted/40">No students found</div>}
       </div>
 
-      {/* Custom Fee Modal (Scholarship/Discount) */}
-      {customModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setCustomModal(null)}>
-          <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-medium text-warm-cream mb-1">Custom Fee — {customModal.student?.name}</h3>
-            <p className="text-xs text-warm-muted/50 mb-4">Override the class-based fee for this student (scholarship/discount)</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Monthly Fee (PKR)</label>
-                <input type="number" value={customAmount} onChange={e => setCustomAmount(Number(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="0 = use class structure" />
-                <p className="text-[9px] text-warm-muted/40 mt-1">Set to 0 to remove custom fee and use class structure</p>
-              </div>
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Reason</label>
-                <input value={customReason} onChange={e => setCustomReason(e.target.value)}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="e.g., Merit scholarship 50%" />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={async () => {
-                if (!token || !customModal?.student?.id) return;
-                try {
-                  const res = await fetch(`${API_URL}/admin/students/${customModal.student.id}/custom-fee`, {
-                    method: 'PUT',
-                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ customFeeAmount: customAmount > 0 ? Math.round(customAmount * 100) : null, concessionReason: customReason }),
-                  });
-                  const json = await res.json();
-                  if (json.success) { showToast('success', customAmount > 0 ? 'Custom fee set' : 'Custom fee removed'); setCustomModal(null); loadData(); }
-                  else showToast('error', json.message || 'Failed');
-                } catch { showToast('error', 'Failed'); }
-              }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"><Save size={13} className="inline mr-1" />Save</button>
-              <button onClick={() => setCustomModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
