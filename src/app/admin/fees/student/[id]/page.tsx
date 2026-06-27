@@ -245,7 +245,7 @@ export default function StudentFeeDetailPage() {
                         <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
                         <td className="px-2 py-2 text-[11px] text-warm-muted/70">Base Fee</td>
                         <td className="px-3 py-2 text-[11px] text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
-                        <td className="px-3 py-2 text-[11px] text-green-400/80 text-right">{sf.paidAmount > 0 ? `-${(sf.paidAmount / 100).toLocaleString()}` : '—'}</td>
+                        <td className="px-3 py-2 text-[11px] text-green-400/80 text-right">{sf.paidAmount > 0 ? `${(sf.paidAmount / 100).toLocaleString()}` : '—'}</td>
                         <td className="px-3 py-2 text-[11px] text-red-400/80 text-right">{(sf.netAmount - sf.paidAmount > 0 ? ((sf.netAmount - sf.paidAmount) / 100).toLocaleString() : '0')}</td>
                         <td colSpan={2}></td>
                       </tr>
