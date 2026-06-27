@@ -20,6 +20,8 @@ export default function ClassStudentsFeePage() {
   const [editStudent, setEditStudent] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editReason, setEditReason] = useState('');
+  const [editHead, setEditHead] = useState<{ studentId: string; headId: string } | null>(null);
+  const [headValues, setHeadValues] = useState<any>({});
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -104,40 +106,68 @@ export default function ClassStudentsFeePage() {
                 .map((s: any) => {
                   const baseTotal = heads.reduce((sum, h) => sum + getBaseAmount(h.id), 0);
                   const hasCustom = s.customFeeAmount != null;
+                  const stuHeadValues = heads.map(h => ({
+                    headId: h.id,
+                    value: headValues[s.id]?.[h.id] ?? getBaseAmount(h.id),
+                  }));
+                  const customTotal = stuHeadValues.reduce((sum, h) => sum + h.value, 0);
                   return (
                     <tr key={s.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                       <td className="px-3 py-2.5 text-xs text-warm-muted">{s.rollNumber || '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-warm-cream">{s.name}</td>
-                      {heads.map(h => (
-                        <td key={h.id} className="px-2 py-2.5 text-xs text-warm-muted text-center">{getBaseAmount(h.id) > 0 ? (getBaseAmount(h.id) / 100).toLocaleString() : '—'}</td>
-                      ))}
-                      <td className="px-3 py-2.5 text-xs text-center">{(baseTotal / 100).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-xs text-center">
-                        {editStudent === s.id ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                              className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-1 text-xs text-warm-cream text-center outline-none" autoFocus placeholder="PKR" />
-                            <input value={editReason} onChange={e => setEditReason(e.target.value)}
-                              className="w-24 rounded border border-warm-card-border bg-[#1a1614] px-2 py-0.5 text-[9px] text-warm-cream text-center outline-none" placeholder="Reason" />
-                          </div>
-                        ) : (
-                          <span className={`text-xs ${hasCustom ? 'text-warm-accent font-medium' : 'text-warm-muted/40'}`}>
-                            {hasCustom ? `${(s.customFeeAmount / 100).toLocaleString()}` : '—'}
-                          </span>
-                        )}
+                      {heads.map(h => {
+                        const val = stuHeadValues.find(v => v.headId === h.id)?.value || 0;
+                        const editing = editHead?.studentId === s.id && editHead?.headId === h.id;
+                        return (
+                          <td key={h.id} className="px-2 py-2.5 text-xs text-center">
+                            {editing ? (
+                              <div className="flex items-center gap-1 justify-center">
+                                <input type="number" defaultValue={val / 100} autoFocus
+                                  className="w-16 rounded border border-warm-accent bg-[#1a1614] px-1 py-0.5 text-xs text-warm-cream text-center outline-none"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter') {
+                                      const newVal = Math.round(parseInt((e.target as HTMLInputElement).value, 10) || 0) * 100;
+                                      const newHeads = { ...headValues, [s.id]: { ...(headValues[s.id] || {}), [h.id]: newVal } };
+                                      setHeadValues(newHeads);
+                                      setEditHead(null);
+                                      // Auto-save total
+                                      const total = Object.values({ ...(headValues[s.id] || {}), [h.id]: newVal }).reduce((a: any, b: any) => a + b, 0);
+                                      const realTotal = heads.reduce((sum, hh) => sum + (newHeads[s.id]?.[hh.id] ?? getBaseAmount(hh.id)), 0);
+                                      try {
+                                        await fetch(`${API_URL}/admin/students/${s.id}/custom-fee`, {
+                                          method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ customFeeAmount: realTotal, concessionReason: s.concessionReason || 'Custom per-head' }),
+                                        });
+                                      } catch {}
+                                    }
+                                    if (e.key === 'Escape') setEditHead(null);
+                                  }}
+                                  onBlur={(e) => {
+                                    const newVal = Math.round(parseInt(e.target.value, 10) || 0) * 100;
+                                    setHeadValues((prev: any) => ({ ...prev, [s.id]: { ...(prev[s.id] || {}), [h.id]: newVal } }));
+                                    setEditHead(null);
+                                  }} />
+                              </div>
+                            ) : (
+                              <button onClick={() => setEditHead({ studentId: s.id, headId: h.id })}
+                                className={`text-xs px-1 py-0.5 rounded transition-colors ${hasCustom || headValues[s.id]?.[h.id] != null ? 'text-warm-accent hover:bg-warm-accent/20' : 'text-warm-muted hover:text-warm-cream'}`}>
+                                {val > 0 ? (val / 100).toLocaleString() : '—'}
+                              </button>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-2.5 text-xs text-warm-muted text-center">{(baseTotal / 100).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-xs text-center font-medium">
+                        <span className={`text-xs ${hasCustom || customTotal !== baseTotal ? 'text-warm-accent' : 'text-warm-muted/40'}`}>
+                          {(customTotal / 100).toLocaleString()}
+                        </span>
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        {editStudent === s.id ? (
-                          <div className="flex gap-1 justify-center">
-                            <button onClick={() => handleSave(s.id)} className="text-xs text-green-400 hover:underline">✓</button>
-                            <button onClick={() => setEditStudent(null)} className="text-xs text-warm-muted hover:underline">✕</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setEditStudent(s.id); setEditAmount(String(hasCustom ? s.customFeeAmount / 100 : '')); setEditReason(s.concessionReason || ''); }}
-                            className="text-xs text-warm-accent hover:underline">
-                            {hasCustom ? 'Edit' : 'Set'}
-                          </button>
-                        )}
+                        <button onClick={() => { setEditStudent(s.id); setEditAmount(String(hasCustom ? s.customFeeAmount / 100 : '')); setEditReason(s.concessionReason || ''); }}
+                          className="text-xs text-warm-accent hover:underline">
+                          {hasCustom ? 'Edit' : 'Set'}
+                        </button>
                       </td>
                     </tr>
                   );
