@@ -1,0 +1,141 @@
+/**
+ * Fee Payments — Advanced Payment Tests
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '../helpers/test-utils';
+
+// Use relative paths instead of @ alias to avoid vitest resolution issues
+import CollectionsPage from '../../app/admin/fees/collections/page';
+import GenerateFeesPage from '../../app/admin/fees/generate/page';
+import FeeReportsPage from '../../app/admin/fees/reports/page';
+import FamilyPayPage from '../../app/admin/fees/collections/family-pay/page';
+import FeeHeadsPage from '../../app/admin/fees/heads/page';
+
+const mockShowToast = vi.hoisted(() => vi.fn());
+vi.mock('@/components/toast', () => ({ showToast: mockShowToast }));
+
+vi.mock('lucide-react', () => ({
+  ArrowLeft: 'div', ArrowRight: 'div', Printer: 'div', Save: 'div', Plus: 'div',
+  ChevronDown: 'div', ChevronRight: 'div', Trash2: 'div', Download: 'div', Search: 'div',
+  DollarSign: 'div', Users: 'div', FileText: 'div', Calendar: 'div', RefreshCw: 'div',
+  CheckCircle: 'div', BarChart: 'div', Edit3: 'div', X: 'div',
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }),
+  useParams: () => ({ id: 's-1' }),
+  usePathname: () => '/admin/fees',
+}));
+
+let lsStore: Record<string, string> = {};
+function setupLS() {
+  lsStore = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
+  try { Object.defineProperty(window, 'localStorage', { value: { getItem: (k: string) => lsStore[k] || null, setItem: (k: string, v: string) => { lsStore[k] = v; }, removeItem: (k: string) => { delete lsStore[k]; }, clear: () => { lsStore = {}; } } }); } catch {}
+}
+
+const mockFetch = (d: any) => vi.fn(() => Promise.resolve({ json: () => Promise.resolve(d) } as any));
+
+// COLLECTIONS
+describe('Collections — Advanced', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('shows Monthly/Full AY toggles', async () => {
+    global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
+    expect(await screen.findByText('Monthly')).toBeInTheDocument();
+    expect(await screen.findByText('Full AY')).toBeInTheDocument();
+  });
+  it('shows Class-wise toggle', async () => {
+    global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
+    expect(await screen.findByText('Class-wise')).toBeInTheDocument();
+    expect(await screen.findByText('Alphabetical')).toBeInTheDocument();
+  });
+  it('shows NO_FEE status', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 0, paidAmount: 0, status: 'NO_FEE' }] }); render(<CollectionsPage />);
+    expect(await screen.findByText('Ahmed')).toBeInTheDocument();
+  });
+  it('shows due for PARTIAL', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL' }] }); render(<CollectionsPage />);
+    expect(await screen.findByText('3,000')).toBeInTheDocument();
+  });
+  it('shows PAID badge', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 500000, status: 'PAID' }] }); render(<CollectionsPage />);
+    expect(await screen.findByText('PAID')).toBeInTheDocument();
+  });
+  it('shows UNPAID badge', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID' }] }); render(<CollectionsPage />);
+    expect(await screen.findByText('UNPAID')).toBeInTheDocument();
+  });
+  it('shows empty state', async () => {
+    global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
+    expect(await screen.findByText('No students found')).toBeInTheDocument();
+  });
+  it('shows Pay button', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID' }] }); render(<CollectionsPage />);
+    const btns = await screen.findAllByText('Pay'); expect(btns.length).toBeGreaterThanOrEqual(1);
+  });
+  it('shows Roll no filter', async () => {
+    global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
+    expect(await screen.findByPlaceholderText('Roll no')).toBeInTheDocument();
+  });
+});
+
+// GENERATE
+describe('GenerateFees', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('shows 4 checkboxes', async () => { render(<GenerateFeesPage />); expect(document.querySelectorAll('input[type="checkbox"]').length).toBe(4); });
+  it('Monthly checked by default', async () => { render(<GenerateFeesPage />); const cb = document.querySelectorAll('input[type="checkbox"]')[0] as HTMLInputElement; expect(cb.checked).toBe(true); });
+  it('keeps one checked', async () => { render(<GenerateFeesPage />); const cbs = document.querySelectorAll('input[type="checkbox"]'); cbs.forEach(cb => fireEvent.click(cb)); expect((cbs[0] as HTMLInputElement).checked).toBe(true); });
+  it('shows result', async () => {
+    global.fetch = mockFetch({ success: true, data: { generated: 345, skipped: 0, total: 345 } }); render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Generate')); expect(await screen.findByText('345')).toBeInTheDocument();
+  });
+});
+
+// REPORTS
+describe('FeeReports', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('shows tabs', async () => {
+    global.fetch = mockFetch({ success: true, data: {} }); render(<FeeReportsPage />);
+    expect(await screen.findByText('Summary')).toBeInTheDocument();
+    expect(await screen.findByText('Defaulters')).toBeInTheDocument();
+    expect(await screen.findByText('By Class')).toBeInTheDocument();
+  });
+  it('shows stats', async () => {
+    global.fetch = mockFetch({ success: true, data: { totalDue: 50000000, totalCollected: 30000000, pendingCount: 45, collectionRate: 60 } }); render(<FeeReportsPage />);
+    expect(await screen.findByText('500,000')).toBeInTheDocument();
+  });
+});
+
+// FAMILY PAY
+describe('FamilyPay', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('renders page title', async () => { render(<FamilyPayPage />); expect(await screen.findByText('Family Combined Payment')).toBeInTheDocument(); });
+  it('shows search input', async () => { render(<FamilyPayPage />); expect(await screen.findByPlaceholderText(/Search by father name/)).toBeInTheDocument(); });
+});
+
+// FEE HEADS ERRORS
+describe('FeeHeads — Errors', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('handles network error', async () => { global.fetch = vi.fn(() => Promise.reject(new Error('x'))); render(<FeeHeadsPage />); expect(await screen.findByText('Fee Heads')).toBeInTheDocument(); });
+});
+
+// STUDENT DETAIL (dynamic import due to [id] path)
+describe('StudentFeeDetail', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('shows loading', async () => {
+    global.fetch = () => new Promise<any>(() => {}); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
+    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
+  it('shows Fee History', async () => {
+    global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [{ id: 'sf1', netAmount: 500000, paidAmount: 0, month: 6, year: 2026, status: 'UNPAID', payments: [], extraItems: [] }] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
+    expect(await screen.findByText('Fee History')).toBeInTheDocument();
+  });
+  it('shows Add Extra Due', async () => {
+    global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
+    expect(await screen.findByText('Add Extra Due')).toBeInTheDocument();
+  });
+  it('shows Pay Now', async () => {
+    global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [{ id: 'sf1', netAmount: 500000, paidAmount: 0, month: 6, year: 2026, status: 'UNPAID', payments: [], extraItems: [] }] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
+    expect(await screen.findByText('Pay Now')).toBeInTheDocument();
+  });
+});
