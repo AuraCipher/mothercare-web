@@ -159,15 +159,31 @@ export default function ClassStudentsFeePage() {
                       })}
                       <td className="px-3 py-2.5 text-xs text-warm-muted text-center">{(baseTotal / 100).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-xs text-center font-medium">
-                        <span className={`text-xs ${hasCustom || customTotal !== baseTotal ? 'text-warm-accent' : 'text-warm-muted/40'}`}>
-                          {(customTotal / 100).toLocaleString()}
-                        </span>
+                        {editStudent === s.id ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
+                              className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-0.5 text-xs text-warm-cream text-center outline-none" placeholder="Total PKR" />
+                            <input value={editReason} onChange={e => setEditReason(e.target.value)}
+                              className="w-24 rounded border border-warm-card-border bg-[#1a1614] px-2 py-0.5 text-[9px] text-warm-cream text-center outline-none" placeholder="Reason" />
+                          </div>
+                        ) : (
+                          <span className={`text-xs ${hasCustom || customTotal !== baseTotal ? 'text-warm-accent' : 'text-warm-muted/40'}`}>
+                            {(customTotal / 100).toLocaleString()}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        <button onClick={() => { setEditStudent(s.id); setEditAmount(String(hasCustom ? s.customFeeAmount / 100 : '')); setEditReason(s.concessionReason || ''); }}
-                          className="text-xs text-warm-accent hover:underline">
-                          {hasCustom ? 'Edit' : 'Set'}
-                        </button>
+                        {editStudent === s.id ? (
+                          <div className="flex gap-1 justify-center">
+                            <button onClick={() => handleSave(s.id)} className="text-xs text-green-400 hover:underline">✓</button>
+                            <button onClick={() => setEditStudent(null)} className="text-xs text-warm-muted hover:underline">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setEditStudent(s.id); setEditAmount(String(hasCustom ? s.customFeeAmount / 100 : String(customTotal / 100))); setEditReason(s.concessionReason || ''); }}
+                            className="text-xs text-warm-accent hover:underline">
+                            {hasCustom ? 'Edit' : 'Set'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
