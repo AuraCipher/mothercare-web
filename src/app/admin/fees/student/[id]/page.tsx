@@ -20,9 +20,6 @@ export default function StudentFeeDetailPage() {
   const [saving, setSaving] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-  const [extraModal, setExtraModal] = useState<any>(null);
-  const [extraAmount, setExtraAmount] = useState(0);
-  const [extraReason, setExtraReason] = useState('');
   const [addExtraModal, setAddExtraModal] = useState<any>(null);
   const [addExtraName, setAddExtraName] = useState('');
   const [addExtraAmt, setAddExtraAmt] = useState(0);
@@ -374,44 +371,6 @@ export default function StudentFeeDetailPage() {
                 } catch { showToast('error', 'Failed'); }
               }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Add</button>
               <button onClick={() => setAddExtraModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Extra Charges Modal */}
-      {extraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setExtraModal(null)}>
-          <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-medium text-warm-cream mb-1">Extra Charges</h3>
-            <p className="text-xs text-warm-muted/50 mb-4">{MONTHS[(extraModal.month || 1) - 1]} {extraModal.year} · Base fee: {(extraModal.netAmount / 100).toLocaleString()} PKR</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
-                <input type="number" value={extraAmount} onChange={e => setExtraAmount(Math.max(0, Number(e.target.value) || 0))}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="0 = remove" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Reason</label>
-                <input value={extraReason} onChange={e => setExtraReason(e.target.value)}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="e.g., Late fee, Lab charges" />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={async () => {
-                if (!token) return;
-                try {
-                  const res = await fetch(`${API_URL}/admin/student-fees/${extraModal.id}/extra`, {
-                    method: 'PUT',
-                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ extraCharges: Math.round(extraAmount * 100), extraReason }),
-                  });
-                  const json = await res.json();
-                  if (json.success) { showToast('success', 'Extra charges updated'); setExtraModal(null); loadData(); }
-                  else showToast('error', json.message || 'Failed');
-                } catch { showToast('error', 'Failed'); }
-              }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
-              <button onClick={() => setExtraModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
             </div>
           </div>
         </div>
