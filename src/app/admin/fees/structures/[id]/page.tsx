@@ -35,10 +35,21 @@ export default function ClassStudentsFeePage() {
       if (hRes.success) setHeads(hRes.data.filter((h: any) => h.isActive));
       if (stRes.success) setStructures(stRes.data);
       if (sRes.success) {
-        setStudents(sRes.data || []);
-        if (sRes.data?.[0]?.group) {
-          const g = sRes.data[0].group;
+        const studentsData = sRes.data || [];
+        setStudents(studentsData);
+        if (studentsData[0]?.group) {
+          const g = studentsData[0].group;
           setGroupName(g.section ? `${g.name} — ${g.section}` : g.name);
+        }
+        // Load persisted feeOverrides into headValues state
+        const overrides: any = {};
+        for (const st of studentsData) {
+          if (st.feeOverrides && typeof st.feeOverrides === 'object') {
+            overrides[st.id] = st.feeOverrides;
+          }
+        }
+        if (Object.keys(overrides).length > 0) {
+          setHeadValues(overrides);
         }
       }
     } catch {} finally { setLoading(false); }
@@ -46,10 +57,21 @@ export default function ClassStudentsFeePage() {
 
   useEffect(() => { loadData(); }, [groupId]);
 
-  // Get the base amount for a fee head for this class
   const getBaseAmount = (feeHeadId: string) => {
     const s = structures.find((st: any) => st.feeHeadId === feeHeadId && !st.effectiveTo);
     return s ? s.amount : 0;
+  };
+
+  const persistOverrides = async (studentId: string, overrides: Record<string, number>) => {
+    if (!token) return;
+    const total = Object.values(overrides).reduce((s: number, v: any) => s + (v || 0), 0);
+    try {
+      await fetch(`${API_URL}/admin/students/${studentId}/custom-fee`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customFeeAmount: total > 0 ? total : null, feeOverrides: overrides, concessionReason: 'Per-head custom' }),
+      });
+    } catch {}
   };
 
   return (
@@ -76,9 +98,10 @@ export default function ClassStudentsFeePage() {
               {[...students]
                 .sort((a: any, b: any) => (parseInt(a.rollNumber, 10) || 0) - (parseInt(b.rollNumber, 10) || 0))
                 .map((s: any) => {
+                  const stuOverrides = headValues[s.id] || {};
                   const stuHeadValues = heads.map(h => ({
                     headId: h.id,
-                    value: headValues[s.id]?.[h.id] ?? getBaseAmount(h.id),
+                    value: stuOverrides[h.id] ?? getBaseAmount(h.id),
                   }));
                   const rowTotal = stuHeadValues.reduce((sum, h) => sum + h.value, 0);
                   return (
@@ -88,6 +111,7 @@ export default function ClassStudentsFeePage() {
                       {heads.map(h => {
                         const val = stuHeadValues.find(v => v.headId === h.id)?.value || 0;
                         const editing = editHead?.studentId === s.id && editHead?.headId === h.id;
+                        const isCustomized = stuOverrides[h.id] != null;
                         return (
                           <td key={h.id} className="px-2 py-2.5 text-xs text-center">
                             {editing ? (
@@ -97,30 +121,24 @@ export default function ClassStudentsFeePage() {
                                   onKeyDown={async (e) => {
                                     if (e.key === 'Enter') {
                                       const newVal = Math.round(parseInt((e.target as HTMLInputElement).value, 10) || 0) * 100;
-                                      const newHeads = { ...headValues, [s.id]: { ...(headValues[s.id] || {}), [h.id]: newVal } };
-                                      setHeadValues(newHeads);
+                                      const newOverrides = { ...stuOverrides, [h.id]: newVal };
+                                      setHeadValues((prev: any) => ({ ...prev, [s.id]: newOverrides }));
                                       setEditHead(null);
-                                      // Auto-save total
-                                      const total = Object.values({ ...(headValues[s.id] || {}), [h.id]: newVal }).reduce((a: any, b: any) => a + b, 0);
-                                      const realTotal = heads.reduce((sum, hh) => sum + (newHeads[s.id]?.[hh.id] ?? getBaseAmount(hh.id)), 0);
-                                      try {
-                                        await fetch(`${API_URL}/admin/students/${s.id}/custom-fee`, {
-                                          method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ customFeeAmount: realTotal, concessionReason: s.concessionReason || 'Custom per-head' }),
-                                        });
-                                      } catch {}
+                                      await persistOverrides(s.id, newOverrides);
                                     }
                                     if (e.key === 'Escape') setEditHead(null);
                                   }}
-                                  onBlur={(e) => {
+                                  onBlur={async (e) => {
                                     const newVal = Math.round(parseInt(e.target.value, 10) || 0) * 100;
-                                    setHeadValues((prev: any) => ({ ...prev, [s.id]: { ...(prev[s.id] || {}), [h.id]: newVal } }));
+                                    const newOverrides = { ...stuOverrides, [h.id]: newVal };
+                                    setHeadValues((prev: any) => ({ ...prev, [s.id]: newOverrides }));
                                     setEditHead(null);
+                                    await persistOverrides(s.id, newOverrides);
                                   }} />
                               </div>
                             ) : (
                               <button onClick={() => setEditHead({ studentId: s.id, headId: h.id })}
-                                className={`text-xs px-1 py-0.5 rounded transition-colors ${headValues[s.id]?.[h.id] != null ? 'text-warm-accent hover:bg-warm-accent/20' : 'text-warm-muted hover:text-warm-cream'}`}>
+                                className={`text-xs px-1 py-0.5 rounded transition-colors ${isCustomized ? 'text-warm-accent hover:bg-warm-accent/20' : 'text-warm-muted hover:text-warm-cream'}`}>
                                 {val > 0 ? (val / 100).toLocaleString() : '—'}
                               </button>
                             )}
