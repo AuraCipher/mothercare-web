@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Printer, ArrowLeft, Save } from 'lucide-react';
+import { Printer, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -19,9 +19,13 @@ export default function StudentFeeDetailPage() {
   const [payRef, setPayRef] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [extraModal, setExtraModal] = useState<any>(null);
   const [extraAmount, setExtraAmount] = useState(0);
   const [extraReason, setExtraReason] = useState('');
+  const [addExtraModal, setAddExtraModal] = useState<any>(null);
+  const [addExtraName, setAddExtraName] = useState('');
+  const [addExtraAmt, setAddExtraAmt] = useState(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -39,7 +43,9 @@ export default function StudentFeeDetailPage() {
   useEffect(() => { loadData(); }, [params.id]);
 
   const fees = data?.studentFees || [];
-  const totalRemainingPaise = fees.reduce((s: number, f: any) => s + (f.netAmount + (f.extraCharges || 0) - f.paidAmount), 0);
+  const getExtraTotal = (sf: any) => (sf.extraItems || []).reduce((s: number, e: any) => s + e.amount, 0);
+  const getMonthDue = (sf: any) => sf.netAmount + getExtraTotal(sf) - sf.paidAmount;
+  const totalRemainingPaise = fees.reduce((s: number, f: any) => s + getMonthDue(f), 0);
   const totalRemainingPkr = totalRemainingPaise / 100;
 
   const openPayModal = () => {
@@ -175,44 +181,103 @@ export default function StudentFeeDetailPage() {
         </div>
       </div>
 
-      {/* Fee History (newest first) */}
-      <h2 className="text-sm font-medium text-warm-cream mb-3">Fee History</h2>
+      {/* Fee History (newest first) — expandable */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-medium text-warm-cream">Fee History</h2>
+        <button onClick={() => setAddExtraModal(true)}
+          className="inline-flex items-center gap-1 rounded-lg bg-warm-accent/20 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/30 transition-colors">
+          <Plus size={13} /> Add Extra Due
+        </button>
+      </div>
       <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
         <table className="w-full text-sm">
           <thead><tr className="bg-warm-card/70">
-            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
-            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Fee</th>
-            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Extra</th>
-            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
-            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Due</th>
+            <th className="w-6 px-2 py-3"></th>
+            <th className="text-left px-2 py-3 text-[10px] text-warm-muted font-medium">Month</th>
+            <th className="text-left px-2 py-3 text-[10px] text-warm-muted font-medium">Name</th>
+            <th className="text-right px-3 py-3 text-[10px] text-warm-muted font-medium">Fee</th>
+            <th className="text-right px-3 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
+            <th className="text-right px-3 py-3 text-[10px] text-warm-muted font-medium">Due</th>
             <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Status</th>
-            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Action</th>
+            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium w-16">Action</th>
           </tr></thead>
           <tbody>
             {fees.map((sf: any) => {
-              const extra = sf.extraCharges || 0;
-              const due = sf.netAmount + extra - sf.paidAmount;
+              const extraTotal = getExtraTotal(sf);
+              const due = getMonthDue(sf);
+              const isExpanded = expandedMonths.has(sf.id);
+              const extraItems = sf.extraItems || [];
+              const toggleExpand = () => {
+                const next = new Set(expandedMonths);
+                if (isExpanded) next.delete(sf.id); else next.add(sf.id);
+                setExpandedMonths(next);
+              };
               return (
-                <tr key={sf.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
-                  <td className="px-4 py-3 text-xs text-warm-cream">{MONTHS[(sf.month || 1) - 1]} {sf.year}</td>
-                  <td className="px-4 py-3 text-xs text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-warm-muted text-right">{extra > 0 ? <span className="text-orange-400">+{(extra / 100).toLocaleString()}</span> : '—'}</td>
-                  <td className="px-4 py-3 text-xs text-green-400 text-right">{(sf.paidAmount / 100).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-red-400 text-right font-medium">{due > 0 ? (due / 100).toLocaleString() : '0'}</td>
-                  <td className="px-3 py-3 text-xs text-center">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                      sf.status === 'PAID' ? 'bg-green-900/20 text-green-400' :
-                      sf.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
-                      'bg-red-900/20 text-red-400'
-                    }`}>{sf.status}</span>
-                  </td>
-                  <td className="px-3 py-3 text-xs text-center">
-                    <button onClick={() => { setExtraModal(sf); setExtraAmount(extra / 100); setExtraReason(sf.extraReason || ''); }}
-                      className="rounded bg-warm-accent/20 px-2 py-1 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
-                      Extra
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={sf.id}>
+                  {/* Parent row — totals */}
+                  <tr className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors cursor-pointer" onClick={toggleExpand}>
+                    <td className="px-2 py-3 text-warm-muted/50">{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</td>
+                    <td className="px-2 py-3 text-xs text-warm-cream font-medium">{MONTHS[(sf.month || 1) - 1]} {sf.year}</td>
+                    <td className="px-2 py-3 text-xs text-warm-muted/50">Total</td>
+                    <td className="px-3 py-3 text-xs text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}{extraTotal > 0 ? <span className="text-orange-400"> +{(extraTotal / 100).toLocaleString()}</span> : ''}</td>
+                    <td className="px-3 py-3 text-xs text-green-400 text-right">{(sf.paidAmount / 100).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-xs text-red-400 text-right font-medium">{due > 0 ? (due / 100).toLocaleString() : '0'}</td>
+                    <td className="px-3 py-3 text-xs text-center">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        sf.status === 'PAID' ? 'bg-green-900/20 text-green-400' :
+                        sf.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
+                        'bg-red-900/20 text-red-400'
+                      }`}>{sf.status}</span>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-center">
+                      <button onClick={(e) => { e.stopPropagation(); setAddExtraModal(sf); }}
+                        className="rounded bg-warm-accent/20 px-2 py-1 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
+                        <Plus size={11} />
+                      </button>
+                    </td>
+                  </tr>
+                  {/* Expanded rows — individual items */}
+                  {isExpanded && (
+                    <>
+                      {/* Base fee row */}
+                      <tr className="bg-warm-card/30 border-t border-warm-card-border/10">
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
+                        <td className="px-2 py-2 text-[11px] text-warm-muted/70">Base Fee</td>
+                        <td className="px-3 py-2 text-[11px] text-warm-muted text-right">{(sf.netAmount / 100).toLocaleString()}</td>
+                        <td className="px-3 py-2 text-[11px] text-green-400/80 text-right">{sf.paidAmount > 0 ? `-${(sf.paidAmount / 100).toLocaleString()}` : '—'}</td>
+                        <td className="px-3 py-2 text-[11px] text-red-400/80 text-right">{(sf.netAmount - sf.paidAmount > 0 ? ((sf.netAmount - sf.paidAmount) / 100).toLocaleString() : '0')}</td>
+                        <td colSpan={2}></td>
+                      </tr>
+                      {/* Extra items */}
+                      {extraItems.map((ei: any) => (
+                        <tr key={ei.id} className="bg-warm-card/30 border-t border-warm-card-border/5">
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
+                          <td className="px-2 py-2 text-[11px] text-orange-400/80">{ei.name}</td>
+                          <td className="px-3 py-2 text-[11px] text-orange-400/80 text-right">+{(ei.amount / 100).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-[11px] text-green-400/60 text-right">—</td>
+                          <td className="px-3 py-2 text-[11px] text-red-400/80 text-right">{(ei.amount / 100).toLocaleString()}</td>
+                          <td colSpan={1}></td>
+                          <td className="px-3 py-2 text-center">
+                            <button onClick={async () => {
+                              if (!token) return;
+                              try {
+                                const res = await fetch(`${API_URL}/admin/student-fees/${sf.id}/extra-items/${ei.id}`, {
+                                  method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+                                });
+                                const json = await res.json();
+                                if (json.success) { showToast('success', 'Removed'); loadData(); }
+                              } catch { showToast('error', 'Failed'); }
+                            }} className="p-0.5 text-warm-muted/40 hover:text-red-400 transition-colors">
+                              <Trash2 size={11} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
@@ -264,6 +329,55 @@ export default function StudentFeeDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Add Extra Due Modal */}
+      {addExtraModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setAddExtraModal(null)}>
+          <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-medium text-warm-cream mb-4">Add Extra Due</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Month</label>
+                <select value={addExtraModal?.id || ''} onChange={e => {
+                  const sf: any = fees.find((f: any) => f.id === e.target.value);
+                  setAddExtraModal(sf || true);
+                }} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
+                  <option value="">Select month...</option>
+                  {fees.map((sf: any) => (
+                    <option key={sf.id} value={sf.id}>{MONTHS[(sf.month || 1) - 1]} {sf.year}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Name</label>
+                <input value={addExtraName} onChange={e => setAddExtraName(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="e.g., Lab Charges, Late Fee" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
+                <input type="number" value={addExtraAmt} onChange={e => setAddExtraAmt(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={async () => {
+                if (!token || !addExtraModal?.id || !addExtraName || addExtraAmt <= 0) { showToast('error', 'Fill all fields'); return; }
+                try {
+                  const res = await fetch(`${API_URL}/admin/student-fees/${addExtraModal.id}/extra-items`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: addExtraName, amount: Math.round(addExtraAmt * 100) }),
+                  });
+                  const json = await res.json();
+                  if (json.success) { showToast('success', 'Extra due added'); setAddExtraModal(null); setAddExtraName(''); setAddExtraAmt(0); loadData(); }
+                  else showToast('error', json.message || 'Failed');
+                } catch { showToast('error', 'Failed'); }
+              }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Add</button>
+              <button onClick={() => setAddExtraModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Extra Charges Modal */}
       {extraModal && (
