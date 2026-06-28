@@ -79,14 +79,25 @@ describe('Collections — Advanced', () => {
   });
 });
 
+const mockHeads = [
+  { id: 'fh1', name: 'Tuition', category: 'MONTHLY', isActive: true },
+  { id: 'fh2', name: 'Transport', category: 'MONTHLY', isActive: true },
+  { id: 'fh3', name: 'Lab Fee', category: 'TERM', isActive: true },
+  { id: 'fh4', name: 'Annual Charges', category: 'ANNUAL', isActive: true },
+  { id: 'fh5', name: 'Admission Fee', category: 'ONE_TIME', isActive: true },
+];
+
 // GENERATE
 describe('GenerateFees', () => {
-  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('shows 4 checkboxes', async () => { render(<GenerateFeesPage />); expect(document.querySelectorAll('input[type="checkbox"]').length).toBe(4); });
-  it('Monthly checked by default', async () => { render(<GenerateFeesPage />); const cb = document.querySelectorAll('input[type="checkbox"]')[0] as HTMLInputElement; expect(cb.checked).toBe(true); });
-  it('keeps one checked', async () => { render(<GenerateFeesPage />); const cbs = document.querySelectorAll('input[type="checkbox"]'); cbs.forEach(cb => fireEvent.click(cb)); expect((cbs[0] as HTMLInputElement).checked).toBe(true); });
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); global.fetch = mockFetch({ success: true, data: mockHeads }); });
+  it('shows checkboxes for each fee head', async () => { render(<GenerateFeesPage />); const boxes = await screen.findAllByRole('checkbox'); expect(boxes.length).toBe(mockHeads.length); });
+  it('all heads checked by default', async () => { render(<GenerateFeesPage />); const cbs = await screen.findAllByRole('checkbox'); cbs.forEach(cb => expect(cb).toBeChecked()); });
+  it('keeps one checked', async () => { render(<GenerateFeesPage />); const cbs = await screen.findAllByRole('checkbox'); cbs.forEach(cb => fireEvent.click(cb)); const checked = [...cbs].filter(cb => (cb as HTMLInputElement).checked); expect(checked.length).toBe(1); });
   it('shows result', async () => {
-    global.fetch = mockFetch({ success: true, data: { generated: 345, skipped: 0, total: 345 } }); render(<GenerateFeesPage />);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: mockHeads }) })
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
+    global.fetch = fetchMock; render(<GenerateFeesPage />);
     fireEvent.click(await screen.findByText('Generate')); expect(await screen.findByText('345')).toBeInTheDocument();
   });
 });

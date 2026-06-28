@@ -1,33 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { showToast } from '@/components/toast';
 import { RefreshCw, CheckCircle } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const CATEGORIES = [
-  { key: 'MONTHLY', label: 'Monthly', desc: 'Tuition, Transport, Library' },
-  { key: 'TERM', label: 'Term', desc: 'Lab Fee, Sports (Aug/Nov/Feb/May)' },
-  { key: 'ANNUAL', label: 'Annual', desc: 'Annual Charges (once per year)' },
-  { key: 'ONE_TIME', label: 'One-Time', desc: 'Admission Fee (once per student)' },
-];
+const CATEGORY_COLORS: Record<string, string> = {
+  MONTHLY: 'bg-blue-900/20 text-blue-300',
+  TERM: 'bg-purple-900/20 text-purple-300',
+  ANNUAL: 'bg-green-900/20 text-green-300',
+  ONE_TIME: 'bg-orange-900/20 text-orange-300',
+};
 
 export default function GenerateFeesPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
-  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set(['MONTHLY']));
+  const [heads, setHeads] = useState<any[]>([]);
+  const [selectedHeadIds, setSelectedHeadIds] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<{ generated: number; skipped: number; total: number } | null>(null);
+  const [loadingHeads, setLoadingHeads] = useState(true);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const toggleCat = (key: string) => {
-    const next = new Set(selectedCats);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    if (next.size === 0) next.add('MONTHLY'); // Keep at least one
-    setSelectedCats(next);
+  // Fetch all fee heads on mount
+  useEffect(() => {
+    const loadHeads = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/admin/fee-heads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (json.success) {
+          const activeHeads = json.data.filter((h: any) => h.isActive !== false);
+          setHeads(activeHeads);
+          // Pre-select all active heads by default
+          setSelectedHeadIds(new Set(activeHeads.map((h: any) => h.id)));
+        }
+      } catch {} finally { setLoadingHeads(false); }
+    };
+    loadHeads();
+  }, []);
+
+  const toggleHead = (id: string) => {
+    const next = new Set(selectedHeadIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.size === 0) next.add(id); // Keep at least one selected
+    setSelectedHeadIds(next);
   };
 
   const handleGenerate = async () => {
@@ -38,7 +60,11 @@ export default function GenerateFeesPage() {
       const res = await fetch(`${API_URL}/admin/student-fees/generate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: month + 1, year, categories: Array.from(selectedCats) }),
+        body: JSON.stringify({
+          month: month + 1,
+          year,
+          headIds: Array.from(selectedHeadIds),
+        }),
       });
       const json = await res.json();
       if (json.success) { setResult(json.data); showToast('success', `Generated ${json.data.generated} fees`); }
@@ -46,6 +72,15 @@ export default function GenerateFeesPage() {
     } catch { showToast('error', 'Failed'); }
     finally { setGenerating(false); }
   };
+
+  // Group heads by category for display
+  const byCategory: Record<string, any[]> = {};
+  for (const h of heads) {
+    const cat = h.category || 'MONTHLY';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(h);
+  }
+  const categoryOrder = ['MONTHLY', 'TERM', 'ANNUAL', 'ONE_TIME'];
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -65,28 +100,49 @@ export default function GenerateFeesPage() {
             <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
               className="rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-2.5 text-sm text-warm-cream outline-none focus:border-warm-accent w-24" />
           </div>
-          <button onClick={handleGenerate} disabled={generating}
+          <button onClick={handleGenerate} disabled={generating || loadingHeads || selectedHeadIds.size === 0}
             className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
             {generating ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
             {generating ? 'Generating...' : 'Generate'}
           </button>
         </div>
 
-        {/* Category checkboxes */}
+        {/* Fee heads checkboxes — grouped by category */}
         <div className="mb-6">
-          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-2">Fee Categories to Include</label>
-          <div className="space-y-2">
-            {CATEGORIES.map(cat => (
-              <label key={cat.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-warm-card/50 cursor-pointer transition-colors">
-                <input type="checkbox" checked={selectedCats.has(cat.key)} onChange={() => toggleCat(cat.key)}
-                  className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
-                <div>
-                  <p className="text-sm text-warm-cream">{cat.label}</p>
-                  <p className="text-[11px] text-warm-muted/50">{cat.desc}</p>
-                </div>
-              </label>
-            ))}
-          </div>
+          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-3">Fee Heads to Include</label>
+          {loadingHeads ? (
+            <div className="space-y-2">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-warm-card/50" />
+              ))}
+            </div>
+          ) : heads.length === 0 ? (
+            <p className="text-xs text-warm-muted/40">No fee heads found. Create some under Fee Heads first.</p>
+          ) : (
+            <div className="space-y-1">
+              {categoryOrder.map(cat => {
+                const catHeads = byCategory[cat];
+                if (!catHeads || catHeads.length === 0) return null;
+                const displayName = cat === 'ONE_TIME' ? 'One-Time' : cat.charAt(0) + cat.slice(1).toLowerCase();
+                return (
+                  <div key={cat} className="mb-3">
+                    <p className="text-[10px] text-warm-muted/40 uppercase tracking-wider mb-1.5 ml-1">{displayName}</p>
+                    {catHeads.map(h => (
+                      <label key={h.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-warm-card/50 cursor-pointer transition-colors">
+                        <input type="checkbox" checked={selectedHeadIds.has(h.id)} onChange={() => toggleHead(h.id)}
+                          className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                        <span className="text-sm text-warm-cream flex-1">{h.name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat] || 'bg-gray-900/20 text-gray-300'}`}>
+                          {cat}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {result && (
