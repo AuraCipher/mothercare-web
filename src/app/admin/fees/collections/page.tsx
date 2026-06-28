@@ -82,11 +82,11 @@ export default function CollectionsPage() {
     if (viewMode === 'alpha') {
       result = [...result].sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
     } else {
-      // Class-wise: group by class, then by roll within
+      // Class-wise: group by displayOrder, then by roll within
       result = [...result].sort((a, b) => {
-        const clsA = a.student?.group?.name || a.student?.groupId || '';
-        const clsB = b.student?.group?.name || b.student?.groupId || '';
-        if (clsA !== clsB) return clsA.localeCompare(clsB);
+        const doA = a.student?.group?.displayOrder ?? 999;
+        const doB = b.student?.group?.displayOrder ?? 999;
+        if (doA !== doB) return doA - doB;
         const rA = parseInt(a.student?.rollNumber, 10) || 0;
         const rB = parseInt(b.student?.rollNumber, 10) || 0;
         return rA - rB;
@@ -141,7 +141,7 @@ export default function CollectionsPage() {
           <select value={classFilter} onChange={e => setClassFilter(e.target.value)}
             className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
             <option value="">All Classes</option>
-            {sections.map((s: any) => (
+            {[...sections].sort((a: any, b: any) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)).map((s: any) => (
               <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
             ))}
           </select>
