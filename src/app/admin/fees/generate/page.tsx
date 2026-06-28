@@ -21,7 +21,7 @@ export default function GenerateFeesPage() {
   const [heads, setHeads] = useState<any[]>([]);
   const [selectedHeadIds, setSelectedHeadIds] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<{ generated: number; skipped: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ generated: number; skipped: number; updated: number; total: number } | null>(null);
   const [loadingHeads, setLoadingHeads] = useState(true);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -147,7 +147,10 @@ export default function GenerateFeesPage() {
 
         {result && (
           <div className="rounded-lg border border-warm-card-border/30 bg-warm-card/50 p-4">
-            <p className="text-sm text-warm-cream">Generated: <strong className="text-green-400">{result.generated}</strong></p>
+            <p className="text-sm text-warm-cream">
+              Generated: <strong className="text-green-400">{result.generated}</strong>
+              {result.updated > 0 && <span className="ml-2 text-warm-accent">· Updated: <strong>{result.updated}</strong></span>}
+            </p>
             <p className="text-xs text-warm-muted/60 mt-1">Skipped (already exist): {result.skipped}</p>
             <p className="text-xs text-warm-muted/60">Total active students: {result.total}</p>
           </div>
