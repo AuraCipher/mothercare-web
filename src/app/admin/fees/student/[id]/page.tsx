@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Printer, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import config from '@/config';
+import { printReceipt as upgradedPrintReceipt } from '@/lib/receipt';
+import type { ReceiptData, ReceiptMonthSection } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function StudentFeeDetailPage() {
@@ -84,57 +86,104 @@ export default function StudentFeeDetailPage() {
   };
 
   const printReceipt = (payment: any, studentFee?: any, remainingOverride?: number) => {
-    const win = window.open('', '_blank');
-    if (!win) return;
-    const isWaterfall = payment.allocations !== undefined;
+    const isWaterfall = payment.allocations !== undefined && payment.allocations.length > 0;
     const remaining = remainingOverride ?? 0;
-    win.document.write(`
-      <html><head><title>Receipt ${payment.receiptNumber}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #222; }
-        h1 { font-size: 18px; margin-bottom: 4px; }
-        h2 { font-size: 14px; font-weight: normal; color: #555; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-        th { background: #f0f0f0; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
-        td { padding: 6px 8px; border-bottom: 1px solid #eee; }
-        .total { font-size: 16px; margin-top: 16px; text-align: right; }
-        .balance { font-size: 14px; margin-top: 8px; text-align: right; }
-        .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
-        hr { border: none; border-top: 1px dashed #ccc; margin: 12px 0; }
-        @media print { body { padding: 20px; } }
-      </style></head><body>
-      <h1>Mother Care School — Payment Receipt</h1>
-      <h2>Receipt: ${payment.receiptNumber}</h2>
-      <div class="meta">
-        Student: ${data?.name || ''} | ${data?.group?.name || ''} ${data?.group?.section || ''}<br>
-        Date: ${new Date().toLocaleDateString()}<br>
-      </div>
-      ${isWaterfall ? `
-        <table>
-          <tr><th>Month</th><th style="text-align:right">Allocated</th></tr>
-          ${payment.allocations?.map((a: any) => {
-            const sf = data?.studentFees?.find((f: any) => f.id === a.studentFeeId);
-            const label = sf ? MONTHS[(sf.month || 1) - 1] + ' ' + (sf.year || '') : '';
-            return `<tr><td>${label}</td><td style="text-align:right">${(a.amount / 100).toLocaleString()}</td></tr>`;
-          }).join('')}
-        </table>
-        <div class="total">Total Paid: <strong>${(payment.totalAmount / 100).toLocaleString()} PKR</strong></div>
-        <div class="balance">Balance Remaining: <strong>${remaining > 0 ? (remaining / 100).toLocaleString() + ' PKR' : '0 PKR ✅'}</strong></div>
-      ` : `
-        <table>
-          <tr><th>Description</th><th style="text-align:right">Amount</th></tr>
-          <tr><td>Monthly Fee (${studentFee ? MONTHS[(studentFee.month || 1) - 1] + ' ' + (studentFee.year || '') : ''})</td><td style="text-align:right">${((studentFee?.totalAmount || 0) / 100).toLocaleString()}</td></tr>
-          <tr><td><strong>Paid</strong></td><td style="text-align:right"><strong>${(payment.amount / 100).toLocaleString()}</strong></td></tr>
-        </table>
-        <div class="total">Total Paid: <strong>${(payment.amount / 100).toLocaleString()} PKR</strong></div>
-        <div class="balance">Balance Remaining: <strong>${remaining > 0 ? (remaining / 100).toLocaleString() + ' PKR' : '0 PKR ✅'}</strong></div>
-      `}
-      <div class="meta" style="margin-top:20px">Method: ${payment.paymentMethod || 'CASH'} | Received by: Admin</div>
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
+    const studentName = data?.name || '';
+    const studentClass = [data?.group?.name, data?.group?.section].filter(Boolean).join(' — ') || '—';
+    const studentRoll = data?.rollNumber || undefined;
+    const father = data?.parents?.find((p: any) => p.parent?.relation === 'Father');
+    const fatherName = father?.parent?.user?.name || father?.parent?.phone || undefined;
+
+    // Build allocations for display
+    const allocations: { label: string; amountPaise: number }[] = [];
+    if (isWaterfall) {
+      for (const a of payment.allocations || []) {
+        const sf = data?.studentFees?.find((f: any) => f.id === a.studentFeeId);
+        const label = sf ? MONTHS[(sf.month || 1) - 1] + ' ' + (sf.year || '') : 'Allocation';
+        allocations.push({ label, amountPaise: a.amount });
+      }
+    } else if (studentFee) {
+      allocations.push({
+        label: MONTHS[(studentFee.month || 1) - 1] + ' ' + (studentFee.year || ''),
+        amountPaise: payment.amount,
+      });
+    }
+
+    // Build a map: feeId → amount paid in THIS transaction
+    const paidInThisTx: Record<string, number> = {};
+    for (const a of payment.allocations || []) {
+      paidInThisTx[a.studentFeeId] = (paidInThisTx[a.studentFeeId] || 0) + a.amount;
+    }
+    if (!isWaterfall && studentFee?.id) {
+      paidInThisTx[studentFee.id] = (paidInThisTx[studentFee.id] || 0) + (payment.amount || 0);
+    }
+
+    // Sort fees newest-first; latest paid fee = current month
+    const allFees: any[] = data?.studentFees || [];
+    const sortedFees = [...allFees].sort((a: any, b: any) => (b.year - a.year) || (b.month - a.month));
+
+    let currentMonthFee: any = null;
+    let previousTotalPaise = 0;
+
+    // Latest fee that was paid in this transaction = current month
+    for (const sf of sortedFees) {
+      if (paidInThisTx[sf.id]) {
+        currentMonthFee = sf;
+        break;
+      }
+    }
+    // Fallback: if no fee was paid (edge case), use the latest fee overall
+    if (!currentMonthFee && studentFee) currentMonthFee = studentFee;
+
+    // Compute previous balance: what other fees owed BEFORE this payment
+    for (const sf of allFees) {
+      if (sf.id === currentMonthFee?.id) continue;
+      const extraTotal = getExtraTotal(sf);
+      // What was paid toward this fee BEFORE today's transaction
+      const paidBefore = sf.paidAmount - (paidInThisTx[sf.id] || 0);
+      const dueBefore = Math.max(0, sf.netAmount + extraTotal - paidBefore);
+      if (dueBefore > 0) previousTotalPaise += dueBefore;
+    }
+
+    // Current month section with per-head breakdown
+    let currentMonthSection: ReceiptMonthSection | undefined;
+    if (currentMonthFee) {
+      const cmTotal = currentMonthFee.netAmount + getExtraTotal(currentMonthFee);
+      currentMonthSection = {
+        label: MONTHS[(currentMonthFee.month || 1) - 1] + ' ' + (currentMonthFee.year || ''),
+        breakdown: (currentMonthFee.feeHeadBreakdown || []).map((fh: any) => ({
+          name: fh.name,
+          amountPaise: fh.amount || 0,
+        })),
+        extraItems: (currentMonthFee.extraItems || []).map((ei: any) => ({
+          name: ei.name,
+          amountPaise: ei.amount || 0,
+        })),
+        totalPaise: cmTotal,
+        paidPaise: payment.totalAmount || payment.amount,
+      };
+    }
+
+    const totalDuePaise = (currentMonthSection?.totalPaise || 0) + previousTotalPaise;
+
+    const receiptData: ReceiptData = {
+      receiptNumber: payment.receiptNumber,
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      paymentMethod: payment.paymentMethod || 'CASH',
+      reference: payment.reference || undefined,
+      totalPaidPaise: payment.totalAmount || payment.amount,
+      balanceRemainingPaise: Math.max(0, remaining),
+      studentName,
+      studentClass,
+      studentRoll,
+      fatherName,
+      isFullyPaid: remaining <= 0,
+      currentMonth: currentMonthSection,
+      previousBalancePaise: previousTotalPaise > 0 ? previousTotalPaise : undefined,
+      totalDuePaise: totalDuePaise > 0 ? totalDuePaise : undefined,
+      allocations,
+    };
+    upgradedPrintReceipt(receiptData);
   };
 
   if (loading) return <main className="mx-auto max-w-4xl px-6 py-10"><div className="h-48 animate-pulse rounded-xl bg-warm-card" /></main>;

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { showToast } from '@/components/toast';
 import { Search, Users, Printer } from 'lucide-react';
 import config from '@/config';
+import { printReceipt as upgradedPrintReceipt } from '@/lib/receipt';
+import type { ReceiptData } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function FamilyPayPage() {
@@ -66,39 +68,35 @@ export default function FamilyPayPage() {
 
   const printReceipt = () => {
     if (!receipt) return;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Receipt ${receipt.receiptNumber}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #222; }
-        h1 { font-size: 18px; margin-bottom: 4px; }
-        .meta { font-size: 12px; color: #666; margin-bottom: 24px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-        th { background: #f0f0f0; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
-        td { padding: 6px 8px; border-bottom: 1px solid #eee; }
-        hr { border: none; border-top: 1px dashed #ccc; margin: 16px 0; }
-        .section-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333; }
-        .total { font-size: 16px; margin-top: 16px; text-align: right; }
-        @media print { body { padding: 20px; } }
-      </style></head><body>
-      <h1>Mother Care School — Payment Receipt</h1>
-      <div class="meta">Receipt: ${receipt.receiptNumber}<br>Date: ${new Date().toLocaleDateString()}<br>Family: ${receipt.familyPayment?.family?.fatherName || ''}</div>
-      ${receipt.familyPayment?.payments?.map((p: any) => `
-        <hr>
-        <div class="section-title">${p.student?.name || 'Student'} — ${p.student?.group?.name || ''} ${p.student?.group?.section || ''}</div>
-        <table><tr><th>Fee Head</th><th style="text-align:right">Amount</th></tr>
-        <tr><td>Monthly Fee (${p.studentFee?.month || ''}/${p.studentFee?.year || ''})</td><td style="text-align:right">${((p.studentFee?.totalAmount || 0) / 100).toLocaleString()}</td></tr>
-        <tr><td><strong>Paid</strong></td><td style="text-align:right"><strong>${(p.amount / 100).toLocaleString()}</strong></td></tr></table>
-      `).join('')}
-      <hr>
-      <div class="total">Total Paid: <strong>${(receipt.totalAmount / 100).toLocaleString()} PKR</strong></div>
-      <div class="meta" style="margin-top:24px">Payment Method: ${receipt.familyPayment?.payments?.[0]?.paymentMethod || 'CASH'}</div>
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
+    const familyPayments = receipt.familyPayment?.payments || [];
+    const firstPayment = familyPayments[0] || {};
+
+    // Build allocations: one per student in the family
+    const allocations: { label: string; amountPaise: number }[] = [];
+    for (const p of familyPayments) {
+      allocations.push({
+        label: `${p.student?.name || 'Student'} — ${p.student?.group?.name || ''} ${p.student?.group?.section || ''}`,
+        amountPaise: p.amount || 0,
+      });
+    }
+
+    const studentNames = familyPayments.map((p: any) => p.student?.name || '').filter(Boolean).join(', ');
+    const fatherName = receipt.familyPayment?.family?.fatherName || '';
+
+    const receiptData: ReceiptData = {
+      receiptNumber: receipt.receiptNumber,
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      paymentMethod: firstPayment.paymentMethod || 'CASH',
+      reference: firstPayment.reference || undefined,
+      totalPaidPaise: receipt.totalAmount || 0,
+      balanceRemainingPaise: 0,
+      studentName: studentNames || fatherName || 'Family Payment',
+      studentClass: 'Family Combined',
+      fatherName: fatherName || undefined,
+      isFullyPaid: true,
+      allocations,
+    };
+    upgradedPrintReceipt(receiptData);
   };
 
   return (
