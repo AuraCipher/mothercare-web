@@ -54,52 +54,35 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
 
-    // Show content immediately from JWT — no loading spinner
+    // Use JWT payload directly — no background verification
     const payload = decodeJwtPayload(token);
-    if (payload && payload.role === 'super_admin') {
-      setUser({ id: payload.id, name: payload.name, role: payload.role, branchIds: payload.branchIds || [] });
-      const stored = localStorage.getItem('activeBranchId');
-      if (stored && (payload.branchIds || []).includes(stored)) {
-        setActiveBranchId(stored);
-      } else if (payload.branchIds?.length) {
-        setActiveBranchId(payload.branchIds[0]);
-        localStorage.setItem('activeBranchId', payload.branchIds[0]);
-      } else {
-        localStorage.removeItem('activeBranchId');
-      }
-      setLoadingUser(false);
+    if (!payload) { clearAuth(); return; }
+
+    // Guard: only super_admin can access /ceo
+    if (payload.role !== 'super_admin') {
+      router.replace('/admin');
+      return;
     }
 
-    // Verify token is still valid in the background
+    setUser({ id: payload.id, name: payload.name, role: payload.role, branchIds: payload.branchIds || [] });
+    const stored = localStorage.getItem('activeBranchId');
+    if (stored && (payload.branchIds || []).includes(stored)) {
+      setActiveBranchId(stored);
+    } else if (payload.branchIds?.length) {
+      setActiveBranchId(payload.branchIds[0]);
+      localStorage.setItem('activeBranchId', payload.branchIds[0]);
+    } else {
+      localStorage.removeItem('activeBranchId');
+    }
+    setLoadingUser(false);
+
+    // Fetch branches list in background (non-critical)
     let cancelled = false;
     (async () => {
       try {
-        const [meRes, branchRes] = await Promise.all([
-          api.me(),
-          api.meBranches().catch(() => ({ success: true, data: [] as any[] })),
-        ]);
-        if (cancelled) return;
-
-        if (!meRes.success) { clearAuth(); return; }
-
-        // Guard: only super_admin can access /ceo
-        if (meRes.user?.role !== 'super_admin') {
-          router.replace('/admin');
-          return;
-        }
-
-        setUser(meRes.user);
-        const stored = localStorage.getItem('activeBranchId');
-        if (stored && meRes.user?.branchIds?.includes(stored)) {
-          setActiveBranchId(stored);
-        } else if (meRes.user?.branchIds?.length) {
-          setActiveBranchId(meRes.user.branchIds[0]);
-          localStorage.setItem('activeBranchId', meRes.user.branchIds[0]);
-        } else {
-          localStorage.removeItem('activeBranchId');
-        }
-
-        if (branchRes.success) setBranches(branchRes.data || []);
+        const branchRes = await api.meBranches().catch(() => ({ success: true, data: [] as any[] }));
+        if (cancelled || !branchRes.success) return;
+        setBranches(branchRes.data || []);
       } catch {
         clearAuth();
       } finally {

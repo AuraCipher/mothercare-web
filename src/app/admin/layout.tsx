@@ -66,62 +66,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
 
-    // Show content immediately from JWT — no loading spinner
+    // Use JWT payload directly — no background verification needed
+    // (token is validated on every actual API call)
     const payload = decodeJwtPayload(token);
-    if (payload && payload.role !== 'super_admin') {
-      setUser({ id: payload.id, name: payload.name, role: payload.role, branchIds: payload.branchIds || [] });
-      const stored = localStorage.getItem('activeBranchId');
-      if (stored && (payload.branchIds || []).includes(stored)) {
-        setActiveBranchId(stored);
-      } else if (payload.branchIds?.length) {
-        setActiveBranchId(payload.branchIds[0]);
-        localStorage.setItem('activeBranchId', payload.branchIds[0]);
-      } else {
-        localStorage.removeItem('activeBranchId');
-      }
-      setLoadingUser(false);
+    if (!payload) { clearAuth(); return; }
+
+    // Guard: CEO belongs in /ceo, not /admin
+    if (payload.role === 'super_admin') {
+      router.replace('/ceo');
+      return;
     }
 
-    // Verify token is still valid in the background
+    setUser({ id: payload.id, name: payload.name, role: payload.role, branchIds: payload.branchIds || [] });
+    const stored = localStorage.getItem('activeBranchId');
+    if (stored && (payload.branchIds || []).includes(stored)) {
+      setActiveBranchId(stored);
+    } else if (payload.branchIds?.length) {
+      setActiveBranchId(payload.branchIds[0]);
+      localStorage.setItem('activeBranchId', payload.branchIds[0]);
+    } else {
+      localStorage.removeItem('activeBranchId');
+    }
+    setLoadingUser(false);
+
+    // Fetch branch list and academic years in the background (non-critical)
     let cancelled = false;
     (async () => {
       try {
-        const [meRes, branchRes] = await Promise.all([
-          api.me(),
-          api.meBranches().catch(() => ({ success: true, data: [] as any[] })),
-        ]);
-        if (cancelled) return;
-
-        if (!meRes.success) { clearAuth(); return; }
-
-        // Guard: CEO belongs in /ceo, not /admin
-        if (meRes.user?.role === 'super_admin') {
-          router.replace('/ceo');
-          return;
-        }
-
-        setUser(meRes.user);
-        const stored = localStorage.getItem('activeBranchId');
-        if (stored && meRes.user?.branchIds?.includes(stored)) {
-          setActiveBranchId(stored);
-        } else if (meRes.user?.branchIds?.length) {
-          setActiveBranchId(meRes.user.branchIds[0]);
-          localStorage.setItem('activeBranchId', meRes.user.branchIds[0]);
-        } else {
-          localStorage.removeItem('activeBranchId');
-        }
-
-        if (branchRes.success) setBranches(branchRes.data || []);
+        const branchRes = await api.meBranches().catch(() => ({ success: true, data: [] as any[] }));
+        if (cancelled || !branchRes.success) return;
+        setBranches(branchRes.data || []);
 
         // Fetch academic years for the active branch
-        const currentBranchId = stored && meRes.user?.branchIds?.includes(stored)
+        const currentBranchId = stored && (payload.branchIds || []).includes(stored)
           ? stored
-          : meRes.user?.branchIds?.[0];
+          : payload.branchIds?.[0];
         if (currentBranchId) {
           api.getAcademicYears(currentBranchId).then(ayRes => {
             if (ayRes.success) {
               setAcademicYears(ayRes.data || []);
-              // Auto-select stored AY or first ACTIVE
               const storedAy = localStorage.getItem('activeAYId');
               if (storedAy && ayRes.data?.some((a: any) => a.id === storedAy)) {
                 setActiveAYId(storedAy);
@@ -139,9 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }).catch(() => {});
         }
       } catch {
-        clearAuth();
-      } finally {
-        if (!cancelled) setLoadingUser(false);
+        // Non-critical — user can still use the app with JWT data
       }
     })();
     return () => { cancelled = true; };

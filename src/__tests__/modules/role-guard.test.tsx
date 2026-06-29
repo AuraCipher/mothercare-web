@@ -7,16 +7,20 @@ const { mockPush, mockReplace } = vi.hoisted(() => ({
   mockReplace: vi.fn(),
 }));
 
-const mockMe = vi.hoisted(() => vi.fn());
 const mockMeBranches = vi.hoisted(() => vi.fn());
 
 const mockApi = vi.hoisted(() => ({
   api: {
-    me: mockMe,
     meBranches: mockMeBranches,
     logout: vi.fn(),
   },
 }));
+
+/* ── Helper: create a fake JWT that decodeJwtPayload can read ── */
+function fakeToken(payload: Record<string, any>): string {
+  const b64 = btoa(JSON.stringify(payload));
+  return `header.${b64}.signature`;
+}
 
 /* ── Module mocks ── */
 vi.mock('next/navigation', () => ({
@@ -45,13 +49,8 @@ describe('Role-Based Layout Guards', () => {
   // ── Admin layout guards ──
 
   it('redirects CEO from /admin to /ceo', async () => {
-    mockMe.mockResolvedValue({
-      success: true,
-      user: { id: '1', name: 'CEO User', role: 'super_admin', branchIds: [] },
-    });
     mockMeBranches.mockResolvedValue({ success: true, data: [] });
-
-    localStorage.setItem('token', 'some-token');
+    localStorage.setItem('token', fakeToken({ id: '1', role: 'super_admin', branchIds: [] }));
     render(<AdminLayout><div>Admin content</div></AdminLayout>);
 
     await waitFor(() => {
@@ -60,30 +59,19 @@ describe('Role-Based Layout Guards', () => {
   });
 
   it('allows non-CEO user into admin layout', async () => {
-    mockMe.mockResolvedValue({
-      success: true,
-      user: { id: '2', name: 'Branch Admin', role: 'branch_admin', branchIds: [] },
-    });
     mockMeBranches.mockResolvedValue({ success: true, data: [] });
-
-    localStorage.setItem('token', 'some-token');
+    localStorage.setItem('token', fakeToken({ id: '2', role: 'branch_admin', branchIds: [] }));
     render(<AdminLayout><div>Admin content</div></AdminLayout>);
 
     await waitFor(() => {
       expect(mockReplace).not.toHaveBeenCalled();
-      // Should show admin content
       expect(screen.getByText('Admin content')).toBeInTheDocument();
     });
   });
 
   it('allows management user into admin layout', async () => {
-    mockMe.mockResolvedValue({
-      success: true,
-      user: { id: '3', name: 'Manager', role: 'management', branchIds: [] },
-    });
     mockMeBranches.mockResolvedValue({ success: true, data: [] });
-
-    localStorage.setItem('token', 'some-token');
+    localStorage.setItem('token', fakeToken({ id: '3', role: 'management', branchIds: [] }));
     render(<AdminLayout><div>Admin content</div></AdminLayout>);
 
     await waitFor(() => {
@@ -98,21 +86,8 @@ describe('Role-Based Layout Guards', () => {
     expect(mockPush).toHaveBeenCalledWith('/login');
   });
 
-  it('redirects to login when /me returns failure in admin layout', async () => {
-    mockMe.mockResolvedValue({ success: false });
-
-    localStorage.setItem('token', 'invalid-token');
-    render(<AdminLayout><div>Admin content</div></AdminLayout>);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
-    });
-  });
-
-  it('redirects to login when /me throws in admin layout', async () => {
-    mockMe.mockRejectedValue(new Error('Network error'));
-
-    localStorage.setItem('token', 'some-token');
+  it('redirects to login when token has no payload (corrupt)', async () => {
+    localStorage.setItem('token', 'not-a-jwt');
     render(<AdminLayout><div>Admin content</div></AdminLayout>);
 
     await waitFor(() => {
