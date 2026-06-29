@@ -150,7 +150,6 @@ const STYLES = `
   .balance-block .balance-value { font-size: 20px; font-weight: 700; }
   .balance-block .balance-value.cleared-val { color: #15803d; }
   .balance-block .balance-value.due-val { color: #b91c1c; }
-  .balance-block .balance-sub { font-size: 11px; color: #666; margin-top: 2px; }
 
   /* Amount in words */
   .words { font-size: 11px; color: #555; font-style: italic; margin-top: 16px; padding: 8px 12px; border: 1px dashed #ccc; border-radius: 4px; }
@@ -264,7 +263,7 @@ function buildReceiptHtml(data: ReceiptData): string {
           <div class="balance-value ${isCleared ? 'cleared-val' : 'due-val'}">
             ${isCleared ? '✅ CLEARED' : fmt(data.balanceRemainingPaise) + ' PKR'}
           </div>
-          <div class="balance-sub">${isCleared ? 'All dues have been paid in full.' : 'Outstanding amount remains.'}</div>
+          
         </div>
       </div>
     `;
@@ -326,11 +325,9 @@ function buildReceiptHtml(data: ReceiptData): string {
       <div class="value">${data.studentName}</div>
     </div>
     <div class="info-card">
-      <div class="label">Class / Section</div>
-      <div class="value">${data.studentClass}</div>
+      <div class="label">Class / Roll</div>
+      <div class="value">${data.studentClass}${data.studentRoll ? ' — ' + data.studentRoll : ''}</div>
     </div>
-    ${data.studentRoll ? `<div class="info-card"><div class="label">Roll Number</div><div class="value">${data.studentRoll}</div></div>` : ''}
-    ${data.fatherName ? `<div class="info-card"><div class="label">Father Name</div><div class="value">${data.fatherName}</div></div>` : ''}
   </div>
 
   <!-- Fee Breakdown + Summary -->
