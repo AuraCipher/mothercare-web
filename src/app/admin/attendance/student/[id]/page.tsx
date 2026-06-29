@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Calendar } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 type AttRecord = { date: string; status: string; note?: string };
 
@@ -63,8 +62,8 @@ export default function StudentAttendanceDetail() {
 
     setLoading(true);
     Promise.all([
-      fetch(`${API_URL}/admin/students/${id}/attendance?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch(`${API_URL}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${config.apiUrl}/admin/students/${id}/attendance?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${config.apiUrl}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([attRes, stuRes]) => {
       if (stuRes.success) setStudent(stuRes.data);
 
@@ -119,7 +118,7 @@ export default function StudentAttendanceDetail() {
       // Skip future dates
       if (isFutureDate(rec.date)) continue;
       try {
-        const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+        const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({

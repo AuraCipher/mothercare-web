@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/toast';
 import { RefreshCw, CheckCircle } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -30,7 +29,7 @@ export default function GenerateFeesPage() {
     const loadHeads = async () => {
       if (!token) return;
       try {
-        const res = await fetch(`${API_URL}/admin/fee-heads`, {
+        const res = await fetch(`${config.apiUrl}/admin/fee-heads`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();
@@ -57,7 +56,7 @@ export default function GenerateFeesPage() {
     setGenerating(true);
     setResult(null);
     try {
-      const res = await fetch(`${API_URL}/admin/student-fees/generate`, {
+      const res = await fetch(`${config.apiUrl}/admin/student-fees/generate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -4,8 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Printer, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function StudentFeeDetailPage() {
@@ -29,7 +28,7 @@ export default function StudentFeeDetailPage() {
   const loadData = async () => {
     if (!token || !params.id) return;
     try {
-      const res = await fetch(`${API_URL}/admin/students/${params.id}/fee`, {
+      const res = await fetch(`${config.apiUrl}/admin/students/${params.id}/fee`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -62,7 +61,7 @@ export default function StudentFeeDetailPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/admin/payments/waterfall`, {
+      const res = await fetch(`${config.apiUrl}/admin/payments/waterfall`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -268,7 +267,7 @@ export default function StudentFeeDetailPage() {
                             <button onClick={async () => {
                               if (!token) return;
                               try {
-                                const res = await fetch(`${API_URL}/admin/student-fees/${sf.id}/extra-items/${ei.id}`, {
+                                const res = await fetch(`${config.apiUrl}/admin/student-fees/${sf.id}/extra-items/${ei.id}`, {
                                   method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
                                 });
                                 const json = await res.json();
@@ -368,7 +367,7 @@ export default function StudentFeeDetailPage() {
               <button onClick={async () => {
                 if (!token || !addExtraModal?.id || !addExtraName || addExtraAmt <= 0) { showToast('error', 'Fill all fields'); return; }
                 try {
-                  const res = await fetch(`${API_URL}/admin/student-fees/${addExtraModal.id}/extra-items`, {
+                  const res = await fetch(`${config.apiUrl}/admin/student-fees/${addExtraModal.id}/extra-items`, {
                     method: 'POST',
                     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: addExtraName, amount: Math.round(addExtraAmt * 100) }),

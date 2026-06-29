@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { ArrowLeft } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 export default function ClassStudentsFeePage() {
   const params = useParams();
@@ -28,9 +27,9 @@ export default function ClassStudentsFeePage() {
     if (!token || !branchId || !ayId) return;
     try {
       const [hRes, stRes, sRes] = await Promise.all([
-        fetch(`${API_URL}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/fee-structures?groupId=${groupId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/students?groupId=${groupId}&limit=500`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-structures?groupId=${groupId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/students?groupId=${groupId}&limit=500`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
       if (hRes.success) setHeads(hRes.data.filter((h: any) => h.isActive));
       if (stRes.success) setStructures(stRes.data);
@@ -66,7 +65,7 @@ export default function ClassStudentsFeePage() {
     if (!token) return;
     const total = Object.values(overrides).reduce((s: number, v: any) => s + (v || 0), 0);
     try {
-      await fetch(`${API_URL}/admin/students/${studentId}/custom-fee`, {
+      await fetch(`${config.apiUrl}/admin/students/${studentId}/custom-fee`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ customFeeAmount: total > 0 ? total : null, feeOverrides: overrides, concessionReason: 'Per-head custom' }),

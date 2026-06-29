@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -41,8 +40,8 @@ export default function AttendanceDashboard() {
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      fetch(`${API_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      branchId && ayId ? fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()) : Promise.resolve({ success: false }),
+      fetch(`${config.apiUrl}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      branchId && ayId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()) : Promise.resolve({ success: false }),
     ]).then(([sRes, secRes]) => {
       if (sRes.success) setStats(sRes.data);
       if (secRes.success) setSections(secRes.data);
@@ -65,8 +64,8 @@ export default function AttendanceDashboard() {
 
     try {
       const [sRes, tRes] = await Promise.all([
-        fetch(`${API_URL}/admin/attendance?from=${from}&to=${to}${groupParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/attendance/teachers?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/attendance?from=${from}&to=${to}${groupParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/attendance/teachers?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
 
       if (sRes.success) setStudents(sRes.data || []);

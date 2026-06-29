@@ -22,7 +22,8 @@ export const config = {
   appName: env<string>('NEXT_PUBLIC_APP_NAME', 'Mother Care School'),
 
   // ── Backend Connection ───────────────────────
-  apiUrl: env<string>('NEXT_PUBLIC_API_URL', 'http://localhost:5000'),
+  // Sanitized: trailing slashes stripped so concatenation never produces //path
+  apiUrl: env<string>('NEXT_PUBLIC_API_URL', 'http://localhost:5000').replace(/\/+$/, ''),
 
   // ── API Keys (for backend auth) ──────────────
   publishableKey: env<string>('NEXT_PUBLIC_PUBLISHABLE_KEY', ''),

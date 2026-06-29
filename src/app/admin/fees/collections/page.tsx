@@ -4,8 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Search, DollarSign } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function CollectionsPage() {
@@ -32,10 +31,10 @@ export default function CollectionsPage() {
     setLoading(true);
     try {
       const [fRes, sRes] = await Promise.all([
-        fetch(`${API_URL}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}`, {
+        fetch(`${config.apiUrl}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()),
-        branchId && ayId ? fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
+        branchId && ayId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()) : Promise.resolve({ success: false }),
       ]);

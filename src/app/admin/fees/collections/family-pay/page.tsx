@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { showToast } from '@/components/toast';
 import { Search, Users, Printer } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function FamilyPayPage() {
@@ -20,7 +19,7 @@ export default function FamilyPayPage() {
   const searchFamilies = async () => {
     if (!token || !searchQuery.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/admin/families?search=${encodeURIComponent(searchQuery)}`, {
+      const res = await fetch(`${config.apiUrl}/admin/families?search=${encodeURIComponent(searchQuery)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -51,7 +50,7 @@ export default function FamilyPayPage() {
       }));
 
     try {
-      const res = await fetch(`${API_URL}/admin/family-payments`, {
+      const res = await fetch(`${config.apiUrl}/admin/family-payments`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ familyId: selectedFamily.id, payments: paymentList }),

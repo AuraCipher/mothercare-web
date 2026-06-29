@@ -1,3 +1,4 @@
+import config from '@/config';
 /**
  * Mother Care School — API Client
  *
@@ -8,8 +9,6 @@
  * The secret key (sk_mcs_*) is for server-to-server / portal endpoints only.
  * It must NEVER be sent from client-side code.
  */
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const PUB_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY || '';
 
 export async function apiRequest<T = any>(
@@ -30,7 +29,7 @@ export async function apiRequest<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${config.apiUrl}${path}`, {
     ...options,
     headers,
   });

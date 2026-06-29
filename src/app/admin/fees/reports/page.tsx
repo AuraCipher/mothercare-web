@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Download } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function FeeReportsPage() {
@@ -25,9 +24,9 @@ export default function FeeReportsPage() {
     try {
       const m = month + 1;
       const [sRes, dRes, cRes] = await Promise.all([
-        fetch(`${API_URL}/admin/fees/summary?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/fees/defaulter?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/fees/collection-report?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/collection-report?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
       if (sRes.success) setSummary(sRes.data);
       if (dRes.success) setDefaulters(dRes.data);

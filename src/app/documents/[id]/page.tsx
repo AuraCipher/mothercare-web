@@ -9,8 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import * as XLSX from 'xlsx';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 interface FileMeta {
   id: string;
@@ -227,7 +226,7 @@ function DownloadPrompt({ meta }: { meta: FileMeta }) {
 
   const handleDownload = () => {
     const token = localStorage.getItem('token');
-    fetch(`${API_URL}/api/uploads/${meta.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${config.apiUrl}/api/uploads/${meta.id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
         const url = URL.createObjectURL(blob);
@@ -274,7 +273,7 @@ export default function DocumentViewerPage() {
   const loadFile = useCallback(async () => {
     try {
       // 1. Fetch metadata
-      const metaRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}/meta`);
+      const metaRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}/meta`);
       if (metaRes.status === 401) { router.push('/login'); return; }
       if (metaRes.status === 404) { setMode('notfound'); return; }
       if (!metaRes.ok) { setMode('error'); setErrorMsg('Failed to load file metadata'); return; }
@@ -287,30 +286,30 @@ export default function DocumentViewerPage() {
       // 2. Determine viewer mode and load content
       if (mime.startsWith('image/')) {
         setMode('image');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         const blob = await fileRes.blob();
         setBlobUrl(URL.createObjectURL(blob));
       } else if (mime === 'application/pdf') {
         setMode('pdf');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         const blob = await fileRes.blob();
         setBlobUrl(URL.createObjectURL(blob));
       } else if (mime === 'text/markdown' || isMdExtension) {
         setMode('markdown');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         setContent(await fileRes.text());
       } else if (mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml' || mime === 'application/typescript') {
         setMode('text');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         setContent(await fileRes.text());
       } else if (mime.startsWith('video/')) {
         setMode('video');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         const blob = await fileRes.blob();
         setBlobUrl(URL.createObjectURL(blob));
       } else if (mime.startsWith('application/vnd.ms-excel') || mime.includes('spreadsheetml')) {
         setMode('excel');
-        const fileRes = await fetchWithAuth(`${API_URL}/api/uploads/${id}`);
+        const fileRes = await fetchWithAuth(`${config.apiUrl}/api/uploads/${id}`);
         const buf = await fileRes.arrayBuffer();
         setExcelData(new Uint8Array(buf));
       } else {
@@ -332,7 +331,7 @@ export default function DocumentViewerPage() {
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/uploads/${id}`, {
+      const res = await fetch(`${config.apiUrl}/api/uploads/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -350,7 +349,7 @@ export default function DocumentViewerPage() {
   const handleDownload = () => {
     const token = localStorage.getItem('token');
     // Use fetch and trigger download via blob to include auth
-    fetch(`${API_URL}/api/uploads/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${config.apiUrl}/api/uploads/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
         const url = URL.createObjectURL(blob);

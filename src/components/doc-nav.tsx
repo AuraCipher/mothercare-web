@@ -5,8 +5,7 @@ import { usePathname } from 'next/navigation';
 import { FileText, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import DocActionMenu from '@/components/doc-action-menu';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 interface UploadItem {
   id: string;
@@ -63,7 +62,7 @@ export default function DocNav() {
     if (!entityType || !entityId) return;
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch(`${API_URL}/api/uploads?entityType=${entityType}&entityId=${entityId}`, {
+    fetch(`${config.apiUrl}/api/uploads?entityType=${entityType}&entityId=${entityId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
@@ -110,7 +109,7 @@ export default function DocNav() {
         if (progress < 80) { progress += 10; setUploads(prev => prev.map(u => u.id === tempId ? { ...u, progress } : u)); }
       }, 200);
 
-      const res = await fetch(`${API_URL}/api/upload`, {
+      const res = await fetch(`${config.apiUrl}/api/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -142,7 +141,7 @@ export default function DocNav() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/api/uploads/${fileId}/rename`, {
+      const res = await fetch(`${config.apiUrl}/api/uploads/${fileId}/rename`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ originalName: newName }),
@@ -166,7 +165,7 @@ export default function DocNav() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/api/uploads/${fileId}`, {
+      const res = await fetch(`${config.apiUrl}/api/uploads/${fileId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -14,6 +14,7 @@ import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/pr
 import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
+import config from '@/config';
 
 interface TeacherDetail {
   id: string;
@@ -148,8 +149,7 @@ export default function TeacherDetailPage() {
     if (!token) return;
     try {
       if (!data) return;
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${API_URL}/admin/teachers/${data.id}/send-credentials`, {
+      const res = await fetch(`${config.apiUrl}/admin/teachers/${data.id}/send-credentials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -454,11 +454,10 @@ export default function TeacherDetailPage() {
             if (!file) return;
             try {
               const token = localStorage.getItem('token');
-              const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
               const formData = new FormData();
               formData.append('file', file);
               formData.append('purpose', 'profile');
-              const res = await fetch(`${API_URL}/api/upload`, {
+              const res = await fetch(`${config.apiUrl}/api/upload`, {
                 method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
               });
               const result = await res.json();
@@ -473,7 +472,7 @@ export default function TeacherDetailPage() {
 
           {/* Lightbox for viewing full-size */}
           <Lightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)}
-            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/uploads/${user.profilePhotoId}`}
+            src={`${config.apiUrl}/api/uploads/${user.profilePhotoId}`}
             alt={user.name} />
         </div>
       </div>

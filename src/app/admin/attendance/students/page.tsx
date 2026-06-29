@@ -6,8 +6,7 @@ import {
   Calendar, ChevronLeft, ChevronRight, Save,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EDIT_LOCK_DAYS = 7; // Can't edit attendance older than this many days
 
@@ -114,8 +113,8 @@ export default function AttendancePage() {
   }, [date, viewMode, today]);
 
   const loadUrl = viewMode === 'day'
-    ? `${API_URL}/admin/attendance?date=${date}${groupId ? `&groupId=${groupId}` : ''}`
-    : `${API_URL}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupId ? `&groupId=${groupId}` : ''}`;
+    ? `${config.apiUrl}/admin/attendance?date=${date}${groupId ? `&groupId=${groupId}` : ''}`
+    : `${config.apiUrl}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupId ? `&groupId=${groupId}` : ''}`;
 
   useEffect(() => {
     if (branchId && ayId) {
@@ -201,7 +200,7 @@ export default function AttendancePage() {
     setSaving(true);
     const records = students.map((s: any) => ({ studentId: s.id, status: 'holiday' }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+      const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: dateStr, groupId, academicYearId: ayId, records }),
@@ -219,7 +218,7 @@ export default function AttendancePage() {
       .filter((s: any) => s.attendances?.[0]?.status && s.attendances[0].status !== 'unmarked')
       .map((s: any) => ({ studentId: s.id, status: s.attendances[0].status, note: s.attendances[0]?.note || '' }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/batch`, {
+      const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, groupId, academicYearId: ayId, records }),

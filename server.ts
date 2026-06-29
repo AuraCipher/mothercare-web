@@ -13,6 +13,7 @@ import dotenv from 'dotenv';
 import next from 'next';
 import { createServer } from 'http';
 import { parse } from 'url';
+import config from './src/config';
 
 // ─── Load .env.local ──────────────────────────────────────
 dotenv.config({ path: '.env.local' });
@@ -26,7 +27,6 @@ const err = (msg: string) => console.error(`[${ts()}]  ❌ ${msg}`);
 const dev = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT || '3000', 10);
 const host = process.env.HOST || '127.0.0.1';
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Mother Care School';
 
 // ─── REQUIRED ENV VARS ────────────────────────────────────
@@ -53,11 +53,11 @@ async function main() {
   if (allEnvOk) log('All required env vars present');
 
   // 2. Backend health check
-  log(`Checking backend API at ${apiUrl}...`);
+  log(`Checking backend API at ${config.apiUrl}...`);
   try {
-    const res = await fetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${config.apiUrl}/health`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
-      checks.push({ name: 'Backend API', status: 'ok', detail: apiUrl });
+      checks.push({ name: 'Backend API', status: 'ok', detail: config.apiUrl });
       log('Backend API is reachable');
     } else {
       checks.push({ name: 'Backend API', status: 'fail', detail: `HTTP ${res.status}` });
@@ -95,7 +95,7 @@ async function main() {
       handle(req, res, parsedUrl);
     }).listen(port, host, () => {
       console.log(`  🌐  ${appName} ready on http://${host}:${port}`);
-      console.log(`  🔗  Backend: ${apiUrl}`);
+      console.log(`  🔗  Backend: ${config.apiUrl}`);
       console.log(`  📋  Login:   http://${host}:${port}/login`);
       if (dev) console.log(`  🔄  File watching enabled (tsx watch)`);
       console.log('');

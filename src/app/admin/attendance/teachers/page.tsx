@@ -5,8 +5,7 @@ import {
   Calendar, ChevronLeft, ChevronRight, Save,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function localDateStr(d: Date): string {
@@ -92,8 +91,8 @@ export default function TeacherAttendancePage() {
   }, [date, viewMode, today]);
 
   const loadUrl = viewMode === 'day'
-    ? `${API_URL}/admin/attendance/teachers?date=${date}`
-    : `${API_URL}/admin/attendance/teachers?from=${dateRange.from}&to=${dateRange.to}`;
+    ? `${config.apiUrl}/admin/attendance/teachers?date=${date}`
+    : `${config.apiUrl}/admin/attendance/teachers?from=${dateRange.from}&to=${dateRange.to}`;
 
   const loadAttendance = useCallback(async () => {
     if (!token) return;
@@ -170,7 +169,7 @@ export default function TeacherAttendancePage() {
     setSaving(true);
     const records = teachers.map((t: any) => ({ teacherId: t.id, status: 'holiday' }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/teachers/batch`, {
+      const res = await fetch(`${config.apiUrl}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: dateStr, academicYearId: ayId, records }),
@@ -188,7 +187,7 @@ export default function TeacherAttendancePage() {
       .filter((t: any) => t.attendances?.[0]?.status && t.attendances[0].status !== 'unmarked')
       .map((t: any) => ({ teacherId: t.id, status: t.attendances[0].status, note: t.attendances[0]?.note || '' }));
     try {
-      const res = await fetch(`${API_URL}/admin/attendance/teachers/batch`, {
+      const res = await fetch(`${config.apiUrl}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, academicYearId: ayId, records }),

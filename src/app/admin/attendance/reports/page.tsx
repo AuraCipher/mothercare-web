@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Download, Printer, RefreshCw, Calendar, Users, ChevronDown } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 type ReportData = {
   title: string;
@@ -50,7 +49,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (branchId && ayId) {
-      fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
+      fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => r.json()).then(d => { if (d.success) setSections(d.data); }).catch(() => {});
     }
@@ -81,10 +80,10 @@ export default function ReportsPage() {
     // Load attendance data
     const isTeacher = reportTarget === 'teacher';
     const url = isTeacher
-      ? `${API_URL}/admin/attendance/teachers?from=${from}&to=${to}`
+      ? `${config.apiUrl}/admin/attendance/teachers?from=${from}&to=${to}`
       : groupId
-        ? `${API_URL}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
-        : `${API_URL}/admin/attendance?from=${from}&to=${to}`;
+        ? `${config.apiUrl}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
+        : `${config.apiUrl}/admin/attendance?from=${from}&to=${to}`;
 
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });

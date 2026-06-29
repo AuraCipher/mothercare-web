@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DollarSign, Users, FileText, Calendar, Printer, BarChart, ArrowRight } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 export default function FeesDashboardPage() {
   const router = useRouter();
@@ -17,10 +16,10 @@ export default function FeesDashboardPage() {
     const now = new Date();
     const m = now.getMonth() + 1;
     const y = now.getFullYear();
-    fetch(`${API_URL}/admin/fees/summary?month=${m}&year=${y}`, {
+    fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${y}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(j => { if (j.success) setSummary(j.data); }).catch(() => {});
-    fetch(`${API_URL}/admin/fees/defaulter?month=${m}&year=${y}&take=5`, {
+    fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${y}&take=5`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(j => { if (j.success) setDefaulters(j.data.slice(0, 5)); }).catch(() => {});
   }, []);

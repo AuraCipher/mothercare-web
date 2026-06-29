@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 export default function FeeStructuresPage() {
   const router = useRouter();
@@ -23,9 +22,9 @@ export default function FeeStructuresPage() {
     if (!token || !branchId || !ayId) return;
     try {
       const [sRes, hRes, stRes] = await Promise.all([
-        fetch(`${API_URL}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${API_URL}/admin/fee-structures`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-structures`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
       if (sRes.success) setSections((sRes.data || []).sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
       if (hRes.success) setHeads(hRes.data.filter((h: any) => h.isActive));
@@ -44,7 +43,7 @@ export default function FeeStructuresPage() {
     if (!token || !ayId) return;
     const amount = parseInt(editAmount, 10) * 100; // Convert to paise
     try {
-      const res = await fetch(`${API_URL}/admin/fee-structures`, {
+      const res = await fetch(`${config.apiUrl}/admin/fee-structures`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ academicYearId: ayId, groupId, feeHeadId, amount }),

@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { showToast } from '@/components/toast';
 import { Plus, Edit3, Trash2 } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 export default function FeeHeadsPage() {
   const [heads, setHeads] = useState<any[]>([]);
@@ -18,7 +17,7 @@ export default function FeeHeadsPage() {
   const loadHeads = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${config.apiUrl}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (json.success) setHeads(json.data);
     } catch {} finally { setLoading(false); }
@@ -28,7 +27,7 @@ export default function FeeHeadsPage() {
 
   const handleSave = async () => {
     if (!token || !form.name) return;
-    const url = editId ? `${API_URL}/admin/fee-heads/${editId}` : `${API_URL}/admin/fee-heads`;
+    const url = editId ? `${config.apiUrl}/admin/fee-heads/${editId}` : `${config.apiUrl}/admin/fee-heads`;
     const method = editId ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, {
@@ -44,7 +43,7 @@ export default function FeeHeadsPage() {
   const handleDelete = async (id: string) => {
     if (!token || !confirm('Deactivate this fee head?')) return;
     try {
-      const res = await fetch(`${API_URL}/admin/fee-heads/${id}`, {
+      const res = await fetch(`${config.apiUrl}/admin/fee-heads/${id}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();

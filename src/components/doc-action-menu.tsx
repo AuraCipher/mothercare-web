@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Eye, Download, Pencil, Trash2 } from 'lucide-react';
 import RenameModal from '@/components/rename-modal';
 import ConfirmModal from '@/components/confirm-modal';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 interface DocActionMenuProps {
   fileId: string;
@@ -42,7 +41,7 @@ export default function DocActionMenu({ fileId, fileName, onRename, onDelete }: 
 
   const handleDownload = () => {
     const token = localStorage.getItem('token');
-    fetch(`${API_URL}/api/uploads/${fileId}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${config.apiUrl}/api/uploads/${fileId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
         const url = URL.createObjectURL(blob);

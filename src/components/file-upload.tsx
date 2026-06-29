@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Upload, X, FileText } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import config from '@/config';
 
 interface FileUploadProps {
   value: string | null | undefined;  // current fileId
@@ -39,8 +40,7 @@ export default function FileUpload({ value, onChange, accept = 'image/*,.pdf', m
       formData.append('file', file);
 
       const token = localStorage.getItem('token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${API_URL}/api/upload`, {
+      const res = await fetch(`${config.apiUrl}/api/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

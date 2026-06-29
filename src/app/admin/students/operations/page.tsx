@@ -8,8 +8,7 @@ import {
   Users, Search, Filter, GraduationCap, BookOpen, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
@@ -140,7 +139,7 @@ export default function StudentCredentialsPage() {
   const ensureUser = async (studentId: string, token: string) => {
     const s = students.find(st => st.id === studentId);
     if (s?.userId) return true; // already has User
-    const res = await fetch(`${API_URL}/admin/students/${studentId}/generate-credentials`, {
+    const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/generate-credentials`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -151,7 +150,7 @@ export default function StudentCredentialsPage() {
   const savePassword = async (studentId: string, password: string, adminPass: string, token: string) => {
     // First ensure User exists (generate credentials if needed)
     await ensureUser(studentId, token);
-    const res = await fetch(`${API_URL}/admin/students/${studentId}/set-password`, {
+    const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/set-password`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ password, adminPassword: adminPass }),
@@ -198,7 +197,7 @@ export default function StudentCredentialsPage() {
   const handleSend = async (studentId: string) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/admin/students/${studentId}/send-credentials`, {
+      const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/send-credentials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -213,7 +212,7 @@ export default function StudentCredentialsPage() {
     if (selectedIds.size === 0) { showToast('info', 'Select students first'); return; }
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/admin/students/send-all-credentials`, {
+      const res = await fetch(`${config.apiUrl}/admin/students/send-all-credentials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: Array.from(selectedIds) }),
@@ -228,7 +227,7 @@ export default function StudentCredentialsPage() {
   const handleSendToNew = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/admin/students/send-to-new`, {
+      const res = await fetch(`${config.apiUrl}/admin/students/send-to-new`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

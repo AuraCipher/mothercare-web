@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import config from '@/config';
 
 interface AvatarImageProps {
   fileId: string | null | undefined;
@@ -19,7 +18,7 @@ export default function AvatarImage({ fileId, alt = '', className = '', fallback
     if (!fileId) { setSrc(null); return; }
     setError(false); // reset error state for new fileId
     const token = localStorage.getItem('token');
-    setSrc(`${API_URL}/api/uploads/${fileId}`);
+    setSrc(`${config.apiUrl}/api/uploads/${fileId}`);
   }, [fileId]);
 
   if (!src || error) {
