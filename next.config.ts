@@ -1,10 +1,12 @@
 import type { NextConfig } from 'next';
 
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:5000';
+
 const nextConfig: NextConfig = {
   /* ── Server ──────────────────────────────────── */
   serverExternalPackages: ['dotenv'],
 
-  /* ── Headers (CORS for backend) ──────────────── */
+  /* ── Headers ─────────────────────────────────── */
   async headers() {
     return [
       {
@@ -18,9 +20,14 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  /* ── Redirects ───────────────────────────────── */
-  async redirects() {
-    return [];
+  /* ── Rewrites (proxy API calls to backend, no CORS needed) ── */
+  async rewrites() {
+    return [
+      {
+        source: '/api/backend/:path*',
+        destination: `${BACKEND_URL}/:path*`,
+      },
+    ];
   },
 };
 
