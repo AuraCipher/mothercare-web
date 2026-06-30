@@ -186,14 +186,88 @@ export default function StudentFeeDetailPage() {
     return receiptData;
   };
 
+  const fetchAndPrintReceipt = async (payment: any, studentFee?: any, remainingOverride?: number, action: 'print' | 'download' = 'print') => {
+    const paymentId = payment?.id;
+    let receiptData: ReceiptData | null = null;
+
+    // Try to fetch snapshot from backend
+    if (paymentId && token) {
+      try {
+        const res = await fetch(`${config.apiUrl}/admin/payments/${paymentId}/receipt`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const snap = json.data;
+            // Build ReceiptData from snapshot
+            const allocations = snap.currentMonthLabel
+              ? [{ label: snap.currentMonthLabel, amountPaise: snap.amountPaidPaise }]
+              : [];
+            receiptData = {
+              receiptNumber: snap.receiptNumber,
+              date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              paymentMethod: snap.paymentMethod,
+              reference: snap.reference || undefined,
+              totalPaidPaise: snap.amountPaidPaise,
+              balanceRemainingPaise: snap.balanceAfterPaise,
+              studentName: snap.studentName,
+              studentClass: snap.studentClass,
+              studentRoll: snap.studentRoll || undefined,
+              fatherName: snap.fatherName || undefined,
+              isFullyPaid: snap.isFullyPaid,
+              isFromSnapshot: true,
+              snapshotCreatedAt: snap.createdAt,
+              snapshotPrintCount: snap.printCount,
+              currentMonth: {
+                label: snap.currentMonthLabel,
+                breakdown: snap.currentMonthHeads || [],
+                extraItems: snap.currentMonthExtras || [],
+                totalPaise: snap.currentMonthHeads?.reduce((s: number, h: any) => s + (h.amount || 0), 0) || 0,
+                paidPaise: snap.amountPaidPaise,
+              },
+              previousBalancePaise: snap.previousBalancePaise,
+              totalDuePaise: snap.totalDuePaise,
+              allocations,
+            };
+          }
+        }
+      } catch { /* snapshot fetch failed — fall through to live computation */ }
+    }
+
+    // Fallback to live computation if no snapshot
+    if (!receiptData) {
+      receiptData = buildReceiptData(payment, studentFee, remainingOverride);
+    }
+
+    // Execute print/download
+    if (action === 'print') {
+      upgradedPrintReceipt(receiptData);
+    } else {
+      downloadReceipt(receiptData);
+    }
+
+    // Track the event asynchronously
+    if (paymentId && token) {
+      try {
+        await fetch(`${config.apiUrl}/admin/payments/${paymentId}/print-receipt`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        });
+        await fetch(`${config.apiUrl}/admin/payments/${paymentId}/audit-log`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action === 'print' ? 'REPRINTED' : 'DOWNLOADED' }),
+        });
+      } catch { /* tracking failure is non-critical */ }
+    }
+  };
+
   const handlePrint = (payment: any, studentFee?: any, remainingOverride?: number) => {
-    const d = buildReceiptData(payment, studentFee, remainingOverride);
-    upgradedPrintReceipt(d);
+    fetchAndPrintReceipt(payment, studentFee, remainingOverride, 'print');
   };
 
   const handleDownload = (payment: any, studentFee?: any, remainingOverride?: number) => {
-    const d = buildReceiptData(payment, studentFee, remainingOverride);
-    downloadReceipt(d);
+    fetchAndPrintReceipt(payment, studentFee, remainingOverride, 'download');
   };
 
   if (loading) return <main className="mx-auto max-w-4xl px-6 py-10"><div className="h-48 animate-pulse rounded-xl bg-warm-card" /></main>;

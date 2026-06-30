@@ -59,6 +59,11 @@ export type ReceiptData = {
   schoolPhone?: string;
   isFullyPaid: boolean;
 
+  /** Snapshot metadata (if loaded from DB receipt snapshot) */
+  isFromSnapshot?: boolean;
+  snapshotCreatedAt?: string;
+  snapshotPrintCount?: number;
+
   /** Current month — shown with full breakdown */
   currentMonth?: ReceiptMonthSection;
   /** Sum of all previous unpaid months (shown as one line) */

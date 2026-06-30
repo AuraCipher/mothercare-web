@@ -97,15 +97,60 @@ export default function FamilyPayPage() {
     };
   };
 
-  const handlePrint = () => {
-    const d = buildReceiptData();
-    if (d) upgradedPrintReceipt(d);
+  const fetchAndPrintReceipt = async (action: 'print' | 'download') => {
+    let receiptData: ReceiptData | null = null;
+
+    // Try to fetch snapshot from first payment in the family
+    const firstPaymentId = receipt?.familyPayment?.payments?.[0]?.id;
+    if (firstPaymentId && token) {
+      try {
+        const res = await fetch(`${config.apiUrl}/admin/payments/${firstPaymentId}/receipt`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const snap = json.data;
+            receiptData = {
+              receiptNumber: snap.receiptNumber,
+              date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              paymentMethod: snap.paymentMethod,
+              reference: snap.reference || undefined,
+              totalPaidPaise: snap.amountPaidPaise,
+              balanceRemainingPaise: snap.balanceAfterPaise,
+              studentName: snap.studentName,
+              studentClass: 'Family Combined',
+              fatherName: snap.fatherName || undefined,
+              isFullyPaid: true,
+              isFromSnapshot: true,
+              snapshotCreatedAt: snap.createdAt,
+              allocations: [{ label: snap.currentMonthLabel || 'Family Payment', amountPaise: snap.amountPaidPaise }],
+            };
+          }
+        }
+      } catch { /* fall through */ }
+    }
+
+    if (!receiptData) {
+      receiptData = buildReceiptData();
+    }
+    if (!receiptData) return;
+
+    if (action === 'print') upgradedPrintReceipt(receiptData);
+    else downloadReceipt(receiptData);
+
+    // Track
+    if (firstPaymentId && token) {
+      try {
+        await fetch(`${config.apiUrl}/admin/payments/${firstPaymentId}/print-receipt`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch { /* non-critical */ }
+    }
   };
 
-  const handleDownload = () => {
-    const d = buildReceiptData();
-    if (d) downloadReceipt(d);
-  };
+  const handlePrint = () => fetchAndPrintReceipt('print');
+  const handleDownload = () => fetchAndPrintReceipt('download');
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
