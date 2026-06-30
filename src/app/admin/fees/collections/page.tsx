@@ -17,7 +17,7 @@ export default function CollectionsPage() {
   const [classFilter, setClassFilter] = useState('');
   const [rollFilter, setRollFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
+  const [period, setPeriod] = useState<'monthly' | 'full'>('full');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
   // Pay & custom fee handled via the student detail page (/admin/fees/student/[id])
