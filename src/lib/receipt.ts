@@ -178,7 +178,9 @@ const STYLES = `
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { margin: 12mm 10mm; }
+    @page { margin: 10mm 10mm; size: A4 portrait; }
+    .receipt { page-break-inside: avoid; }
+    .no-print { display: none; }
   }
 `;
 
@@ -386,4 +388,22 @@ export function printReceipt(data: ReceiptData) {
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 800);
+}
+
+/** Download the receipt as an HTML file */
+export function downloadReceipt(data: ReceiptData) {
+  const html = buildReceiptHtml(data);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `receipt_${data.receiptNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Both print and download the receipt */
+export function printAndDownloadReceipt(data: ReceiptData) {
+  downloadReceipt(data);
+  printReceipt(data);
 }

@@ -3,9 +3,9 @@
 import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Printer, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import config from '@/config';
-import { printReceipt as upgradedPrintReceipt } from '@/lib/receipt';
+import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
 import type { ReceiptData, ReceiptMonthSection } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -85,7 +85,7 @@ export default function StudentFeeDetailPage() {
     finally { setSaving(false); }
   };
 
-  const printReceipt = (payment: any, studentFee?: any, remainingOverride?: number) => {
+  const buildReceiptData = (payment: any, studentFee?: any, remainingOverride?: number): ReceiptData => {
     const isWaterfall = payment.allocations !== undefined && payment.allocations.length > 0;
     const remaining = remainingOverride ?? 0;
     const studentName = data?.name || '';
@@ -183,7 +183,17 @@ export default function StudentFeeDetailPage() {
       totalDuePaise: totalDuePaise > 0 ? totalDuePaise : undefined,
       allocations,
     };
-    upgradedPrintReceipt(receiptData);
+    return receiptData;
+  };
+
+  const handlePrint = (payment: any, studentFee?: any, remainingOverride?: number) => {
+    const d = buildReceiptData(payment, studentFee, remainingOverride);
+    upgradedPrintReceipt(d);
+  };
+
+  const handleDownload = (payment: any, studentFee?: any, remainingOverride?: number) => {
+    const d = buildReceiptData(payment, studentFee, remainingOverride);
+    downloadReceipt(d);
   };
 
   if (loading) return <main className="mx-auto max-w-4xl px-6 py-10"><div className="h-48 animate-pulse rounded-xl bg-warm-card" /></main>;
@@ -369,9 +379,14 @@ export default function StudentFeeDetailPage() {
                   <td className="px-4 py-3 text-xs text-green-400 text-right">{(p.amount / 100).toLocaleString()}</td>
                   <td className="px-4 py-3 text-xs text-warm-muted">{p.paymentMethod}</td>
                   <td className="px-3 py-3 text-center">
-                    <button onClick={() => printReceipt(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors">
+                    <div className="flex items-center justify-center gap-1">
+                    <button onClick={() => handlePrint(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Print Receipt">
                       <Printer size={13} />
                     </button>
+                    <button onClick={() => handleDownload(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download Receipt">
+                      <Download size={13} />
+                    </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -453,8 +468,11 @@ export default function StudentFeeDetailPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => printReceipt(lastReceipt, undefined, lastReceipt.newRemainingPaise)} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                  <button onClick={() => handlePrint(lastReceipt, undefined, lastReceipt.newRemainingPaise)} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
                     <Printer size={13} className="inline mr-1" /> Print Receipt
+                  </button>
+                  <button onClick={() => handleDownload(lastReceipt, undefined, lastReceipt.newRemainingPaise)} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+                    <Download size={13} className="inline mr-1" /> Download
                   </button>
                   <button onClick={() => { setShowPayModal(false); setLastReceipt(null); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Close</button>
                 </div>

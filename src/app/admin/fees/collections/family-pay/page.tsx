@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { showToast } from '@/components/toast';
-import { Search, Users, Printer } from 'lucide-react';
+import { Search, Users, Printer, Download } from 'lucide-react';
 import config from '@/config';
-import { printReceipt as upgradedPrintReceipt } from '@/lib/receipt';
+import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
 import type { ReceiptData } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -66,12 +66,11 @@ export default function FamilyPayPage() {
     finally { setSubmitting(false); }
   };
 
-  const printReceipt = () => {
-    if (!receipt) return;
+  const buildReceiptData = (): ReceiptData | null => {
+    if (!receipt) return null;
     const familyPayments = receipt.familyPayment?.payments || [];
     const firstPayment = familyPayments[0] || {};
 
-    // Build allocations: one per student in the family
     const allocations: { label: string; amountPaise: number }[] = [];
     for (const p of familyPayments) {
       allocations.push({
@@ -83,7 +82,7 @@ export default function FamilyPayPage() {
     const studentNames = familyPayments.map((p: any) => p.student?.name || '').filter(Boolean).join(', ');
     const fatherName = receipt.familyPayment?.family?.fatherName || '';
 
-    const receiptData: ReceiptData = {
+    return {
       receiptNumber: receipt.receiptNumber,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       paymentMethod: firstPayment.paymentMethod || 'CASH',
@@ -96,7 +95,16 @@ export default function FamilyPayPage() {
       isFullyPaid: true,
       allocations,
     };
-    upgradedPrintReceipt(receiptData);
+  };
+
+  const handlePrint = () => {
+    const d = buildReceiptData();
+    if (d) upgradedPrintReceipt(d);
+  };
+
+  const handleDownload = () => {
+    const d = buildReceiptData();
+    if (d) downloadReceipt(d);
   };
 
   return (
@@ -195,9 +203,13 @@ export default function FamilyPayPage() {
           <p className="text-green-400 font-medium text-sm mb-2">✓ Payment Recorded</p>
           <p className="text-warm-cream text-lg font-light">Receipt: {receipt.receiptNumber}</p>
           <p className="text-xs text-warm-muted/60 mt-1">Total: {((receipt.totalAmount || 0) / 100).toLocaleString()} PKR</p>
-          <button onClick={printReceipt}
+          <button onClick={handlePrint}
             className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-5 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors mt-4">
             <Printer size={14} /> Print Receipt
+          </button>
+          <button onClick={handleDownload}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            <Download size={14} /> Download
           </button>
         </div>
       )}
