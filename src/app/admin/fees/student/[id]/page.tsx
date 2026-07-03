@@ -224,13 +224,24 @@ export default function StudentFeeDetailPage() {
               isFromSnapshot: true,
               snapshotCreatedAt: snap.createdAt,
               snapshotPrintCount: snap.printCount,
-              currentMonth: {
-                label: snap.currentMonthLabel,
-                breakdown: snap.currentMonthHeads || [],
-                extraItems: snap.currentMonthExtras || [],
-                totalPaise: snap.currentMonthHeads?.reduce((s: number, h: any) => s + (h.amount || 0), 0) || 0,
-                paidPaise: snap.amountPaidPaise,
-              },
+              currentMonth: (() => {
+                // Normalize head/extra items regardless of which field name
+                // this snapshot was written with — snapshots created before
+                // the amount->amountPaise fix still have "amount" in the DB
+                // and will forever (no backfill), snapshots from now on have
+                // "amountPaise". Support both so old receipts don't show NaN.
+                const normalizeItems = (items: any[]) =>
+                  (items || []).map((h: any) => ({ name: h.name, amountPaise: h.amountPaise ?? h.amount ?? 0 }));
+                const normalizedHeads = normalizeItems(snap.currentMonthHeads);
+                const normalizedExtras = normalizeItems(snap.currentMonthExtras);
+                return {
+                  label: snap.currentMonthLabel,
+                  breakdown: normalizedHeads,
+                  extraItems: normalizedExtras,
+                  totalPaise: normalizedHeads.reduce((s: number, h: any) => s + h.amountPaise, 0),
+                  paidPaise: snap.amountPaidPaise,
+                };
+              })(),
               previousBalancePaise: snap.previousBalancePaise,
               totalDuePaise: snap.totalDuePaise,
               allocations,
