@@ -200,10 +200,15 @@ export default function StudentFeeDetailPage() {
           const json = await res.json();
           if (json.success && json.data) {
             const snap = json.data;
-            // Build ReceiptData from snapshot
-            const allocations = snap.currentMonthLabel
-              ? [{ label: snap.currentMonthLabel, amountPaise: snap.amountPaidPaise }]
-              : [];
+            // Build ReceiptData from snapshot — prefer the stored per-month
+            // allocation breakdown (waterfall/family payments spanning
+            // multiple months); fall back to a single synthetic line only
+            // when the snapshot predates the allocations field.
+            const allocations = Array.isArray(snap.allocations) && snap.allocations.length > 0
+              ? snap.allocations
+              : snap.currentMonthLabel
+                ? [{ label: snap.currentMonthLabel, amountPaise: snap.amountPaidPaise }]
+                : [];
             receiptData = {
               receiptNumber: snap.receiptNumber,
               date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -421,55 +426,99 @@ export default function StudentFeeDetailPage() {
         </table>
       </div>
 
-      {/* Payment History (newest first — API returns desc) */}
+      {/* Payment History — grouped into cards. A single waterfall/family
+          payment spans multiple StudentFee rows, each getting its own
+          Payment row with a "-N" suffix on a shared base receipt number.
+          Group by that base so one transaction renders as one card: a
+          parent line (total, date, receipt, print/download) with one
+          child line per month it covered. */}
       <h2 className="text-sm font-medium text-warm-cream mb-3">Payment History</h2>
       <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
-        <table className="w-full text-sm">
-          <thead><tr className="bg-warm-card/70">
-            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Date</th>
-            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Receipt</th>
-            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Month</th>
-            <th className="text-right px-4 py-3 text-[10px] text-warm-muted font-medium">Amount</th>
-            <th className="text-left px-4 py-3 text-[10px] text-warm-muted font-medium">Method</th>
-            <th className="text-center px-3 py-3 text-[10px] text-warm-muted font-medium">Print</th>
-          </tr></thead>
-          <tbody>
-            {fees.flatMap((sf: any) =>
-              (sf.payments || []).map((p: any) => ({ payment: p, fee: sf }))
-            ).sort((a: any, b: any) => {
-              // Primary: payment date (newest first)
-              const dateCmp = new Date(b.payment.createdAt).getTime() - new Date(a.payment.createdAt).getTime();
-              if (dateCmp !== 0) return dateCmp;
-              // Secondary: fee month (newest first)
-              return (b.fee.year - a.fee.year) || (b.fee.month - a.fee.month);
-            }).map((pair: any) => {
-              const p = pair.payment;
-              const sf = pair.fee;
-              return (
-                <tr key={p.id} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
-                  <td className="px-4 py-3 text-xs text-warm-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-xs text-warm-cream font-mono">{p.receiptNumber}</td>
-                  <td className="px-4 py-3 text-xs text-warm-muted">{MONTHS[(sf.month || 1) - 1]} {sf.year}</td>
-                  <td className="px-4 py-3 text-xs text-green-400 text-right">{(p.amount / 100).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-warm-muted">{p.paymentMethod}</td>
-                  <td className="px-3 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                    <button onClick={() => handlePrint(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Print Receipt">
-                      <Printer size={13} />
-                    </button>
-                    <button onClick={() => handleDownload(p, sf, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download Receipt">
-                      <Download size={13} />
-                    </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {fees.every((sf: any) => !sf.payments?.length) && (
-              <tr><td colSpan={6} className="p-6 text-center text-xs text-warm-muted/40">No payments yet</td></tr>
-            )}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] bg-warm-card/70 px-4 py-3">
+          <div className="text-[10px] text-warm-muted font-medium">Date</div>
+          <div className="text-[10px] text-warm-muted font-medium">Receipt</div>
+          <div className="text-[10px] text-warm-muted font-medium">Month</div>
+          <div className="text-[10px] text-warm-muted font-medium text-right">Amount</div>
+          <div className="text-[10px] text-warm-muted font-medium">Method</div>
+          <div className="text-[10px] text-warm-muted font-medium text-center">Print</div>
+        </div>
+
+        {(() => {
+          // Base receipt number strips only a trailing allocation index
+          // (RCP-YYYYMM-XXXX-N -> RCP-YYYYMM-XXXX). A plain base receipt
+          // has exactly 3 hyphen-separated segments; don't touch it.
+          const baseOf = (rn: string) => {
+            const parts = (rn || '').split('-');
+            if (parts.length === 4 && /^\d+$/.test(parts[3])) return parts.slice(0, 3).join('-');
+            return rn;
+          };
+
+          const pairs = fees.flatMap((sf: any) =>
+            (sf.payments || []).map((p: any) => ({ payment: p, fee: sf }))
+          );
+
+          const groupsMap = new Map<string, { payment: any; fee: any }[]>();
+          for (const pair of pairs) {
+            const key = baseOf(pair.payment.receiptNumber);
+            if (!groupsMap.has(key)) groupsMap.set(key, []);
+            groupsMap.get(key)!.push(pair);
+          }
+
+          const groups = Array.from(groupsMap.entries()).map(([base, items]) => {
+            // The receipt snapshot is attached to the FIRST allocation the
+            // backend creates for a multi-month payment — suffix "-1",
+            // corresponding to the oldest month in the waterfall. For a
+            // single (non-waterfall) payment there's no suffix at all, so
+            // that lone payment carries the snapshot itself.
+            const primary = items.find(it => it.payment.receiptNumber === `${base}-1`) || items[0];
+            const totalAmount = items.reduce((s, it) => s + it.payment.amount, 0);
+            const latestCreatedAt = items.reduce(
+              (max, it) => (new Date(it.payment.createdAt) > new Date(max) ? it.payment.createdAt : max),
+              items[0].payment.createdAt,
+            );
+            const sorted = [...items].sort((a, b) => (b.fee.year - a.fee.year) || (b.fee.month - a.fee.month));
+            return { base, items: sorted, primary, totalAmount, date: latestCreatedAt };
+          }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          if (groups.length === 0) {
+            return <div className="p-6 text-center text-xs text-warm-muted/40">No payments yet</div>;
+          }
+
+          return groups.map(group => (
+            <div key={group.base} className="border-t border-warm-card-border/20">
+              {/* Parent row — one line per payment transaction */}
+              <div className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] px-4 py-3 items-center hover:bg-warm-card/20 transition-colors">
+                <div className="text-xs text-warm-muted">{new Date(group.date).toLocaleDateString()}</div>
+                <div className="text-xs text-warm-cream font-mono">{group.base}</div>
+                <div className="text-xs text-warm-muted/50">
+                  {group.items.length > 1 ? `${group.items.length} months` : `${MONTHS[(group.items[0].fee.month || 1) - 1]} ${group.items[0].fee.year}`}
+                </div>
+                <div className="text-xs text-green-400 text-right font-medium">{(group.totalAmount / 100).toLocaleString()}</div>
+                <div className="text-xs text-warm-muted">{group.primary.payment.paymentMethod}</div>
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => handlePrint(group.primary.payment, group.primary.fee, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Print Receipt">
+                    <Printer size={13} />
+                  </button>
+                  <button onClick={() => handleDownload(group.primary.payment, group.primary.fee, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Download Receipt">
+                    <Download size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Child rows — per-month breakdown, only when the payment spans more than one month */}
+              {group.items.length > 1 && group.items.map(({ payment: p, fee: sf }) => (
+                <div key={p.id} className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] px-4 py-2 items-center bg-warm-card/10 border-t border-warm-card-border/10">
+                  <div></div>
+                  <div className="pl-4 text-[10px] text-warm-muted/40 font-mono">{p.receiptNumber}</div>
+                  <div className="text-[11px] text-warm-muted/70">{MONTHS[(sf.month || 1) - 1]} {sf.year}</div>
+                  <div className="text-[11px] text-green-400/70 text-right">{(p.amount / 100).toLocaleString()}</div>
+                  <div></div>
+                  <div></div>
+                </div>
+              ))}
+            </div>
+          ));
+        })()}
       </div>
 
       {/* Add Extra Due Modal */}
