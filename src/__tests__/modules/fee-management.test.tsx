@@ -460,6 +460,19 @@ describe('CollectionsPage', () => {
     expect(await screen.findByText('Family')).toBeInTheDocument();
   });
 
+  it('shows payment status filter and sends feeStatus to API', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    expect(await screen.findByText('All Statuses')).toBeInTheDocument();
+    const statusSelect = screen.getAllByRole('combobox').find(el =>
+      Array.from(el.querySelectorAll('option')).some(o => o.textContent === 'Unpaid'),
+    )!;
+    fireEvent.change(statusSelect, { target: { value: 'unpaid' } });
+    await waitFor(() => expect(urls.some(u => u.includes('feeStatus=unpaid'))).toBe(true));
+  });
+
   it('full AY empty state shows No students found', async () => {
     global.fetch = mockCollectionsFetch([]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
