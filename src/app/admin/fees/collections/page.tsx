@@ -155,7 +155,18 @@ export default function CollectionsPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Three states: empty → all NO_FEE → normal table */}
+      {displayFees.length === 0 ? (
+        <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/40">No students found</div>
+      ) : displayFees.every((f: any) => f.status === 'NO_FEE') ? (
+        <div className="rounded-xl border border-warm-card-border p-12 text-center">
+          <p className="text-sm text-warm-muted/60 mb-4">No fee structures generated for {MONTHS[month]} {year} yet</p>
+          <button onClick={() => router.push('/admin/fees/generate')}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-5 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+            Generate Now
+          </button>
+        </div>
+      ) : (
       <div className="rounded-xl border border-warm-card-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -176,7 +187,8 @@ export default function CollectionsPage() {
             <tbody>
               {displayFees.map((f: any, idx: number) => {
                 const s = f.student || {};
-                const due = f.status !== 'NO_FEE' ? (f.netAmount - f.paidAmount) / 100 : 0;
+                const isNoFee = f.status === 'NO_FEE';
+                const due = !isNoFee ? (f.netAmount - f.paidAmount) / 100 : 0;
                 const father = getFather(s);
                 return (
                   <tr key={s.id || f.id || idx} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
@@ -188,23 +200,40 @@ export default function CollectionsPage() {
                     </td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/60">{s.group?.name || ''}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{father}</td>
-                    <td className="px-3 py-2.5 text-xs text-warm-muted text-right">{f.status !== 'NO_FEE' ? (f.netAmount / 100).toLocaleString() : '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-green-400 text-right">{f.status !== 'NO_FEE' ? (f.paidAmount / 100).toLocaleString() : '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-red-400 text-right font-medium">{f.status !== 'NO_FEE' && due > 0 ? due.toLocaleString() : f.status !== 'NO_FEE' ? '0' : '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-right">
+                      {isNoFee
+                        ? <span className="text-yellow-500/50 text-[10px]">Not generated</span>
+                        : <span className="text-warm-muted">{(f.netAmount / 100).toLocaleString()}</span>
+                      }
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-right">
+                      {isNoFee ? <span className="text-warm-muted/30">—</span> : <span className="text-green-400">{(f.paidAmount / 100).toLocaleString()}</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs font-medium text-right">
+                      {isNoFee ? '' : due > 0 ? <span className="text-red-400">{due.toLocaleString()}</span> : <span className="text-green-400">0</span>}
+                    </td>
                     <td className="px-2 py-2.5 text-xs text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        f.status === 'PAID' ? 'bg-green-900/20 text-green-400' :
-                        f.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
-                        f.status === 'OVERPAID' ? 'bg-blue-900/20 text-blue-400' :
-                        f.status === 'NO_FEE' ? 'bg-warm-card/50 text-warm-muted/40' :
-                        'bg-red-900/20 text-red-400'
-                      }`}>{f.status === 'NO_FEE' ? '—' : f.status}</span>
+                      {isNoFee ? (
+                        <button onClick={() => router.push('/admin/fees/generate')}
+                          className="rounded bg-yellow-600/20 px-2 py-1.5 text-[10px] text-yellow-400 hover:bg-yellow-600/30 transition-colors">
+                          Generate
+                        </button>
+                      ) : (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          f.status === 'PAID' ? 'bg-green-900/20 text-green-400' :
+                          f.status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
+                          f.status === 'OVERPAID' ? 'bg-blue-900/20 text-blue-400' :
+                          'bg-red-900/20 text-red-400'
+                        }`}>{f.status}</span>
+                      )}
                     </td>
                     <td className="px-2 py-2.5 text-center">
-                      <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
-                        className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
-                        Pay
-                      </button>
+                      {!isNoFee && (
+                        <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
+                          className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
+                          Pay
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -212,8 +241,8 @@ export default function CollectionsPage() {
             </tbody>
           </table>
         </div>
-        {displayFees.length === 0 && <div className="p-8 text-center text-xs text-warm-muted/40">No students found</div>}
       </div>
+      )}
 
     </main>
   );
