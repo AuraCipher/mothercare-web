@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { ArrowLeft, Users, CreditCard, History } from 'lucide-react';
+import { ArrowLeft, Users, CreditCard, History, Printer } from 'lucide-react';
 import config from '@/config';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
+import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -45,6 +46,15 @@ export default function FamilyDetailPage() {
   }, [token, id, ayId]);
 
   useEffect(() => { loadFamily(); }, [loadFamily]);
+
+  const printFamilyReceipt = async (familyPaymentId: string) => {
+    if (!token) return;
+    try {
+      await fetchAndPrintFamilyReceipt(familyPaymentId, token, config.apiUrl, 'print');
+    } catch {
+      showToast('error', 'Could not load family receipt');
+    }
+  };
 
   if (loading) {
     return (
@@ -182,6 +192,12 @@ export default function FamilyDetailPage() {
                       </p>
                     </div>
                     <p className="text-xs text-green-400">{formatPkr(fp.totalAmount)} PKR</p>
+                    <button
+                      onClick={() => printFamilyReceipt(fp.id)}
+                      className="mt-1 inline-flex items-center gap-1 text-[10px] text-warm-accent hover:underline"
+                    >
+                      <Printer size={11} /> Print
+                    </button>
                   </div>
                   {(fp.payments || []).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-warm-card-border/10 space-y-0.5">

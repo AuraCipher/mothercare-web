@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { ArrowLeft, Save, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Save, ChevronDown, Printer, Download } from 'lucide-react';
 import config from '@/config';
+import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import {
   type AllocateItem,
   buildAllocateItemsForStudent,
@@ -154,6 +155,16 @@ export default function FamilyAllocatePage() {
   }
 
   if (result) {
+    const fpId = result.familyPayment?.id;
+    const handleReceipt = async (action: 'print' | 'download') => {
+      if (!token || !fpId) return;
+      try {
+        await fetchAndPrintFamilyReceipt(fpId, token, config.apiUrl, action);
+      } catch {
+        showToast('error', 'Family receipt not available yet');
+      }
+    };
+
     return (
       <div className="max-w-lg mx-auto p-6">
         <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6">
@@ -172,6 +183,14 @@ export default function FamilyAllocatePage() {
               ))}
             </div>
           )}
+          <div className="flex gap-2 mb-3">
+            <button onClick={() => handleReceipt('print')} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+              <Printer size={13} /> Print Family Receipt
+            </button>
+            <button onClick={() => handleReceipt('download')} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+              <Download size={13} />
+            </button>
+          </div>
           <button
             onClick={() => router.push(`/admin/fees/families/${familyId}`)}
             className="w-full rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors"

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Search, Users, Printer, Download } from 'lucide-react';
 import config from '@/config';
-import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
+import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import type { ReceiptData } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -132,53 +132,19 @@ export default function FamilyPayPage() {
   };
 
   const fetchAndPrintReceipt = async (action: 'print' | 'download') => {
-    let receiptData: ReceiptData | null = null;
-
-    const firstPaymentId = receipt?.familyPayment?.payments?.[0]?.id;
-    if (firstPaymentId && token) {
+    const fpId = receipt?.familyPayment?.id;
+    if (fpId && token) {
       try {
-        const res = await fetch(`${config.apiUrl}/admin/payments/${firstPaymentId}/receipt`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            const snap = json.data;
-            receiptData = {
-              receiptNumber: snap.receiptNumber,
-              date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              paymentMethod: snap.paymentMethod,
-              reference: snap.reference || undefined,
-              totalPaidPaise: snap.amountPaidPaise,
-              balanceRemainingPaise: snap.balanceAfterPaise,
-              studentName: snap.studentName,
-              studentClass: 'Family Combined',
-              fatherName: snap.fatherName || undefined,
-              isFullyPaid: true,
-              isFromSnapshot: true,
-              snapshotCreatedAt: snap.createdAt,
-              allocations: [{ label: snap.currentMonthLabel || 'Family Payment', amountPaise: snap.amountPaidPaise }],
-            };
-          }
-        }
-      } catch { /* fall through */ }
+        await fetchAndPrintFamilyReceipt(fpId, token, config.apiUrl, action);
+        return;
+      } catch { /* fall through to legacy */ }
     }
 
-    if (!receiptData) {
-      receiptData = buildReceiptData();
-    }
+    let receiptData: ReceiptData | null = buildReceiptData();
     if (!receiptData) return;
-
-    if (action === 'print') upgradedPrintReceipt(receiptData);
+    const { printReceipt, downloadReceipt } = await import('@/lib/receipt');
+    if (action === 'print') printReceipt(receiptData);
     else downloadReceipt(receiptData);
-
-    if (firstPaymentId && token) {
-      try {
-        await fetch(`${config.apiUrl}/admin/payments/${firstPaymentId}/print-receipt`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch { /* non-critical */ }
-    }
   };
 
   const handlePrint = () => fetchAndPrintReceipt('print');
