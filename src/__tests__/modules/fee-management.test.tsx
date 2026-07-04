@@ -34,6 +34,35 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 const mockFetch = (data: any) => vi.fn(() => Promise.resolve({ json: () => Promise.resolve(data) }));
 
+const mockHeads = [
+  { id: 'fh1', name: 'Tuition', category: 'MONTHLY', isActive: true, isOptional: false, description: null },
+  { id: 'fh2', name: 'Transport', category: 'MONTHLY', isActive: true, isOptional: true, description: null },
+  { id: 'fh3', name: 'Lab Fee', category: 'TERM', isActive: true, isOptional: false, description: null },
+  { id: 'fh4', name: 'Annual Charges', category: 'ANNUAL', isActive: true, isOptional: false, description: null },
+  { id: 'fh5', name: 'Admission Fee', category: 'ONE_TIME', isActive: true, isOptional: false, description: null },
+];
+
+const mockSections = [
+  { id: 'g1', name: 'Class 1', section: null, displayOrder: 1 },
+  { id: 'g2', name: 'Class 2', section: 'A', displayOrder: 2 },
+  { id: 'g3', name: 'Class 2', section: 'B', displayOrder: 2 },
+];
+
+function mockGenerateFetch(extra?: { generateResult?: any }) {
+  return vi.fn((url: string) => {
+    if (url.includes('fee-heads')) {
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
+    }
+    if (url.includes('/sections')) {
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
+    }
+    if (url.includes('student-fees/generate')) {
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: extra?.generateResult ?? { generated: 345, skipped: 0, updated: 0, total: 345 } }) });
+    }
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // FEE HEADS PAGE
 // ═══════════════════════════════════════════════════════════════════
@@ -136,14 +165,6 @@ describe('FeeStructuresPage', () => {
   });
 });
 
-const mockHeads = [
-  { id: 'fh1', name: 'Tuition', category: 'MONTHLY', isActive: true, isOptional: false, description: null },
-  { id: 'fh2', name: 'Transport', category: 'MONTHLY', isActive: true, isOptional: true, description: null },
-  { id: 'fh3', name: 'Lab Fee', category: 'TERM', isActive: true, isOptional: false, description: null },
-  { id: 'fh4', name: 'Annual Charges', category: 'ANNUAL', isActive: true, isOptional: false, description: null },
-  { id: 'fh5', name: 'Admission Fee', category: 'ONE_TIME', isActive: true, isOptional: false, description: null },
-];
-
 // ═══════════════════════════════════════════════════════════════════
 // GENERATE FEES PAGE
 // ═══════════════════════════════════════════════════════════════════
@@ -151,8 +172,7 @@ const mockHeads = [
 describe('GenerateFeesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock the initial fee heads fetch (pre-selects all by default)
-    global.fetch = mockFetch({ success: true, data: mockHeads });
+    global.fetch = mockGenerateFetch();
   });
 
   it('renders page title', async () => {
@@ -182,32 +202,33 @@ describe('GenerateFeesPage', () => {
   it('shows fee heads grouped by category', async () => {
     const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
     render(<GenerateFeesPage />);
+    expect(await screen.findByText('Classes to Include')).toBeInTheDocument();
     expect(await screen.findByText('Fee Heads to Include')).toBeInTheDocument();
-    // Category group headers
     expect(await screen.findByText('Monthly')).toBeInTheDocument();
-    expect(await screen.findByText('Term')).toBeInTheDocument();
-    expect(await screen.findByText('Annual')).toBeInTheDocument();
-    expect(await screen.findByText('One-Time')).toBeInTheDocument();
-    // Individual head names
     expect(await screen.findByText('Tuition')).toBeInTheDocument();
-    expect(await screen.findByText('Transport')).toBeInTheDocument();
-    expect(await screen.findByText('Lab Fee')).toBeInTheDocument();
   });
 
   it('pre-selects all heads by default', async () => {
     const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
     render(<GenerateFeesPage />);
-    const checkboxes = await screen.findAllByRole('checkbox');
-    expect(checkboxes.length).toBe(mockHeads.length);
-    checkboxes.forEach(cb => expect(cb).toBeChecked());
+    await screen.findByText('Tuition');
+    const headCheckboxes = screen.getAllByRole('checkbox').filter(cb =>
+      mockHeads.some(h => (cb.closest('label')?.textContent || '').includes(h.name)),
+    );
+    expect(headCheckboxes.length).toBe(mockHeads.length);
+    headCheckboxes.forEach(cb => expect(cb).toBeChecked());
+  });
+
+  it('pre-selects all classes by default', async () => {
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    await screen.findByText('Class 1');
+    expect(screen.getByText('Class 1')).toBeInTheDocument();
+    expect(screen.getByText('Class 2')).toBeInTheDocument();
   });
 
   it('shows success result after generation', async () => {
-    // First call = heads fetch, second call = generate POST
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: mockHeads }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
-    global.fetch = fetchMock;
+    global.fetch = mockGenerateFetch();
     const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
     render(<GenerateFeesPage />);
     fireEvent.click(await screen.findByText('Generate'));

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { showToast } from '@/components/toast';
-import { RefreshCw, CheckCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import config from '@/config';
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -13,22 +14,32 @@ const CATEGORY_COLORS: Record<string, string> = {
   ONE_TIME: 'bg-orange-900/20 text-orange-300',
 };
 
+function sectionLabel(sec: { name: string; section?: string | null }) {
+  return sec.section ? `${sec.name} — ${sec.section}` : sec.name;
+}
+
 export default function GenerateFeesPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [heads, setHeads] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
   const [selectedHeadIds, setSelectedHeadIds] = useState<Set<string>>(new Set());
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [classesPanelOpen, setClassesPanelOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<{ generated: number; skipped: number; updated: number; total: number } | null>(null);
   const [loadingHeads, setLoadingHeads] = useState(true);
+  const [loadingSections, setLoadingSections] = useState(true);
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
-  // Fetch all fee heads on mount
   useEffect(() => {
+    if (!token) return;
     const loadHeads = async () => {
-      if (!token) return;
       try {
         const res = await fetch(`${config.apiUrl}/admin/fee-heads`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -37,24 +48,91 @@ export default function GenerateFeesPage() {
         if (json.success) {
           const activeHeads = json.data.filter((h: any) => h.isActive !== false);
           setHeads(activeHeads);
-          // Pre-select all active heads by default
           setSelectedHeadIds(new Set(activeHeads.map((h: any) => h.id)));
         }
       } catch {} finally { setLoadingHeads(false); }
     };
     loadHeads();
-  }, []);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || !branchId || !ayId) {
+      setLoadingSections(false);
+      return;
+    }
+    const loadSections = async () => {
+      setLoadingSections(true);
+      try {
+        const res = await fetch(
+          `${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const json = await res.json();
+        if (json.success) {
+          const list = (json.data || []).sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+          setSections(list);
+          setSelectedGroupIds(new Set(list.map((s: any) => s.id)));
+        }
+      } catch {} finally { setLoadingSections(false); }
+    };
+    loadSections();
+  }, [token, branchId, ayId]);
+
+  const groupedSections = useMemo(() => {
+    const grouped = sections.reduce<Record<string, any[]>>((acc, s) => {
+      if (!acc[s.name]) acc[s.name] = [];
+      acc[s.name].push(s);
+      return acc;
+    }, {});
+    return Object.entries(grouped).sort(([, a], [, b]) => (a[0]?.displayOrder ?? 0) - (b[0]?.displayOrder ?? 0));
+  }, [sections]);
 
   const toggleHead = (id: string) => {
     const next = new Set(selectedHeadIds);
     if (next.has(id)) next.delete(id); else next.add(id);
-    if (next.size === 0) next.add(id); // Keep at least one selected
+    if (next.size === 0) next.add(id);
     setSelectedHeadIds(next);
+  };
+
+  const toggleGroup = (id: string) => {
+    const next = new Set(selectedGroupIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.size === 0) next.add(id);
+    setSelectedGroupIds(next);
+  };
+
+  const toggleClassGroup = (className: string, classSections: any[]) => {
+    const ids = classSections.map(s => s.id);
+    const allSelected = ids.every(id => selectedGroupIds.has(id));
+    const next = new Set(selectedGroupIds);
+    if (allSelected) {
+      ids.forEach(id => next.delete(id));
+      if (next.size === 0) ids.forEach(id => next.add(id));
+    } else {
+      ids.forEach(id => next.add(id));
+    }
+    setSelectedGroupIds(next);
+  };
+
+  const toggleExpanded = (className: string) => {
+    const next = new Set(expandedClasses);
+    if (next.has(className)) next.delete(className); else next.add(className);
+    setExpandedClasses(next);
+  };
+
+  const classGroupState = (classSections: any[]) => {
+    const ids = classSections.map(s => s.id);
+    const selectedCount = ids.filter(id => selectedGroupIds.has(id)).length;
+    return {
+      allSelected: selectedCount === ids.length,
+      someSelected: selectedCount > 0 && selectedCount < ids.length,
+    };
   };
 
   const handleGenerate = async () => {
     if (!token) return;
     if (!ayId) { showToast('error', 'Select an academic year first'); return; }
+    if (selectedGroupIds.size === 0) { showToast('error', 'Select at least one class'); return; }
     setGenerating(true);
     setResult(null);
     try {
@@ -65,6 +143,7 @@ export default function GenerateFeesPage() {
           month: month + 1,
           year,
           headIds: Array.from(selectedHeadIds),
+          groupIds: Array.from(selectedGroupIds),
           academicYearId: ayId,
         }),
       });
@@ -75,7 +154,6 @@ export default function GenerateFeesPage() {
     finally { setGenerating(false); }
   };
 
-  // Group heads by category for display
   const byCategory: Record<string, any[]> = {};
   for (const h of heads) {
     const cat = h.category || 'MONTHLY';
@@ -83,6 +161,13 @@ export default function GenerateFeesPage() {
     byCategory[cat].push(h);
   }
   const categoryOrder = ['MONTHLY', 'TERM', 'ANNUAL', 'ONE_TIME'];
+  const loading = loadingHeads || loadingSections;
+  const allClassesSelected = sections.length > 0 && selectedGroupIds.size === sections.length;
+  const classesSummary = sections.length === 0
+    ? 'No classes'
+    : allClassesSelected
+      ? `All ${sections.length} selected`
+      : `${selectedGroupIds.size} of ${sections.length} selected`;
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -102,11 +187,70 @@ export default function GenerateFeesPage() {
             <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
               className="rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-2.5 text-sm text-warm-cream outline-none focus:border-warm-accent w-24" />
           </div>
-          <button onClick={handleGenerate} disabled={generating || loadingHeads || selectedHeadIds.size === 0}
+          <button onClick={handleGenerate} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
             className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
             {generating ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
             {generating ? 'Generating...' : 'Generate'}
           </button>
+        </div>
+
+        {/* Classes — grouped, collapsed by default, all selected */}
+        <div className="mb-6">
+          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-3">Classes to Include</label>
+          {loadingSections ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <div key={i} className="h-10 animate-pulse rounded-lg bg-warm-card/50" />)}
+            </div>
+          ) : sections.length === 0 ? (
+            <p className="text-xs text-warm-muted/40">No classes found for this academic year.</p>
+          ) : (
+            <div className="rounded-lg border border-warm-card-border/40 divide-y divide-warm-card-border/20">
+              {groupedSections.map(([className, classSections]) => {
+                const expanded = expandedClasses.has(className);
+                const hasMultiple = classSections.length > 1 || !!classSections[0]?.section;
+                const { allSelected, someSelected } = classGroupState(classSections);
+                return (
+                  <div key={className}>
+                    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-warm-card/30 transition-colors">
+                      {hasMultiple ? (
+                        <button type="button" onClick={() => toggleExpanded(className)}
+                          className="p-0.5 text-warm-muted hover:text-warm-cream transition-colors">
+                          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </button>
+                      ) : (
+                        <span className="w-5" />
+                      )}
+                      <label className="flex flex-1 items-center gap-3 cursor-pointer min-w-0">
+                        <input type="checkbox"
+                          checked={allSelected}
+                          ref={el => { if (el) el.indeterminate = someSelected; }}
+                          onChange={() => hasMultiple ? toggleClassGroup(className, classSections) : toggleGroup(classSections[0].id)}
+                          className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent shrink-0" />
+                        <span className="text-sm text-warm-cream truncate">{className}</span>
+                        {hasMultiple && (
+                          <span className="text-[10px] text-warm-muted/50 shrink-0">
+                            {classSections.filter(s => selectedGroupIds.has(s.id)).length}/{classSections.length}
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                    {hasMultiple && expanded && (
+                      <div className="pb-1">
+                        {classSections.map(sec => (
+                          <label key={sec.id}
+                            className="flex items-center gap-3 pl-10 pr-3 py-1.5 hover:bg-warm-card/20 cursor-pointer transition-colors">
+                            <input type="checkbox" checked={selectedGroupIds.has(sec.id)} onChange={() => toggleGroup(sec.id)}
+                              className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                            <span className="text-xs text-warm-muted">{sectionLabel(sec)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Fee heads checkboxes — grouped by category */}
@@ -154,7 +298,7 @@ export default function GenerateFeesPage() {
               {result.updated > 0 && <span className="ml-2 text-warm-accent">· Updated: <strong>{result.updated}</strong></span>}
             </p>
             <p className="text-xs text-warm-muted/60 mt-1">Skipped (already exist): {result.skipped}</p>
-            <p className="text-xs text-warm-muted/60">Total active students: {result.total}</p>
+            <p className="text-xs text-warm-muted/60">Students processed: {result.total}</p>
           </div>
         )}
       </div>

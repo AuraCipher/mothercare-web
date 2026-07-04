@@ -89,17 +89,29 @@ const mockHeads = [
   { id: 'fh5', name: 'Admission Fee', category: 'ONE_TIME', isActive: true },
 ];
 
+const mockSections = [
+  { id: 'g1', name: 'Class 1', section: null, displayOrder: 1 },
+  { id: 'g2', name: 'Class 2', section: null, displayOrder: 2 },
+];
+
+function mockGenerateFetch() {
+  return vi.fn((url: string) => {
+    if (url.includes('fee-heads')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
+    if (url.includes('/sections')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
+    if (url.includes('student-fees/generate')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
+  });
+}
+
 // GENERATE
 describe('GenerateFees', () => {
-  beforeEach(() => { vi.clearAllMocks(); setupLS(); global.fetch = mockFetch({ success: true, data: mockHeads }); });
-  it('shows checkboxes for each fee head', async () => { render(<GenerateFeesPage />); const boxes = await screen.findAllByRole('checkbox'); expect(boxes.length).toBe(mockHeads.length); });
-  it('all heads checked by default', async () => { render(<GenerateFeesPage />); const cbs = await screen.findAllByRole('checkbox'); cbs.forEach(cb => expect(cb).toBeChecked()); });
-  it('keeps one checked', async () => { render(<GenerateFeesPage />); const cbs = await screen.findAllByRole('checkbox'); cbs.forEach(cb => fireEvent.click(cb)); const checked = [...cbs].filter(cb => (cb as HTMLInputElement).checked); expect(checked.length).toBe(1); });
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); global.fetch = mockGenerateFetch(); });
+  it('shows checkboxes for each fee head', async () => { render(<GenerateFeesPage />); await screen.findByText('Tuition'); const headCbs = screen.getAllByRole('checkbox').filter(cb => mockHeads.some(h => (cb.closest('label')?.textContent || '').includes(h.name))); expect(headCbs.length).toBe(mockHeads.length); });
+  it('all heads checked by default', async () => { render(<GenerateFeesPage />); await screen.findByText('Tuition'); const headCbs = screen.getAllByRole('checkbox').filter(cb => mockHeads.some(h => (cb.closest('label')?.textContent || '').includes(h.name))); headCbs.forEach(cb => expect(cb).toBeChecked()); });
+  it('keeps one head checked', async () => { render(<GenerateFeesPage />); await screen.findByText('Tuition'); const headCbs = screen.getAllByRole('checkbox').filter(cb => mockHeads.some(h => (cb.closest('label')?.textContent || '').includes(h.name))); headCbs.forEach(cb => fireEvent.click(cb)); const checked = headCbs.filter(cb => (cb as HTMLInputElement).checked); expect(checked.length).toBe(1); });
   it('shows result', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: mockHeads }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
-    global.fetch = fetchMock; render(<GenerateFeesPage />);
+    global.fetch = mockGenerateFetch();
+    render(<GenerateFeesPage />);
     fireEvent.click(await screen.findByText('Generate')); expect(await screen.findByText('345')).toBeInTheDocument();
   });
 });
