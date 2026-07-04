@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Search, DollarSign } from 'lucide-react';
+import { Search } from 'lucide-react';
 import config from '@/config';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function readPeriod(): 'monthly' | 'full' {
+  if (typeof window === 'undefined') return 'monthly';
+  const stored = localStorage.getItem('collectionsPeriod');
+  return stored === 'full' ? 'full' : 'monthly';
+}
 
 export default function CollectionsPage() {
   const router = useRouter();
@@ -17,72 +23,89 @@ export default function CollectionsPage() {
   const [classFilter, setClassFilter] = useState('');
   const [rollFilter, setRollFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'full'>('full');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
-  // Pay & custom fee handled via the student detail page (/admin/fees/student/[id])
+  const loadGenRef = useRef(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
+  const ayStatus = typeof window !== 'undefined' ? localStorage.getItem('activeAYStatus') : null;
+  const isAyArchived = ayStatus === 'ARCHIVED';
 
-  const loadData = async () => {
+  useEffect(() => { setPeriod(readPeriod()); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const loadData = useCallback(async () => {
     if (!token || !ayId) return;
+    const gen = ++loadGenRef.current;
     setLoading(true);
     try {
-      const ayParam = `&academicYearId=${ayId}`;
+      const params = new URLSearchParams({
+        month: String(month + 1),
+        year: String(year),
+        period,
+        academicYearId: ayId,
+      });
+      if (classFilter) params.set('groupId', classFilter);
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (rollFilter.trim()) params.set('roll', rollFilter.trim());
+
       const [fRes, sRes] = await Promise.all([
-        fetch(`${config.apiUrl}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}${ayParam}`, {
+        fetch(`${config.apiUrl}/admin/fees/students-list?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()),
         branchId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()) : Promise.resolve({ success: false }),
       ]);
-      if (fRes.success) setFees(fRes.data);
+      if (gen !== loadGenRef.current) return;
+      if (!fRes.success) {
+        showToast('error', fRes.message || 'Failed to load collections');
+        setFees([]);
+      } else {
+        setFees(fRes.data);
+      }
       if (sRes.success) setSections(sRes.data);
-    } catch {} finally { setLoading(false); }
+    } catch {
+      if (gen === loadGenRef.current) {
+        showToast('error', 'Failed to load collections');
+        setFees([]);
+      }
+    } finally {
+      if (gen === loadGenRef.current) setLoading(false);
+    }
+  }, [token, ayId, branchId, month, year, period, classFilter, debouncedSearch, rollFilter]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadData(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadData]);
+
+  const setPeriodAndPersist = (p: 'monthly' | 'full') => {
+    setPeriod(p);
+    localStorage.setItem('collectionsPeriod', p);
   };
 
-  useEffect(() => { loadData(); }, [month, year, period, ayId]);
-
-  // Get father name from parents array
   const getFather = (student: any) => {
-    const father = student?.parents?.find((p: any) => p.parent?.relation === 'Father' || p.parent?.relation === 'Father');
+    const father = student?.parents?.find((p: any) => p.parent?.relation === 'Father');
     return father?.parent?.user?.name || father?.parent?.phone || '';
   };
 
-  // Filter & search
   const displayFees = useMemo(() => {
     let result = fees;
-
-    // Class filter
-    if (classFilter) {
-      result = result.filter(f => f.student?.groupId === classFilter);
-    }
-
-    // Roll number filter (exact match)
-    if (rollFilter.trim()) {
-      result = result.filter(f => (f.student?.rollNumber || '') === rollFilter.trim());
-    }
-
-    // Search: match name, roll, father name
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(f => {
-        const s = f.student || {};
-        const father = getFather(s).toLowerCase();
-        return (s.name || '').toLowerCase().includes(q)
-          || (s.rollNumber || '').toLowerCase().includes(q)
-          || father.includes(q);
-      });
-    }
-
-    // Sort
     if (viewMode === 'alpha') {
       result = [...result].sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
     } else {
-      // Class-wise: group by displayOrder, then by roll within
       result = [...result].sort((a, b) => {
         const doA = a.student?.group?.displayOrder ?? 999;
         const doB = b.student?.group?.displayOrder ?? 999;
@@ -92,9 +115,26 @@ export default function CollectionsPage() {
         return rA - rB;
       });
     }
-
     return result;
-  }, [fees, classFilter, rollFilter, searchQuery, viewMode]);
+  }, [fees, viewMode]);
+
+  const summary = useMemo(() => {
+    let totalDue = 0;
+    let totalPaid = 0;
+    let outstanding = 0;
+    for (const f of displayFees) {
+      if (f.status === 'NO_FEE') continue;
+      totalDue += f.netAmount || 0;
+      totalPaid += f.paidAmount || 0;
+      const due = (f.netAmount || 0) - (f.paidAmount || 0);
+      if (due > 0) outstanding += due;
+    }
+    return { count: displayFees.length, totalDue, totalPaid, outstanding };
+  }, [displayFees]);
+
+  const showEmpty = !loading && displayFees.length === 0;
+  const showAllNoFee = !loading && displayFees.length > 0 && displayFees.every((f: any) => f.status === 'NO_FEE');
+  const showTable = !loading && displayFees.length > 0 && !showAllNoFee;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -103,7 +143,7 @@ export default function CollectionsPage() {
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
             {(['monthly', 'full'] as const).map(p => (
-              <button key={p} onClick={() => setPeriod(p)}
+              <button key={p} onClick={() => setPeriodAndPersist(p)}
                 className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${period === p ? 'bg-warm-accent text-[#1a1614] font-medium' : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'}`}>
                 {p === 'monthly' ? 'Monthly' : 'Full AY'}
               </button>
@@ -122,8 +162,19 @@ export default function CollectionsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="rounded-xl border border-warm-card-border bg-warm-card p-4 mb-6">
+      {isAyArchived && (
+        <div className="mb-4 rounded-lg border border-yellow-600/30 bg-yellow-900/10 px-4 py-3 text-xs text-yellow-400">
+          Viewing an archived academic year. Payments are read-only for historical reference.
+        </div>
+      )}
+
+      {period === 'full' && !loading && fees.some((f: any) => f._isEstimated) && (
+        <div className="mb-4 rounded-lg border border-warm-card-border/50 bg-warm-card/30 px-4 py-2 text-[10px] text-warm-muted/70">
+          Rows marked <span className="text-yellow-400/80">Est.</span> include projected dues for months not yet generated.
+        </div>
+      )}
+
+      <div className="rounded-xl border border-warm-card-border bg-warm-card p-4 mb-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-[160px] flex-1 max-w-xs">
             <div className="relative">
@@ -156,8 +207,23 @@ export default function CollectionsPage() {
         </div>
       </div>
 
-      {/* Empty / no-fee / table */}
-      {displayFees.length === 0 ? (
+      {!loading && displayFees.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-4 text-[10px] text-warm-muted/60">
+          <span><span className="text-warm-cream font-medium">{summary.count}</span> students</span>
+          <span>Total due <span className="text-warm-cream">{(summary.totalDue / 100).toLocaleString()}</span></span>
+          <span>Collected <span className="text-green-400">{(summary.totalPaid / 100).toLocaleString()}</span></span>
+          <span>Outstanding <span className="text-red-400">{(summary.outstanding / 100).toLocaleString()}</span></span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="rounded-xl border border-warm-card-border overflow-hidden">
+          <div className="h-10 bg-warm-card/50 animate-pulse" />
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-12 border-t border-warm-card-border/20 bg-warm-card/20 animate-pulse" />
+          ))}
+        </div>
+      ) : showEmpty ? (
         period === 'monthly' ? (
           <div className="rounded-xl border border-warm-card-border p-12 text-center">
             <p className="text-sm text-warm-muted/60 mb-4">No fees generated for {MONTHS[month]} {year} yet</p>
@@ -169,7 +235,7 @@ export default function CollectionsPage() {
         ) : (
           <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/40">No students found</div>
         )
-      ) : displayFees.every((f: any) => f.status === 'NO_FEE') ? (
+      ) : showAllNoFee ? (
         <div className="rounded-xl border border-warm-card-border p-12 text-center">
           <p className="text-sm text-warm-muted/60 mb-4">No fee structures generated for {MONTHS[month]} {year} yet</p>
           <button onClick={() => router.push('/admin/fees/generate')}
@@ -177,7 +243,7 @@ export default function CollectionsPage() {
             Generate Now
           </button>
         </div>
-      ) : (
+      ) : showTable ? (
       <div className="rounded-xl border border-warm-card-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -201,6 +267,7 @@ export default function CollectionsPage() {
                 const isNoFee = f.status === 'NO_FEE';
                 const due = !isNoFee ? (f.netAmount - f.paidAmount) / 100 : 0;
                 const father = getFather(s);
+                const isEstimated = period === 'full' && f._isEstimated;
                 return (
                   <tr key={s.id || f.id || idx} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{idx + 1}</td>
@@ -212,10 +279,14 @@ export default function CollectionsPage() {
                     <td className="px-3 py-2.5 text-xs text-warm-muted/60">{s.group?.name || ''}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{father}</td>
                     <td className="px-3 py-2.5 text-xs text-right">
-                      {isNoFee
-                        ? <span className="text-yellow-500/50 text-[10px]">Not generated</span>
-                        : <span className="text-warm-muted">{(f.netAmount / 100).toLocaleString()}</span>
-                      }
+                      {isNoFee ? (
+                        <span className="text-yellow-500/50 text-[10px]">Not generated</span>
+                      ) : (
+                        <span className="text-warm-muted inline-flex items-center gap-1 justify-end">
+                          {(f.netAmount / 100).toLocaleString()}
+                          {isEstimated && <span className="text-[9px] text-yellow-400/70" title={`${f._missingMonths} month(s) estimated`}>Est.</span>}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-right">
                       {isNoFee ? <span className="text-warm-muted/30">—</span> : <span className="text-green-400">{(f.paidAmount / 100).toLocaleString()}</span>}
@@ -240,10 +311,14 @@ export default function CollectionsPage() {
                     </td>
                     <td className="px-2 py-2.5 text-center">
                       {!isNoFee && (
-                        <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
-                          className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
-                          Pay
-                        </button>
+                        isAyArchived ? (
+                          <span className="text-[10px] text-warm-muted/40">—</span>
+                        ) : (
+                          <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
+                            className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
+                            Pay
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>
@@ -253,7 +328,7 @@ export default function CollectionsPage() {
           </table>
         </div>
       </div>
-      )}
+      ) : null}
 
     </main>
   );

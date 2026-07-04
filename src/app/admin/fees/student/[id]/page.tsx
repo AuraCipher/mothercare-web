@@ -27,6 +27,7 @@ export default function StudentFeeDetailPage() {
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
+  const isAyArchived = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
   const loadData = async () => {
     if (!token || !params.id || !ayId) return;
@@ -312,6 +313,12 @@ export default function StudentFeeDetailPage() {
         <ArrowLeft size={13} /> Back to Collections
       </button>
 
+      {isAyArchived && (
+        <div className="mb-4 rounded-lg border border-yellow-600/30 bg-yellow-900/10 px-4 py-3 text-xs text-yellow-400">
+          This academic year is archived. New payments cannot be recorded.
+        </div>
+      )}
+
       {/* Student Info */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -331,7 +338,7 @@ export default function StudentFeeDetailPage() {
             <p className="text-[10px] text-warm-muted/50 uppercase">Total Remaining</p>
             <p className="text-2xl font-light text-warm-accent">{totalRemainingPkr.toLocaleString()} PKR</p>
           </div>
-          {totalRemainingPaise > 0 && (
+          {totalRemainingPaise > 0 && !isAyArchived && (
             <button onClick={openPayModal}
               className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
               <Save size={15} /> Pay Now
