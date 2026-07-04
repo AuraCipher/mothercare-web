@@ -28,7 +28,7 @@ export default function ClassStudentsFeePage() {
     try {
       const [hRes, stRes, sRes] = await Promise.all([
         fetch(`${config.apiUrl}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/fee-structures?groupId=${groupId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-structures?groupId=${groupId}&academicYearId=${ayId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
         fetch(`${config.apiUrl}/admin/students?groupId=${groupId}&limit=500`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
       if (hRes.success) setHeads(hRes.data.filter((h: any) => h.isActive));

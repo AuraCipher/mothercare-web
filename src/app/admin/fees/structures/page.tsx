@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import config from '@/config';
@@ -11,37 +11,62 @@ export default function FeeStructuresPage() {
   const [heads, setHeads] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editCell, setEditCell] = useState<{ groupId: string; feeHeadId: string } | null>(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [editCell, setEditCell] = useState<{ groupId: string; feeHeadId: string; draft: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const loadGenRef = useRef(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token || !branchId || !ayId) return;
+    const gen = ++loadGenRef.current;
     try {
+      const headers = { Authorization: `Bearer ${token}` };
       const [sRes, hRes, stRes] = await Promise.all([
-        fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/fee-heads`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/fee-structures`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-heads`, { headers }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fee-structures?academicYearId=${ayId}`, { headers }).then(r => r.json()),
       ]);
+      if (gen !== loadGenRef.current) return;
       if (sRes.success) setSections((sRes.data || []).sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
       if (hRes.success) setHeads(hRes.data.filter((h: any) => h.isActive));
       if (stRes.success) setStructures(stRes.data);
-    } catch {} finally { setLoading(false); }
-  };
+    } catch {} finally {
+      if (gen === loadGenRef.current) setLoading(false);
+    }
+  }, [token, branchId, ayId]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const getAmount = (groupId: string, feeHeadId: string) => {
-    const s = structures.find((st: any) => st.groupId === groupId && st.feeHeadId === feeHeadId && !st.effectiveTo);
-    return s ? s.amount : 0;
+    const matches = structures.filter(
+      (st: any) => st.groupId === groupId && st.feeHeadId === feeHeadId && !st.effectiveTo,
+    );
+    if (matches.length === 0) return 0;
+    const newest = matches.reduce((best, st) =>
+      new Date(st.createdAt) > new Date(best.createdAt) ? st : best,
+    );
+    return newest.amount;
   };
 
   const handleSaveCell = async (groupId: string, feeHeadId: string) => {
-    if (!token || !ayId) return;
-    const amount = parseInt(editAmount, 10) * 100; // Convert to paise
+    if (!token || !ayId || saving) return;
+    const draftValue = editCell?.draft;
+    if (draftValue == null || draftValue === '' || editCell?.groupId !== groupId || editCell?.feeHeadId !== feeHeadId) {
+      if (draftValue === '') showToast('error', 'Enter an amount');
+      return;
+    }
+    const amount = Math.round(parseFloat(draftValue) * 100);
+    if (Number.isNaN(amount)) {
+      showToast('error', 'Invalid amount');
+      return;
+    }
+
+    setSaving(true);
+    setEditCell(null);
+
     try {
       const res = await fetch(`${config.apiUrl}/admin/fee-structures`, {
         method: 'POST',
@@ -49,10 +74,24 @@ export default function FeeStructuresPage() {
         body: JSON.stringify({ academicYearId: ayId, groupId, feeHeadId, amount }),
       });
       const json = await res.json();
-      if (json.success) { showToast('success', 'Saved'); loadData(); }
-      else showToast('error', json.message || 'Failed');
-    } catch { showToast('error', 'Failed'); }
-    setEditCell(null);
+      if (json.success) {
+        const saved = json.data;
+        setStructures(prev => {
+          const without = prev.filter(
+            (st: any) => !(st.groupId === groupId && st.feeHeadId === feeHeadId && !st.effectiveTo),
+          );
+          return [...without, saved];
+        });
+        showToast('success', 'Saved');
+        loadData();
+      } else {
+        showToast('error', json.message || 'Failed');
+      }
+    } catch {
+      showToast('error', 'Failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -82,24 +121,28 @@ export default function FeeStructuresPage() {
                     </td>
                     {heads.map(h => {
                       const amt = getAmount(sec.id, h.id);
-                      const editing = editCell?.groupId === sec.id && editCell?.feeHeadId === h.id;
+                      const isEditing = editCell?.groupId === sec.id && editCell?.feeHeadId === h.id;
                       return (
                         <td key={h.id} className="px-3 py-3 text-center">
-                          {editing ? (
+                          {isEditing ? (
                             <div className="flex items-center gap-1 justify-center">
-                              <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
+                              <input type="number"
+                                value={editCell?.draft ?? ''}
+                                onChange={e => setEditCell(prev => prev ? { ...prev, draft: e.target.value } : null)}
                                 className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-1 text-xs text-warm-cream text-center outline-none"
                                 autoFocus
+                                disabled={saving}
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') handleSaveCell(sec.id, h.id);
                                   if (e.key === 'Escape') setEditCell(null);
                                 }} />
-                              <button onClick={() => handleSaveCell(sec.id, h.id)} className="text-xs text-green-400 hover:underline">✓</button>
-                              <button onClick={() => setEditCell(null)} className="text-xs text-warm-muted hover:underline">✕</button>
+                              <button onClick={() => handleSaveCell(sec.id, h.id)} disabled={saving} className="text-xs text-green-400 hover:underline disabled:opacity-40">✓</button>
+                              <button onClick={() => setEditCell(null)} disabled={saving} className="text-xs text-warm-muted hover:underline disabled:opacity-40">✕</button>
                             </div>
                           ) : (
-                            <button onClick={() => { setEditCell({ groupId: sec.id, feeHeadId: h.id }); setEditAmount(String(amt / 100 || '')); }}
-                              className="text-xs text-warm-cream hover:text-warm-accent transition-colors px-2 py-1 rounded hover:bg-warm-card/50">
+                            <button onClick={() => !saving && setEditCell({ groupId: sec.id, feeHeadId: h.id, draft: String(amt / 100 || '') })}
+                              disabled={saving}
+                              className="text-xs text-warm-cream hover:text-warm-accent transition-colors px-2 py-1 rounded hover:bg-warm-card/50 disabled:opacity-40">
                               {amt > 0 ? `${(amt / 100).toLocaleString()}` : '—'}
                             </button>
                           )}
