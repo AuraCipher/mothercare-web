@@ -120,8 +120,13 @@ function mockGenerateFetch(opts?: { onGenerate?: (body: any) => void }) {
     if (url.includes('fee-heads')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
     if (url.includes('/sections')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
     if (url.includes('student-fees/generate')) {
-      if (init?.body) opts?.onGenerate?.(JSON.parse(init.body as string));
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
+      let mode = 'generate';
+      if (init?.body) {
+        const body = JSON.parse(init.body as string);
+        mode = body.mode || 'generate';
+        opts?.onGenerate?.(body);
+      }
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345, mode } }) });
     }
     return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
   });

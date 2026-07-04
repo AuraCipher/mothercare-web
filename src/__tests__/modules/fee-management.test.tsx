@@ -57,18 +57,34 @@ function mockGenerateFetch(extra?: { generateResult?: any; onGenerate?: (body: a
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
     }
     if (url.includes('student-fees/generate')) {
-      if (opts?.body) extra?.onGenerate?.(JSON.parse(opts.body as string));
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: extra?.generateResult ?? { generated: 345, skipped: 0, updated: 0, total: 345 } }) });
+      let mode = 'generate';
+      if (opts?.body) {
+        const body = JSON.parse(opts.body as string);
+        mode = body.mode || 'generate';
+        extra?.onGenerate?.(body);
+      }
+      return Promise.resolve({
+        json: () => Promise.resolve({
+          success: true,
+          data: extra?.generateResult ?? { generated: 345, skipped: 0, updated: 0, total: 345, mode },
+        }),
+      });
     }
     return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
   });
 }
 
-function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void) {
+function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void, pagination?: any) {
   return vi.fn((url: string) => {
     onFetch?.(url);
     if (url.includes('students-list')) {
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data }) });
+      return Promise.resolve({
+        json: () => Promise.resolve({
+          success: true,
+          data,
+          pagination: pagination ?? { page: 1, limit: 100, total: data.length, totalPages: 1 },
+        }),
+      });
     }
     if (url.includes('/sections')) {
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
@@ -207,10 +223,12 @@ describe('GenerateFeesPage', () => {
     expect(await screen.findByText('Year')).toBeInTheDocument();
   });
 
-  it('shows Generate button', async () => {
+  it('shows Generate, Update, and Regenerate buttons', async () => {
     const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
     render(<GenerateFeesPage />);
     expect(await screen.findByText('Generate')).toBeInTheDocument();
+    expect(screen.getByText('Update')).toBeInTheDocument();
+    expect(screen.getByText('Regenerate')).toBeInTheDocument();
   });
 
   it('shows fee heads grouped by category', async () => {
@@ -262,6 +280,7 @@ describe('GenerateFeesPage', () => {
     expect(posted.groupIds).toEqual(expect.arrayContaining(['g1', 'g2', 'g3']));
     expect(posted.groupIds).toHaveLength(3);
     expect(posted.headIds).toHaveLength(mockHeads.length);
+    expect(posted.mode).toBe('generate');
   });
 
   it('sends only selected class groupIds after unchecking a class', async () => {
@@ -483,6 +502,36 @@ describe('CollectionsPage', () => {
     render(<CollectionsPage />);
     fireEvent.change(await screen.findByPlaceholderText(/Search by name/), { target: { value: 'Ahmed' } });
     await waitFor(() => expect(urls.some(u => u.includes('search=Ahmed'))).toBe(true), { timeout: 2000 });
+  });
+
+  it('passes fatherSearch query to server after debounce', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.change(await screen.findByPlaceholderText(/Father name or phone/), { target: { value: 'Ali' } });
+    await waitFor(() => expect(urls.some(u => u.includes('fatherSearch=Ali'))).toBe(true), { timeout: 2000 });
+  });
+
+  it('requests pagination with limit 100', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    await waitFor(() => expect(urls.some(u => u.includes('limit=100'))).toBe(true));
+    expect(urls.some(u => u.includes('page=1'))).toBe(true);
+  });
+
+  it('shows pagination controls when multiple pages', async () => {
+    global.fetch = mockCollectionsFetch(
+      [{ student: { id: 's1', name: 'Ahmed', rollNumber: '1', group: { name: 'Class 2' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } }],
+      undefined,
+      { page: 1, limit: 100, total: 250, totalPages: 3 },
+    );
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    expect(await screen.findByText(/Page 1 of 3/)).toBeInTheDocument();
+    expect(screen.getByText('Next')).toBeInTheDocument();
   });
 });
 
