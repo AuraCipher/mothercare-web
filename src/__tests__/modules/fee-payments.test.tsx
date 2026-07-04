@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '../helpers/test-utils';
+import { render, screen, fireEvent, waitFor } from '../helpers/test-utils';
 
 // Use relative paths instead of @ alias to avoid vitest resolution issues
 import CollectionsPage from '../../app/admin/fees/collections/page';
@@ -49,11 +49,32 @@ describe('Collections — Advanced', () => {
     expect(await screen.findByText('Class-wise')).toBeInTheDocument();
     expect(await screen.findByText('Alphabetical')).toBeInTheDocument();
   });
-  it('shows NO_FEE empty state with generate prompt', async () => {
-    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 0, paidAmount: 0, status: 'NO_FEE' }] });
+  it('monthly empty state shows generate prompt', async () => {
+    global.fetch = mockFetch({ success: true, data: [] });
     render(<CollectionsPage />);
-    expect(await screen.findByText(/No fee structures generated/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('Monthly'));
+    expect(await screen.findByText(/No fees generated for/)).toBeInTheDocument();
     expect(await screen.findByText('Generate Now')).toBeInTheDocument();
+  });
+  it('monthly does not show ungenerated students', async () => {
+    global.fetch = mockFetch({ success: true, data: [
+      { student: { id: 's1', name: 'Ahmed', group: { name: 'Class 2' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } },
+    ] });
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    expect(await screen.findByText('Ahmed')).toBeInTheDocument();
+    expect(screen.queryByText('Not generated')).not.toBeInTheDocument();
+  });
+  it('monthly request includes academicYearId', async () => {
+    const urls: string[] = [];
+    global.fetch = vi.fn((url: string) => {
+      urls.push(url);
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
+    });
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
+    expect(urls.some(u => u.includes('period=monthly'))).toBe(true);
   });
   it('shows due for PARTIAL', async () => {
     global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL' }] }); render(<CollectionsPage />);
@@ -67,7 +88,7 @@ describe('Collections — Advanced', () => {
     global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID' }] }); render(<CollectionsPage />);
     expect(await screen.findByText('UNPAID')).toBeInTheDocument();
   });
-  it('shows empty state', async () => {
+  it('shows empty state for full AY', async () => {
     global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
     expect(await screen.findByText('No students found')).toBeInTheDocument();
   });
@@ -91,14 +112,18 @@ const mockHeads = [
 
 const mockSections = [
   { id: 'g1', name: 'Class 1', section: null, displayOrder: 1 },
-  { id: 'g2', name: 'Class 2', section: null, displayOrder: 2 },
+  { id: 'g2', name: 'Class 2', section: 'A', displayOrder: 2 },
+  { id: 'g3', name: 'Class 2', section: 'B', displayOrder: 2 },
 ];
 
-function mockGenerateFetch() {
-  return vi.fn((url: string) => {
+function mockGenerateFetch(opts?: { onGenerate?: (body: any) => void }) {
+  return vi.fn((url: string, init?: RequestInit) => {
     if (url.includes('fee-heads')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
     if (url.includes('/sections')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
-    if (url.includes('student-fees/generate')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
+    if (url.includes('student-fees/generate')) {
+      if (init?.body) opts?.onGenerate?.(JSON.parse(init.body as string));
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345 } }) });
+    }
     return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
   });
 }
@@ -113,6 +138,32 @@ describe('GenerateFees', () => {
     global.fetch = mockGenerateFetch();
     render(<GenerateFeesPage />);
     fireEvent.click(await screen.findByText('Generate')); expect(await screen.findByText('345')).toBeInTheDocument();
+  });
+  it('posts groupIds for selected sections only', async () => {
+    let body: any = null;
+    global.fetch = mockGenerateFetch({ onGenerate: (b) => { body = b; } });
+    render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Classes to Include'));
+    await screen.findByText('Class 2');
+    fireEvent.click(screen.getByText('Class 2').closest('label')!.querySelector('input')!);
+    fireEvent.click(await screen.findByText('Generate'));
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body.groupIds).toEqual(['g1']);
+    expect(body.groupIds).not.toContain('g2');
+    expect(body.groupIds).not.toContain('g3');
+  });
+  it('posts academicYearId from localStorage', async () => {
+    let body: any = null;
+    global.fetch = mockGenerateFetch({ onGenerate: (b) => { body = b; } });
+    render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Generate'));
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body.academicYearId).toBe('ay-1');
+  });
+  it('classes panel collapsed by default', async () => {
+    render(<GenerateFeesPage />);
+    expect(await screen.findByText(/All 3 selected|3 selected/)).toBeInTheDocument();
+    expect(screen.queryByText('Class 1')).not.toBeInTheDocument();
   });
 });
 

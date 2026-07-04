@@ -48,8 +48,8 @@ const mockSections = [
   { id: 'g3', name: 'Class 2', section: 'B', displayOrder: 2 },
 ];
 
-function mockGenerateFetch(extra?: { generateResult?: any }) {
-  return vi.fn((url: string) => {
+function mockGenerateFetch(extra?: { generateResult?: any; onGenerate?: (body: any) => void }) {
+  return vi.fn((url: string, opts?: RequestInit) => {
     if (url.includes('fee-heads')) {
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
     }
@@ -57,7 +57,21 @@ function mockGenerateFetch(extra?: { generateResult?: any }) {
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
     }
     if (url.includes('student-fees/generate')) {
+      if (opts?.body) extra?.onGenerate?.(JSON.parse(opts.body as string));
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: extra?.generateResult ?? { generated: 345, skipped: 0, updated: 0, total: 345 } }) });
+    }
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
+  });
+}
+
+function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void) {
+  return vi.fn((url: string) => {
+    onFetch?.(url);
+    if (url.includes('students-list')) {
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data }) });
+    }
+    if (url.includes('/sections')) {
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
     }
     return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
   });
@@ -235,6 +249,66 @@ describe('GenerateFeesPage', () => {
     fireEvent.click(await screen.findByText('Generate'));
     expect(await screen.findByText('345')).toBeInTheDocument();
   });
+
+  it('sends academicYearId and all groupIds when generating with defaults', async () => {
+    let posted: any = null;
+    global.fetch = mockGenerateFetch({ onGenerate: (body) => { posted = body; } });
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    await screen.findByText(/All 3 selected/);
+    fireEvent.click(await screen.findByText('Generate'));
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted.academicYearId).toBe('ay-1');
+    expect(posted.groupIds).toEqual(expect.arrayContaining(['g1', 'g2', 'g3']));
+    expect(posted.groupIds).toHaveLength(3);
+    expect(posted.headIds).toHaveLength(mockHeads.length);
+  });
+
+  it('sends only selected class groupIds after unchecking a class', async () => {
+    let posted: any = null;
+    global.fetch = mockGenerateFetch({ onGenerate: (body) => { posted = body; } });
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Classes to Include'));
+    await screen.findByText('Class 1');
+    const class1Row = screen.getByText('Class 1').closest('label');
+    const class1Checkbox = class1Row?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    fireEvent.click(class1Checkbox);
+    fireEvent.click(await screen.findByText('Generate'));
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted.groupIds).not.toContain('g1');
+    expect(posted.groupIds).toEqual(expect.arrayContaining(['g2', 'g3']));
+  });
+
+  it('classes panel is collapsed by default', async () => {
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    expect(await screen.findByText(/All 3 selected/)).toBeInTheDocument();
+    expect(screen.queryByText('Class 1')).not.toBeInTheDocument();
+  });
+
+  it('sends month and year in generate payload', async () => {
+    let posted: any = null;
+    global.fetch = mockGenerateFetch({ onGenerate: (body) => { posted = body; } });
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Generate'));
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted.month).toBeGreaterThan(0);
+    expect(posted.year).toBeGreaterThan(2020);
+  });
+
+  it('cannot uncheck all classes — at least one remains selected', async () => {
+    const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
+    render(<GenerateFeesPage />);
+    fireEvent.click(await screen.findByText('Classes to Include'));
+    await screen.findByText('Class 1');
+    for (const name of ['Class 1', 'Class 2']) {
+      const row = screen.getByText(name).closest('label');
+      fireEvent.click(row!.querySelector('input[type="checkbox"]')!);
+    }
+    expect(await screen.findByText(/All 3 selected|3 selected/)).toBeInTheDocument();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -313,12 +387,79 @@ describe('CollectionsPage', () => {
 
   it('shows Pay button per row', async () => {
     global.fetch = mockFetch({ success: true, data: [
-      { student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 1000000, paidAmount: 0, status: 'UNPAID' },
+      { student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 1000000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } },
     ]});
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
     const payBtns = await screen.findAllByText('Pay');
     expect(payBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('monthly view requests academicYearId in students-list URL', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
+    expect(urls.some(u => u.includes('period=monthly'))).toBe(true);
+  });
+
+  it('monthly view shows generate prompt when no fees generated', async () => {
+    global.fetch = mockCollectionsFetch([]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    expect(await screen.findByText(/No fees generated for/)).toBeInTheDocument();
+    expect(await screen.findByText('Generate Now')).toBeInTheDocument();
+  });
+
+  it('monthly view only shows students returned from API (generated fees)', async () => {
+    global.fetch = mockCollectionsFetch([
+      { student: { id: 's1', name: 'Ahmed', rollNumber: '1', group: { name: 'Class 2', section: 'A' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } },
+    ]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    expect(await screen.findByText('Ahmed')).toBeInTheDocument();
+    expect(screen.queryByText('Sara')).not.toBeInTheDocument();
+  });
+
+  it('full AY empty state shows No students found', async () => {
+    global.fetch = mockCollectionsFetch([]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    expect(await screen.findByText('No students found')).toBeInTheDocument();
+  });
+
+  it('monthly view includes month and year in students-list request', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    await waitFor(() => expect(urls.some(u => u.includes('month='))).toBe(true));
+    expect(urls.some(u => u.includes('year='))).toBe(true);
+  });
+
+  it('monthly view does not show Pay for rows without fee id from API', async () => {
+    global.fetch = mockCollectionsFetch([
+      { student: { id: 's1', name: 'Ahmed', rollNumber: '1', group: { name: 'Class 2' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } },
+    ]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Monthly'));
+    expect(await screen.findByText('Ahmed')).toBeInTheDocument();
+    expect(await screen.findAllByText('Pay')).toHaveLength(1);
+  });
+
+  it('switching to Full AY requests period=full', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Full AY'));
+    await waitFor(() => expect(urls.some(u => u.includes('period=full'))).toBe(true));
   });
 });
 
