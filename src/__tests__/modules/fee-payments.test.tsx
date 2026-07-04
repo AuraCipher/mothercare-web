@@ -49,9 +49,11 @@ describe('Collections — Advanced', () => {
     expect(await screen.findByText('Class-wise')).toBeInTheDocument();
     expect(await screen.findByText('Alphabetical')).toBeInTheDocument();
   });
-  it('shows NO_FEE status', async () => {
-    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 0, paidAmount: 0, status: 'NO_FEE' }] }); render(<CollectionsPage />);
-    expect(await screen.findByText('Ahmed')).toBeInTheDocument();
+  it('shows NO_FEE empty state with generate prompt', async () => {
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 0, paidAmount: 0, status: 'NO_FEE' }] });
+    render(<CollectionsPage />);
+    expect(await screen.findByText(/No fee structures generated/)).toBeInTheDocument();
+    expect(await screen.findByText('Generate Now')).toBeInTheDocument();
   });
   it('shows due for PARTIAL', async () => {
     global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL' }] }); render(<CollectionsPage />);
