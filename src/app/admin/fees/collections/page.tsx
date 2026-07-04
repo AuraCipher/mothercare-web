@@ -156,8 +156,7 @@ export default function CollectionsPage() {
   }, [displayFees]);
 
   const showEmpty = !loading && displayFees.length === 0;
-  const showAllNoFee = !loading && displayFees.length > 0 && displayFees.every((f: any) => f.status === 'NO_FEE');
-  const showTable = !loading && displayFees.length > 0 && !showAllNoFee;
+  const showTable = !loading && displayFees.length > 0;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -273,14 +272,6 @@ export default function CollectionsPage() {
         ) : (
           <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/40">No students found</div>
         )
-      ) : showAllNoFee ? (
-        <div className="rounded-xl border border-warm-card-border p-12 text-center">
-          <p className="text-sm text-warm-muted/60 mb-4">No fee structures generated for {MONTHS[month]} {year} yet</p>
-          <button onClick={() => router.push('/admin/fees/generate')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-5 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-            Generate Now
-          </button>
-        </div>
       ) : showTable ? (
       <div className="rounded-xl border border-warm-card-border overflow-hidden">
         <div className="overflow-x-auto">

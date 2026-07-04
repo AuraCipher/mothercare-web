@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
+import { scopeQuery } from '@/lib/api';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EDIT_LOCK_DAYS = 7; // Can't edit attendance older than this many days
 
@@ -112,9 +113,11 @@ export default function AttendancePage() {
     };
   }, [date, viewMode, today]);
 
-  const loadUrl = viewMode === 'day'
-    ? `${config.apiUrl}/admin/attendance?date=${date}${groupId ? `&groupId=${groupId}` : ''}`
-    : `${config.apiUrl}/admin/attendance?from=${dateRange.from}&to=${dateRange.to}${groupId ? `&groupId=${groupId}` : ''}`;
+  const loadUrl = `${config.apiUrl}/admin/attendance${scopeQuery(
+    viewMode === 'day'
+      ? { date, ...(groupId ? { groupId } : {}) }
+      : { from: dateRange.from, to: dateRange.to, ...(groupId ? { groupId } : {}) },
+  )}`;
 
   useEffect(() => {
     if (branchId && ayId) {

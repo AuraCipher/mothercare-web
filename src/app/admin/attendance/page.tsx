@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import config from '@/config';
+import { scopeQuery } from '@/lib/api';
 
 function localDateStr(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -40,7 +41,7 @@ export default function AttendanceDashboard() {
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      fetch(`${config.apiUrl}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${config.apiUrl}/admin/stats${scopeQuery()}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       branchId && ayId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()) : Promise.resolve({ success: false }),
     ]).then(([sRes, secRes]) => {
       if (sRes.success) setStats(sRes.data);
@@ -60,12 +61,11 @@ export default function AttendanceDashboard() {
       days = dashPeriod === 'daily' ? 7 : dashPeriod === 'weekly' ? 35 : dashPeriod === 'monthly' ? new Date().getDate() : 365;
       from = localDateStr(new Date(Date.now() - days * 86400000));
     }
-    const groupParam = dashGroupId ? `&groupId=${dashGroupId}` : '';
-
+    const groupParam = dashGroupId ? { groupId: dashGroupId } : undefined;
     try {
       const [sRes, tRes] = await Promise.all([
-        fetch(`${config.apiUrl}/admin/attendance?from=${from}&to=${to}${groupParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/attendance/teachers?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/attendance${scopeQuery({ from, to, ...groupParam })}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/attendance/teachers${scopeQuery({ from, to })}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
 
       if (sRes.success) setStudents(sRes.data || []);

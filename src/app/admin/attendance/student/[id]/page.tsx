@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Calendar } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
+import { scopeQuery } from '@/lib/api';
 
 type AttRecord = { date: string; status: string; note?: string };
 
@@ -62,7 +63,7 @@ export default function StudentAttendanceDetail() {
 
     setLoading(true);
     Promise.all([
-      fetch(`${config.apiUrl}/admin/students/${id}/attendance?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${config.apiUrl}/admin/students/${id}/attendance${scopeQuery({ from, to })}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch(`${config.apiUrl}/admin/students/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([attRes, stuRes]) => {
       if (stuRes.success) setStudent(stuRes.data);

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
+import { scopeQuery } from '@/lib/api';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function localDateStr(d: Date): string {
@@ -90,9 +91,11 @@ export default function TeacherAttendancePage() {
     };
   }, [date, viewMode, today]);
 
-  const loadUrl = viewMode === 'day'
-    ? `${config.apiUrl}/admin/attendance/teachers?date=${date}`
-    : `${config.apiUrl}/admin/attendance/teachers?from=${dateRange.from}&to=${dateRange.to}`;
+  const loadUrl = `${config.apiUrl}/admin/attendance/teachers${scopeQuery(
+    viewMode === 'day'
+      ? { date }
+      : { from: dateRange.from, to: dateRange.to },
+  )}`;
 
   const loadAttendance = useCallback(async () => {
     if (!token) return;

@@ -33,6 +33,8 @@ export default function GenerateFeesPage() {
   const [result, setResult] = useState<{
     generated: number; skipped: number; updated: number; total: number;
     deleted?: number; protected?: number; mode?: string;
+    structuresCopied?: number; groupsProvisioned?: string[];
+    skippedNoStructure?: number;
   } | null>(null);
   const [loadingHeads, setLoadingHeads] = useState(true);
   const [loadingSections, setLoadingSections] = useState(true);
@@ -158,8 +160,16 @@ export default function GenerateFeesPage() {
       if (json.success) {
         setResult(json.data);
         const d = json.data;
-        if (mode === 'generate') showToast('success', `Generated ${d.generated} new fees`);
-        else if (mode === 'update') showToast('success', `Updated ${d.updated} fees`);
+        if (mode === 'generate') {
+          let msg = `Generated ${d.generated} new fees`;
+          if (d.structuresCopied > 0) {
+            msg += ` · set up ${d.structuresCopied} fee structure(s) for ${d.groupsProvisioned?.length ?? 0} class(es)`;
+          }
+          if (d.generated === 0 && d.skipped > 0) {
+            msg += ` (${d.skipped} already had fees for this month)`;
+          }
+          showToast(d.generated > 0 || d.structuresCopied > 0 ? 'success' : 'error', msg);
+        } else if (mode === 'update') showToast('success', `Updated ${d.updated} fees`);
         else showToast('success', `Regenerated: ${d.generated} created, ${d.deleted ?? 0} deleted`);
       } else showToast('error', json.message || 'Failed');
     } catch { showToast('error', 'Failed'); }
@@ -328,9 +338,24 @@ export default function GenerateFeesPage() {
           <div className="rounded-lg border border-warm-card-border/30 bg-warm-card/50 p-4">
             <p className="text-xs text-warm-muted/50 uppercase tracking-wider mb-2">{result.mode || 'generate'} result</p>
             {result.mode === 'generate' && (
-              <p className="text-sm text-warm-cream">
-                Generated: <strong className="text-green-400">{result.generated}</strong>
-              </p>
+              <>
+                <p className="text-sm text-warm-cream">
+                  Generated: <strong className="text-green-400">{result.generated}</strong>
+                </p>
+                {(result.structuresCopied ?? 0) > 0 && (
+                  <p className="text-xs text-warm-muted/70 mt-1">
+                    Fee structures copied: <strong className="text-warm-accent">{result.structuresCopied}</strong>
+                    {result.groupsProvisioned && result.groupsProvisioned.length > 0 && (
+                      <span> for {result.groupsProvisioned.join(', ')}</span>
+                    )}
+                  </p>
+                )}
+                {(result.skippedNoStructure ?? 0) > 0 && (
+                  <p className="text-xs text-orange-300/90 mt-1">
+                    {result.skippedNoStructure} student(s) still have no fee structure for their class
+                  </p>
+                )}
+              </>
             )}
             {result.mode === 'update' && (
               <p className="text-sm text-warm-cream">

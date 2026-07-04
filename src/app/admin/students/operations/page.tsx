@@ -229,7 +229,11 @@ export default function StudentCredentialsPage() {
     try {
       const res = await fetch(`${config.apiUrl}/admin/students/send-to-new`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYearId: ayId,
+          branchId,
+        }),
       });
       const data = await res.json();
       if (data.success) showToast('success', `${data.data.sent} sent, ${data.data.skipped} skipped`);

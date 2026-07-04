@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Download, Printer, RefreshCw, Calendar, Users, ChevronDown } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
+import { scopeQuery } from '@/lib/api';
 
 type ReportData = {
   title: string;
@@ -80,10 +81,8 @@ export default function ReportsPage() {
     // Load attendance data
     const isTeacher = reportTarget === 'teacher';
     const url = isTeacher
-      ? `${config.apiUrl}/admin/attendance/teachers?from=${from}&to=${to}`
-      : groupId
-        ? `${config.apiUrl}/admin/attendance?from=${from}&to=${to}&groupId=${groupId}`
-        : `${config.apiUrl}/admin/attendance?from=${from}&to=${to}`;
+      ? `${config.apiUrl}/admin/attendance/teachers${scopeQuery({ from, to })}`
+      : `${config.apiUrl}/admin/attendance${scopeQuery({ from, to, ...(groupId ? { groupId } : {}) })}`;
 
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
