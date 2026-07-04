@@ -6,7 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '../helpers/test-utils';
 
 const mockGetSections = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/api', () => ({ api: { getSections: mockGetSections } }));
+import { mockScopeQuery } from '../helpers/mocks';
+
+vi.mock('@/lib/api', () => ({ api: { getSections: mockGetSections }, scopeQuery: mockScopeQuery }));
 vi.mock('@/components/toast', () => ({ showToast: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({}), usePathname: () => '/admin/attendance' }));
 

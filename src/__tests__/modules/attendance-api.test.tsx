@@ -14,8 +14,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/admin/attendance',
 }));
 
+import { mockScopeQuery } from '../helpers/mocks';
+
 vi.mock('@/lib/api', () => ({
   api: { getSections: mockGetSections },
+  scopeQuery: mockScopeQuery,
 }));
 
 vi.mock('@/components/toast', () => ({

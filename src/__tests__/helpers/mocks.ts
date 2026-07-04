@@ -98,3 +98,15 @@ export function createMockUser(
     ...overrides,
   };
 }
+
+/** Mock scopeQuery for tests — mirrors @/lib/api scopeQuery with fixed AY/branch. */
+export function mockScopeQuery(extra?: Record<string, string | undefined>): string {
+  const q = new URLSearchParams({ academicYearId: 'ay-1', branchId: 'b-1' });
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) q.set(k, v);
+    }
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
