@@ -17,16 +17,18 @@ export default function FeeReportsPage() {
   const [loading, setLoading] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const loadData = async () => {
-    if (!token) return;
+    if (!token || !ayId) return;
     setLoading(true);
     try {
       const m = month + 1;
+      const ayParam = `&academicYearId=${ayId}`;
       const [sRes, dRes, cRes] = await Promise.all([
-        fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        fetch(`${config.apiUrl}/admin/fees/collection-report?month=${m}&year=${year}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${year}${ayParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${year}${ayParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch(`${config.apiUrl}/admin/fees/collection-report?month=${m}&year=${year}${ayParam}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
       if (sRes.success) setSummary(sRes.data);
       if (dRes.success) setDefaulters(dRes.data);
@@ -34,7 +36,7 @@ export default function FeeReportsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [month, year]);
+  useEffect(() => { loadData(); }, [month, year, ayId]);
 
   const downloadCSV = () => {
     let csv = 'Class,Total Due,Collected,Pending,Students,Rate\n';

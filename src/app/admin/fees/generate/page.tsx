@@ -23,6 +23,7 @@ export default function GenerateFeesPage() {
   const [result, setResult] = useState<{ generated: number; skipped: number; updated: number; total: number } | null>(null);
   const [loadingHeads, setLoadingHeads] = useState(true);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   // Fetch all fee heads on mount
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function GenerateFeesPage() {
 
   const handleGenerate = async () => {
     if (!token) return;
+    if (!ayId) { showToast('error', 'Select an academic year first'); return; }
     setGenerating(true);
     setResult(null);
     try {
@@ -63,6 +65,7 @@ export default function GenerateFeesPage() {
           month: month + 1,
           year,
           headIds: Array.from(selectedHeadIds),
+          academicYearId: ayId,
         }),
       });
       const json = await res.json();

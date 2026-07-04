@@ -10,19 +10,21 @@ export default function FeesDashboardPage() {
   const [summary, setSummary] = useState<any>(null);
   const [defaulters, setDefaulters] = useState<any[]>([]);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !ayId) return;
     const now = new Date();
     const m = now.getMonth() + 1;
     const y = now.getFullYear();
-    fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${y}`, {
+    const ayParam = `&academicYearId=${ayId}`;
+    fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${y}${ayParam}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(j => { if (j.success) setSummary(j.data); }).catch(() => {});
-    fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${y}&take=5`, {
+    fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${y}${ayParam}&take=5`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(j => { if (j.success) setDefaulters(j.data.slice(0, 5)); }).catch(() => {});
-  }, []);
+  }, [ayId]);
 
   const cards = [
     { icon: DollarSign, label: 'Fee Heads', desc: 'Manage what to charge', href: '/admin/fees/heads', color: 'text-green-400' },

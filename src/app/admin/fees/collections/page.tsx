@@ -27,14 +27,15 @@ export default function CollectionsPage() {
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const loadData = async () => {
-    if (!token) return;
+    if (!token || !ayId) return;
     setLoading(true);
     try {
+      const ayParam = `&academicYearId=${ayId}`;
       const [fRes, sRes] = await Promise.all([
-        fetch(`${config.apiUrl}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}`, {
+        fetch(`${config.apiUrl}/admin/fees/students-list?month=${month + 1}&year=${year}&period=${period}${ayParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()),
-        branchId && ayId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
+        branchId ? fetch(`${config.apiUrl}/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json()) : Promise.resolve({ success: false }),
       ]);
@@ -43,7 +44,7 @@ export default function CollectionsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [month, year, period]);
+  useEffect(() => { loadData(); }, [month, year, period, ayId]);
 
   // Get father name from parents array
   const getFather = (student: any) => {
