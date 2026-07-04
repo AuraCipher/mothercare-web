@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { ArrowLeft, Users, CreditCard, History, Printer } from 'lucide-react';
 import config from '@/config';
@@ -21,6 +21,7 @@ function monthLabel(month: number, year: number) {
 export default function FamilyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [family, setFamily] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
@@ -46,6 +47,12 @@ export default function FamilyDetailPage() {
   }, [token, id, ayId]);
 
   useEffect(() => { loadFamily(); }, [loadFamily]);
+
+  useEffect(() => {
+    if (searchParams.get('pay') === '1' && family && !loading) {
+      setPayOpen(true);
+    }
+  }, [searchParams, family, loading]);
 
   const printFamilyReceipt = async (familyPaymentId: string) => {
     if (!token) return;
