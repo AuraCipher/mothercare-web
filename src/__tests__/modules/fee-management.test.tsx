@@ -27,7 +27,7 @@ vi.mock('lucide-react', () => ({
 }));
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
+  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1', collectionsPeriod: 'monthly' };
   return { getItem: (key: string) => store[key] || null, setItem: (k: string, v: string) => { store[k] = v; }, removeItem: (k: string) => { delete store[k]; }, clear: () => { store = {}; } };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
@@ -367,11 +367,11 @@ describe('CollectionsPage', () => {
     expect(await screen.findByText('Alphabetical')).toBeInTheDocument();
   });
 
-  it('shows No students found when empty', async () => {
-    global.fetch = mockFetch({ success: true, data: [] });
+  it('shows monthly empty state when no generated fees', async () => {
+    global.fetch = mockCollectionsFetch([]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    expect(await screen.findByText('No students found')).toBeInTheDocument();
+    expect(await screen.findByText(/No fees generated for/)).toBeInTheDocument();
   });
 
   it('renders student rows with data', async () => {
@@ -400,7 +400,6 @@ describe('CollectionsPage', () => {
     global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
     expect(urls.some(u => u.includes('period=monthly'))).toBe(true);
   });
@@ -409,7 +408,6 @@ describe('CollectionsPage', () => {
     global.fetch = mockCollectionsFetch([]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     expect(await screen.findByText(/No fees generated for/)).toBeInTheDocument();
     expect(await screen.findByText('Generate Now')).toBeInTheDocument();
   });
@@ -420,7 +418,6 @@ describe('CollectionsPage', () => {
     ]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     expect(await screen.findByText('Ahmed')).toBeInTheDocument();
     expect(screen.queryByText('Sara')).not.toBeInTheDocument();
   });
@@ -429,6 +426,7 @@ describe('CollectionsPage', () => {
     global.fetch = mockCollectionsFetch([]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Full AY'));
     expect(await screen.findByText('No students found')).toBeInTheDocument();
   });
 
@@ -437,7 +435,6 @@ describe('CollectionsPage', () => {
     global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     await waitFor(() => expect(urls.some(u => u.includes('month='))).toBe(true));
     expect(urls.some(u => u.includes('year='))).toBe(true);
   });
@@ -448,7 +445,6 @@ describe('CollectionsPage', () => {
     ]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     expect(await screen.findByText('Ahmed')).toBeInTheDocument();
     expect(await screen.findAllByText('Pay')).toHaveLength(1);
   });
@@ -460,6 +456,33 @@ describe('CollectionsPage', () => {
     render(<CollectionsPage />);
     fireEvent.click(await screen.findByText('Full AY'));
     await waitFor(() => expect(urls.some(u => u.includes('period=full'))).toBe(true));
+  });
+
+  it('defaults to monthly view on load', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    await waitFor(() => expect(urls.some(u => u.includes('period=monthly'))).toBe(true));
+  });
+
+  it('shows summary strip when students loaded', async () => {
+    global.fetch = mockCollectionsFetch([
+      { student: { id: 's1', name: 'Ahmed', rollNumber: '1', group: { name: 'Class 2' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL', fee: { id: 'sf1' } },
+    ]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    expect(await screen.findByText(/students/)).toBeInTheDocument();
+    expect(await screen.findByText('Outstanding')).toBeInTheDocument();
+  });
+
+  it('passes search query to server after debounce', async () => {
+    const urls: string[] = [];
+    global.fetch = mockCollectionsFetch([], (url) => urls.push(url));
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    fireEvent.change(await screen.findByPlaceholderText(/Search by name/), { target: { value: 'Ahmed' } });
+    await waitFor(() => expect(urls.some(u => u.includes('search=Ahmed'))).toBe(true), { timeout: 2000 });
   });
 });
 

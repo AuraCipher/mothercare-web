@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
 
 let lsStore: Record<string, string> = {};
 function setupLS() {
-  lsStore = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
+  lsStore = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1', collectionsPeriod: 'monthly' };
   try { Object.defineProperty(window, 'localStorage', { value: { getItem: (k: string) => lsStore[k] || null, setItem: (k: string, v: string) => { lsStore[k] = v; }, removeItem: (k: string) => { delete lsStore[k]; }, clear: () => { lsStore = {}; } } }); } catch {}
 }
 
@@ -52,7 +52,6 @@ describe('Collections — Advanced', () => {
   it('monthly empty state shows generate prompt', async () => {
     global.fetch = mockFetch({ success: true, data: [] });
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     expect(await screen.findByText(/No fees generated for/)).toBeInTheDocument();
     expect(await screen.findByText('Generate Now')).toBeInTheDocument();
   });
@@ -61,7 +60,6 @@ describe('Collections — Advanced', () => {
       { student: { id: 's1', name: 'Ahmed', group: { name: 'Class 2' }, parents: [] }, netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' } },
     ] });
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     expect(await screen.findByText('Ahmed')).toBeInTheDocument();
     expect(screen.queryByText('Not generated')).not.toBeInTheDocument();
   });
@@ -72,13 +70,13 @@ describe('Collections — Advanced', () => {
       return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
     });
     render(<CollectionsPage />);
-    fireEvent.click(await screen.findByText('Monthly'));
     await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
     expect(urls.some(u => u.includes('period=monthly'))).toBe(true);
   });
   it('shows due for PARTIAL', async () => {
-    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL' }] }); render(<CollectionsPage />);
-    expect(await screen.findByText('3,000')).toBeInTheDocument();
+    global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 200000, status: 'PARTIAL', fee: { id: 'sf1' } }] }); render(<CollectionsPage />);
+    const matches = await screen.findAllByText('3,000');
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
   it('shows PAID badge', async () => {
     global.fetch = mockFetch({ success: true, data: [{ student: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [] }, netAmount: 500000, paidAmount: 500000, status: 'PAID' }] }); render(<CollectionsPage />);
@@ -90,6 +88,7 @@ describe('Collections — Advanced', () => {
   });
   it('shows empty state for full AY', async () => {
     global.fetch = mockFetch({ success: true, data: [] }); render(<CollectionsPage />);
+    fireEvent.click(await screen.findByText('Full AY'));
     expect(await screen.findByText('No students found')).toBeInTheDocument();
   });
   it('shows Pay button', async () => {
