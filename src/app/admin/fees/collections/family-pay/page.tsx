@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Search, Users, Printer, Download } from 'lucide-react';
 import config from '@/config';
@@ -14,6 +15,8 @@ function feeDuePaise(fee: { netAmount: number; paidAmount: number; extraItems?: 
 }
 
 export default function FamilyPayPage() {
+  const searchParams = useSearchParams();
+  const familyIdParam = searchParams.get('familyId');
   const [searchQuery, setSearchQuery] = useState('');
   const [families, setFamilies] = useState<any[]>([]);
   const [selectedFamily, setSelectedFamily] = useState<any>(null);
@@ -38,7 +41,7 @@ export default function FamilyPayPage() {
     } catch { showToast('error', 'Search failed'); }
   };
 
-  const selectFamily = (family: any) => {
+  const selectFamily = useCallback((family: any) => {
     setSelectedFamily(family);
     const p: Record<string, any> = {};
     for (const s of family.students || []) {
@@ -49,7 +52,29 @@ export default function FamilyPayPage() {
     }
     setPayments(p);
     setReceipt(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!token || !ayId || !familyIdParam) return;
+    (async () => {
+      try {
+        const res = await fetch(`${config.apiUrl}/admin/families/${familyIdParam}?academicYearId=${ayId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const mapped = {
+            ...json.data,
+            students: (json.data.students || []).map((s: any) => ({
+              ...s,
+              studentFees: (s.studentFees || []).filter((f: any) => (f.remainingPaise ?? 0) > 0),
+            })).filter((s: any) => (s.studentFees?.length ?? 0) > 0),
+          };
+          if ((mapped.students?.length ?? 0) > 0) selectFamily(mapped);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [token, ayId, familyIdParam, selectFamily]);
 
   const handleSubmit = async () => {
     if (!token || !selectedFamily || !ayId) return;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, Users, FileText, Calendar, Printer, BarChart, ArrowRight } from 'lucide-react';
+import { DollarSign, Users, FileText, Calendar, BarChart, ArrowRight } from 'lucide-react';
 import config from '@/config';
 
 export default function FeesDashboardPage() {
@@ -31,7 +31,7 @@ export default function FeesDashboardPage() {
     { icon: Users, label: 'Fee Structures', desc: 'Set amounts per class', href: '/admin/fees/structures', color: 'text-blue-400' },
     { icon: Calendar, label: 'Generate Fees', desc: 'Create monthly fees', href: '/admin/fees/generate', color: 'text-yellow-400' },
     { icon: FileText, label: 'Collections', desc: 'Record payments & dues', href: '/admin/fees/collections', color: 'text-pink-400' },
-    { icon: Printer, label: 'Family Pay', desc: 'Pay for siblings together', href: '/admin/fees/collections/family-pay', color: 'text-purple-400' },
+    { icon: Users, label: 'Families', desc: 'Group siblings & pay together', href: '/admin/fees/families', color: 'text-purple-400' },
     { icon: BarChart, label: 'Reports', desc: 'Collection stats & defaulters', href: '/admin/fees/reports', color: 'text-cyan-400' },
   ];
 
@@ -69,9 +69,9 @@ export default function FeesDashboardPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
             <Calendar size={13} /> Generate Monthly Fees
           </button>
-          <button onClick={() => router.push('/admin/fees/collections/family-pay')}
+          <button onClick={() => router.push('/admin/fees/families')}
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-            <Printer size={13} /> Combined Family Pay
+            <Users size={13} /> Manage Families
           </button>
           <button onClick={() => router.push('/admin/fees/reports')}
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
