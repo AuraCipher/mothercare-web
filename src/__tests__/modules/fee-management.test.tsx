@@ -25,7 +25,8 @@ vi.mock('lucide-react', () => ({
   ArrowLeft: 'div', ArrowRight: 'div', Printer: 'div', Save: 'div', Download: 'div',
   Search: 'div', DollarSign: 'div', Plus: 'div', Users: 'div', FileText: 'div',
   Calendar: 'div', ChevronDown: 'div', ChevronRight: 'div', Trash2: 'div',
-  RefreshCw: 'div', CheckCircle: 'div', BarChart: 'div', Edit3: 'div', X: 'div',
+  RefreshCw: 'div', CheckCircle: 'div', BarChart: 'div', BarChart3: 'div', TrendingUp: 'div',
+  AlertTriangle: 'div', Edit3: 'div', X: 'div',
 }));
 
 const localStorageMock = (() => {
@@ -35,6 +36,19 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 const mockFetch = (data: any) => vi.fn(() => Promise.resolve({ json: () => Promise.resolve(data) }));
+
+const mockAnalytics = (summary: any, extra: any = {}) => ({
+  success: true,
+  data: {
+    summary,
+    topDefaulters: [],
+    classBreakdown: [],
+    paymentMethods: [],
+    monthlyTrend: [],
+    statusBreakdown: { paid: 0, partial: 0, unpaid: 0, overpaid: 0 },
+    ...extra,
+  },
+});
 
 const mockHeads = [
   { id: 'fh1', name: 'Tuition', category: 'MONTHLY', isActive: true, isOptional: false, description: null },
@@ -602,11 +616,17 @@ describe('FeeReportsPage', () => {
     expect(await screen.findByText('By Class')).toBeInTheDocument();
   });
 
-  it('renders summary stats cards', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 50000000, totalCollected: 30000000, pendingCount: 45, collectionRate: 60 } });
+  it('shows Payment Methods tab', async () => {
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 0, totalCollected: 0, outstanding: 0, pendingCount: 0, totalStudents: 0, collectionRate: 0 }));
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    fireEvent.click(await screen.findByText('Summary'));
+    expect(await screen.findByText('Payment Methods')).toBeInTheDocument();
+  });
+
+  it('renders summary stats cards', async () => {
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
+    const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
+    render(<FeeReportsPage />);
     expect(await screen.findByText('500,000')).toBeInTheDocument();
   });
 });
@@ -619,14 +639,14 @@ describe('FeesDashboardPage', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it('renders page title', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 10000000, totalCollected: 7000000, pendingCount: 50, collectionRate: 70 } });
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 10000000, totalCollected: 7000000, outstanding: 3000000, pendingCount: 50, totalStudents: 100, collectionRate: 70 }));
     const { default: FeesDashboardPage } = await import('@/app/admin/fees/page');
     render(<FeesDashboardPage />);
     expect(await screen.findByText('Fees & Payments')).toBeInTheDocument();
   });
 
-  it('shows all 6 feature cards', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 10000000, totalCollected: 7000000, pendingCount: 50, collectionRate: 70 } });
+  it('shows all 7 feature cards', async () => {
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 10000000, totalCollected: 7000000, outstanding: 3000000, pendingCount: 50, totalStudents: 100, collectionRate: 70 }));
     const { default: FeesDashboardPage } = await import('@/app/admin/fees/page');
     render(<FeesDashboardPage />);
     expect(await screen.findByText('Fee Heads')).toBeInTheDocument();
@@ -634,21 +654,22 @@ describe('FeesDashboardPage', () => {
     expect(await screen.findByText('Generate Fees')).toBeInTheDocument();
     expect(await screen.findByText('Collections')).toBeInTheDocument();
     expect(await screen.findByText('Families')).toBeInTheDocument();
+    expect(await screen.findByText('Analytics')).toBeInTheDocument();
     expect(await screen.findByText('Reports')).toBeInTheDocument();
   });
 
   it('shows Quick Actions section', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 10000000, totalCollected: 7000000, pendingCount: 50, collectionRate: 70 } });
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 10000000, totalCollected: 7000000, outstanding: 3000000, pendingCount: 50, totalStudents: 100, collectionRate: 70 }));
     const { default: FeesDashboardPage } = await import('@/app/admin/fees/page');
     render(<FeesDashboardPage />);
     expect(await screen.findByText('Quick Actions')).toBeInTheDocument();
   });
 
-  it('shows This Month Summary', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 10000000, totalCollected: 7000000, pendingCount: 50, collectionRate: 70 } });
+  it('shows This Month summary', async () => {
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 10000000, totalCollected: 7000000, outstanding: 3000000, pendingCount: 50, totalStudents: 100, collectionRate: 70 }));
     const { default: FeesDashboardPage } = await import('@/app/admin/fees/page');
     render(<FeesDashboardPage />);
-    expect(await screen.findByText('This Month Summary')).toBeInTheDocument();
+    expect(await screen.findByText('This Month')).toBeInTheDocument();
   });
 });
 

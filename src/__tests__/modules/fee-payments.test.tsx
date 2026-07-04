@@ -21,7 +21,7 @@ vi.mock('lucide-react', () => ({
   ArrowLeft: 'div', ArrowRight: 'div', Printer: 'div', Save: 'div', Plus: 'div',
   ChevronDown: 'div', ChevronRight: 'div', Trash2: 'div', Download: 'div', Search: 'div',
   DollarSign: 'div', Users: 'div', FileText: 'div', Calendar: 'div', RefreshCw: 'div',
-  CheckCircle: 'div', BarChart: 'div', Edit3: 'div', X: 'div',
+  CheckCircle: 'div', BarChart: 'div', BarChart3: 'div', TrendingUp: 'div', Edit3: 'div', X: 'div',
 }));
 
 vi.mock('next/navigation', () => ({
@@ -188,15 +188,21 @@ describe('FamilyPayRedirect — legacy route', () => {
 });
 
 describe('FeeReports', () => {
+  const mockAnalytics = (summary: any) => ({
+    success: true,
+    data: { summary, topDefaulters: [], classBreakdown: [], paymentMethods: [], monthlyTrend: [], statusBreakdown: {} },
+  });
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
   it('shows tabs', async () => {
-    global.fetch = mockFetch({ success: true, data: {} }); render(<FeeReportsPage />);
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 0, totalCollected: 0, outstanding: 0, pendingCount: 0, totalStudents: 0, collectionRate: 0 }));
+    render(<FeeReportsPage />);
     expect(await screen.findByText('Summary')).toBeInTheDocument();
     expect(await screen.findByText('Defaulters')).toBeInTheDocument();
     expect(await screen.findByText('By Class')).toBeInTheDocument();
   });
   it('shows stats', async () => {
-    global.fetch = mockFetch({ success: true, data: { totalDue: 50000000, totalCollected: 30000000, pendingCount: 45, collectionRate: 60 } }); render(<FeeReportsPage />);
+    global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
+    render(<FeeReportsPage />);
     expect(await screen.findByText('500,000')).toBeInTheDocument();
   });
 });
