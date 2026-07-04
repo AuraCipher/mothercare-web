@@ -3,26 +3,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { ArrowLeft, Save, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Save, Printer, Download, ChevronDown } from 'lucide-react';
 import config from '@/config';
 import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
 import type { ReceiptData } from '@/lib/receipt';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// ─── Selectable item shapes ──────────────────────────────────────────
-// One flat, fixed-order list drives both auto-select and manual
-// checkbox behavior. Order is the contract: previous months oldest →
-// newest, then current-month fee heads in structure order, then
-// current-month extras in creation order. This exact order is used both
-// to decide what gets auto-checked on load AND to decide which checked
-// item absorbs the shortfall when checked total exceeds the amount
-// being paid (whichever item crosses the cap, in this order, is the one
-// that gets partially funded — never split across two items).
 type Item =
   | { kind: 'previousMonth'; key: string; studentFeeId: string; label: string; duePaise: number }
-  | { kind: 'head'; key: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number }
-  | { kind: 'extra'; key: string; studentFeeId: string; feeExtraItemId: string; label: string; duePaise: number };
+  | { kind: 'head'; key: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number; monthLabel: string }
+  | { kind: 'extra'; key: string; studentFeeId: string; feeExtraItemId: string; label: string; duePaise: number; monthLabel: string };
 
 export default function AllocatePaymentPage() {
   const params = useParams();
@@ -36,6 +27,7 @@ export default function AllocatePaymentPage() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [currentMonthOpen, setCurrentMonthOpen] = useState(true);
 
   // ─── Load the pending payment (amount/method/reference from Step 0) ──
   useEffect(() => {
@@ -57,71 +49,67 @@ export default function AllocatePaymentPage() {
       .finally(() => setLoading(false));
   }, [studentId, token]);
 
-  // ─── Build the fixed-order item list ──────────────────────────────
-  const items: Item[] = useMemo(() => {
-    if (!data) return [];
+  // ─── Build grouped items: current month (collapsible) + previous months ──
+  const { currentMonthItems, previousItems, currentMonthLabel } = useMemo(() => {
+    if (!data) return { currentMonthItems: [] as Item[], previousItems: [] as Item[], currentMonthLabel: '' };
     const fees = (data.studentFees || []) as any[];
     const getExtra = (f: any) => (f.extraItems || []).reduce((s: number, e: any) => s + e.amount, 0);
     const getDue = (f: any) => f.netAmount + getExtra(f) - f.paidAmount;
 
     const withDue = fees.filter(f => getDue(f) > 0);
-    if (withDue.length === 0) return [];
+    if (withDue.length === 0) return { currentMonthItems: [] as Item[], previousItems: [] as Item[], currentMonthLabel: '' };
 
-    // Current month = most recent open month. Previous months = every
-    // other open month, oldest → newest (matches waterfall's own order).
+    // Current month = most recent open month
     const sorted = [...withDue].sort((a, b) => (a.year - b.year) || (a.month - b.month));
     const currentFee = sorted[sorted.length - 1];
+    const currentLabel = `${MONTHS[(currentFee.month || 1) - 1]} ${currentFee.year}`;
     const previousFees = sorted.slice(0, -1);
 
-    const list: Item[] = [];
-    for (const f of previousFees) {
-      list.push({
-        kind: 'previousMonth',
-        key: `prev:${f.id}`,
-        studentFeeId: f.id,
-        label: `${MONTHS[(f.month || 1) - 1]} ${f.year}`,
-        duePaise: getDue(f),
-      });
-    }
+    const prev: Item[] = previousFees.map(f => ({
+      kind: 'previousMonth',
+      key: `prev:${f.id}`,
+      studentFeeId: f.id,
+      label: `${MONTHS[(f.month || 1) - 1]} ${f.year}`,
+      duePaise: getDue(f),
+    }));
 
-    // Current month heads, in structure order (as stored in feeHeadBreakdown)
-    const breakdown = (currentFee.feeHeadBreakdown as any[]) || [];
-    for (const h of breakdown) {
-      if ((h.amount || 0) <= 0) continue;
-      list.push({
-        kind: 'head',
+    const heads: Item[] = ((currentFee.feeHeadBreakdown as any[]) || [])
+      .filter((h: any) => (h.amount || 0) > 0)
+      .map((h: any) => ({
+        kind: 'head' as const,
         key: `head:${currentFee.id}:${h.feeHeadId || h.name}`,
         studentFeeId: currentFee.id,
         feeHeadId: h.feeHeadId,
         headName: h.name,
         label: h.name,
         duePaise: h.amount,
-      });
-    }
+        monthLabel: currentLabel,
+      }));
 
-    // Current month extras, in creation order
-    const extras = [...(currentFee.extraItems || [])].sort(
-      (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-    for (const e of extras) {
-      list.push({
-        kind: 'extra',
+    const extras: Item[] = [...(currentFee.extraItems || [])]
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .map((e: any) => ({
+        kind: 'extra' as const,
         key: `extra:${currentFee.id}:${e.id}`,
         studentFeeId: currentFee.id,
         feeExtraItemId: e.id,
         label: e.name,
         duePaise: e.amount,
-      });
-    }
-    return list;
+        monthLabel: currentLabel,
+      }));
+
+    return { currentMonthItems: [...heads, ...extras], previousItems: prev, currentMonthLabel: currentLabel };
   }, [data]);
+
+  // All items in fixed order for auto-select & funding logic
+  const items: Item[] = useMemo(
+    () => [...previousItems, ...currentMonthItems],
+    [previousItems, currentMonthItems],
+  );
 
   const amountToPay = pending?.amountPaise || 0;
 
-  // ─── Auto-select on load: walk fixed order, stop once cumulative due
-  // reaches amountToPay. The item that crosses the line is still
-  // checked — it just gets partially funded (computed below), never
-  // left unchecked. ──────────────────────────────────────────────────
+  // ─── Auto-select on load ────────────────────────────────────────────
   useEffect(() => {
     if (items.length === 0 || !pending) return;
     const auto = new Set<string>();
@@ -132,12 +120,9 @@ export default function AllocatePaymentPage() {
       running += item.duePaise;
     }
     setChecked(auto);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length, pending?.amountPaise]);
 
-  // ─── Funded amount per checked item — fixed-order walk, cumulative
-  // capped at amountToPay. Whichever checked item crosses the cap (in
-  // list order, not click order) absorbs the shortfall alone. ─────────
+  // ─── Funded amount per checked item ──────────────────────────────────
   const { fundedByKey, selectedDueSum, fundedTotal } = useMemo(() => {
     const funded = new Map<string, number>();
     let running = 0;
@@ -164,7 +149,7 @@ export default function AllocatePaymentPage() {
       return;
     }
     if (capReached) {
-      showToast('error', `Selected amount already covers ${(amountToPay / 100).toLocaleString()} PKR — uncheck something first to add ${item.label}`);
+      showToast('error', `Already covers ${(amountToPay / 100).toLocaleString()} PKR — uncheck something first`);
       return;
     }
     const next = new Set(checked);
@@ -176,11 +161,11 @@ export default function AllocatePaymentPage() {
     if (!token || !canSubmit || !pending) return;
     setSubmitting(true);
     try {
-      const previousMonths = items
-        .filter(i => i.kind === 'previousMonth' && checked.has(i.key))
-        .map(i => ({ studentFeeId: (i as any).studentFeeId, amountPaise: fundedByKey.get(i.key) || 0 }));
-      const headItems = items.filter(i => i.kind === 'head' && checked.has(i.key)) as any[];
-      const extraItems = items.filter(i => i.kind === 'extra' && checked.has(i.key)) as any[];
+      const previousMonths = previousItems
+        .filter(i => checked.has(i.key))
+        .map(i => ({ studentFeeId: i.studentFeeId, amountPaise: fundedByKey.get(i.key) || 0 }));
+      const headItems = currentMonthItems.filter(i => i.kind === 'head' && checked.has(i.key));
+      const extraItems = currentMonthItems.filter(i => i.kind === 'extra' && checked.has(i.key));
       const currentStudentFeeId = headItems[0]?.studentFeeId || extraItems[0]?.studentFeeId;
 
       const payload: any = {
@@ -193,8 +178,8 @@ export default function AllocatePaymentPage() {
       if (currentStudentFeeId) {
         payload.currentMonth = {
           studentFeeId: currentStudentFeeId,
-          heads: headItems.map(h => ({ feeHeadId: h.feeHeadId, headName: h.headName, amountPaise: fundedByKey.get(h.key) || 0 })),
-          extras: extraItems.map(e => ({ feeExtraItemId: e.feeExtraItemId, amountPaise: fundedByKey.get(e.key) || 0 })),
+          heads: headItems.map(h => ({ feeHeadId: (h as any).feeHeadId, headName: (h as any).headName, amountPaise: fundedByKey.get(h.key) || 0 })),
+          extras: extraItems.map(e => ({ feeExtraItemId: (e as any).feeExtraItemId, amountPaise: fundedByKey.get(e.key) || 0 })),
         };
       }
 
@@ -309,37 +294,91 @@ export default function AllocatePaymentPage() {
         <div className="rounded-xl border border-warm-card-border p-6 text-center text-xs text-warm-muted/40">No dues found for this student.</div>
       ) : (
         <div className="rounded-xl border border-warm-card-border overflow-hidden mb-5">
-          {items.map(item => {
-            const isChecked = checked.has(item.key);
-            const funded = fundedByKey.get(item.key) || 0;
-            const isPartial = isChecked && funded > 0 && funded < item.duePaise;
-            const disabled = !isChecked && capReached;
-            return (
-              <label
-                key={item.key}
-                className={`flex items-center justify-between px-4 py-3 border-t border-warm-card-border/20 first:border-t-0 transition-colors ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-warm-card/20'}`}
-                onClick={(e) => { e.preventDefault(); if (!disabled || isChecked) toggle(item); }}
+
+          {/* ── Current Month (collapsible parent) ────────── */}
+          {currentMonthItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setCurrentMonthOpen(o => !o)}
+                className="flex items-center justify-between w-full px-4 py-3 border-b border-warm-card-border/20 bg-warm-card/20 hover:bg-warm-card/40 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={isChecked} readOnly className="accent-warm-accent" />
-                  <div>
-                    <p className="text-xs text-warm-cream">{item.label}</p>
-                    <p className="text-[10px] text-warm-muted/40">
-                      {item.kind === 'previousMonth' ? 'Previous month' : item.kind === 'head' ? 'Current month · fee head' : 'Current month · extra'}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <ChevronDown size={14} className={`text-warm-muted transition-transform duration-200 ${currentMonthOpen ? '' : '-rotate-90'}`} />
+                  <span className="text-xs font-medium text-warm-cream">{currentMonthLabel}</span>
+                  <span className="text-[10px] text-warm-accent/70">Current month</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-warm-muted/60">{(item.duePaise / 100).toLocaleString()} due</p>
-                  {isChecked && (
-                    <p className={`text-[10px] ${isPartial ? 'text-yellow-400' : 'text-green-400'}`}>
-                      {(funded / 100).toLocaleString()} applied{isPartial ? ` · ${((item.duePaise - funded) / 100).toLocaleString()} remains` : ''}
-                    </p>
-                  )}
+                  <p className="text-xs text-warm-muted/60">{currentMonthItems.reduce((s, i) => s + i.duePaise, 0) / 100} due</p>
                 </div>
-              </label>
-            );
-          })}
+              </button>
+
+              {/* Collapsible sub-rows */}
+              {currentMonthOpen && currentMonthItems.map(item => {
+                const isChecked = checked.has(item.key);
+                const funded = fundedByKey.get(item.key) || 0;
+                const isPartial = isChecked && funded > 0 && funded < item.duePaise;
+                const disabled = !isChecked && capReached;
+                return (
+                  <div
+                    key={item.key}
+                    className={`flex items-center justify-between px-4 py-2.5 pl-8 border-b border-warm-card-border/10 last:border-b-0 transition-colors ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-warm-card/10'}`}
+                    onClick={() => { if (!disabled || isChecked) toggle(item); }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <input type="checkbox" checked={isChecked} onChange={() => {}} className="accent-warm-accent scale-90" />
+                      <div>
+                        <p className="text-xs text-warm-cream">{item.label}</p>
+                        <p className="text-[10px] text-warm-muted/30">{item.kind === 'head' ? 'Fee head' : 'Extra'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-warm-muted/60">{(item.duePaise / 100).toLocaleString()} due</p>
+                      {isChecked && (
+                        <p className={`text-[10px] ${isPartial ? 'text-yellow-400' : 'text-green-400'}`}>
+                          {(funded / 100).toLocaleString()} applied{isPartial ? ` · ${((item.duePaise - funded) / 100).toLocaleString()} remains` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* ── Previous Months ──────────────────────────── */}
+          {previousItems.length > 0 && (
+            <div className="border-t border-warm-card-border/20">
+              {previousItems.map(item => {
+                const isChecked = checked.has(item.key);
+                const funded = fundedByKey.get(item.key) || 0;
+                const isPartial = isChecked && funded > 0 && funded < item.duePaise;
+                const disabled = !isChecked && capReached;
+                return (
+                  <div
+                    key={item.key}
+                    className={`flex items-center justify-between px-4 py-3 border-b border-warm-card-border/10 last:border-b-0 transition-colors ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-warm-card/20'}`}
+                    onClick={() => { if (!disabled || isChecked) toggle(item); }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={isChecked} onChange={() => {}} className="accent-warm-accent" />
+                      <div>
+                        <p className="text-xs text-warm-cream">{item.label}</p>
+                        <p className="text-[10px] text-warm-muted/40">Previous month</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-warm-muted/60">{(item.duePaise / 100).toLocaleString()} due</p>
+                      {isChecked && (
+                        <p className={`text-[10px] ${isPartial ? 'text-yellow-400' : 'text-green-400'}`}>
+                          {(funded / 100).toLocaleString()} applied{isPartial ? ` · ${((item.duePaise - funded) / 100).toLocaleString()} remains` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
