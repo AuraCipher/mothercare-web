@@ -8,6 +8,11 @@ import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/rec
 import type { ReceiptData } from '@/lib/receipt';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+function feeDuePaise(fee: { netAmount: number; paidAmount: number; extraItems?: { amount: number }[] }) {
+  const extra = (fee.extraItems || []).reduce((s, e) => s + e.amount, 0);
+  return Math.max(0, fee.netAmount + extra - fee.paidAmount);
+}
+
 export default function FamilyPayPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [families, setFamilies] = useState<any[]>([]);
@@ -17,11 +22,15 @@ export default function FamilyPayPage() {
   const [receipt, setReceipt] = useState<any>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const searchFamilies = async () => {
-    if (!token || !searchQuery.trim()) return;
+    if (!token || !searchQuery.trim() || !ayId) {
+      if (!ayId) showToast('error', 'Select an academic year first');
+      return;
+    }
     try {
-      const res = await fetch(`${config.apiUrl}/admin/families?search=${encodeURIComponent(searchQuery)}`, {
+      const res = await fetch(`${config.apiUrl}/admin/families?search=${encodeURIComponent(searchQuery)}&academicYearId=${ayId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -34,7 +43,7 @@ export default function FamilyPayPage() {
     const p: Record<string, any> = {};
     for (const s of family.students || []) {
       for (const f of s.studentFees || []) {
-        const due = (f.netAmount - f.paidAmount) / 100;
+        const due = feeDuePaise(f) / 100;
         p[f.id] = { amount: due > 0 ? due : 0, method: 'CASH', ref: '' };
       }
     }
@@ -43,7 +52,7 @@ export default function FamilyPayPage() {
   };
 
   const handleSubmit = async () => {
-    if (!token || !selectedFamily) return;
+    if (!token || !selectedFamily || !ayId) return;
     setSubmitting(true);
     const paymentList = Object.entries(payments)
       .filter(([, p]) => p.amount > 0)
@@ -55,7 +64,7 @@ export default function FamilyPayPage() {
       const res = await fetch(`${config.apiUrl}/admin/family-payments`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ familyId: selectedFamily.id, payments: paymentList }),
+        body: JSON.stringify({ familyId: selectedFamily.id, payments: paymentList, academicYearId: ayId }),
       });
       const json = await res.json();
       if (json.success) {
@@ -100,7 +109,6 @@ export default function FamilyPayPage() {
   const fetchAndPrintReceipt = async (action: 'print' | 'download') => {
     let receiptData: ReceiptData | null = null;
 
-    // Try to fetch snapshot from first payment in the family
     const firstPaymentId = receipt?.familyPayment?.payments?.[0]?.id;
     if (firstPaymentId && token) {
       try {
@@ -139,7 +147,6 @@ export default function FamilyPayPage() {
     if (action === 'print') upgradedPrintReceipt(receiptData);
     else downloadReceipt(receiptData);
 
-    // Track
     if (firstPaymentId && token) {
       try {
         await fetch(`${config.apiUrl}/admin/payments/${firstPaymentId}/print-receipt`, {
@@ -156,7 +163,6 @@ export default function FamilyPayPage() {
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-xl font-light text-warm-cream mb-6">Family Combined Payment</h1>
 
-      {/* Search */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
         <div className="flex items-center gap-3">
           <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchFamilies()}
@@ -169,7 +175,6 @@ export default function FamilyPayPage() {
         </div>
       </div>
 
-      {/* Family Results */}
       {families.length > 0 && !selectedFamily && (
         <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
           <table className="w-full text-sm">
@@ -188,7 +193,6 @@ export default function FamilyPayPage() {
         </div>
       )}
 
-      {/* Combined Payment Form */}
       {selectedFamily && !receipt && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -197,37 +201,45 @@ export default function FamilyPayPage() {
           </div>
 
           {selectedFamily.students?.map((student: any) => {
-            const fee = student.studentFees?.[0];
-            if (!fee) return null;
-            const p = payments[fee.id] || { amount: 0, method: 'CASH', ref: '' };
+            const fees = (student.studentFees || []) as any[];
+            if (fees.length === 0) return null;
             return (
-              <div key={student.id}>
-                {selectedFamily.students.indexOf(student) > 0 && <hr className="border-warm-card-border/30 my-4" />}
+              <div key={student.id} className="mb-6 last:mb-0">
                 <div className="mb-3">
                   <p className="text-sm text-warm-cream font-medium">{student.name}</p>
-                  <p className="text-[10px] text-warm-muted/60">{student.group?.name}{student.group?.section ? ` — ${student.group.section}` : ''} · Due: {((fee.netAmount - fee.paidAmount) / 100).toLocaleString()} PKR</p>
+                  <p className="text-[10px] text-warm-muted/60">{student.group?.name}{student.group?.section ? ` — ${student.group.section}` : ''}</p>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount</label>
-                    <input type="number" value={p.amount} onChange={e => setPayments({...payments, [fee.id]: {...p, amount: Number(e.target.value)}})}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Method</label>
-                    <select value={p.method} onChange={e => setPayments({...payments, [fee.id]: {...p, method: e.target.value}})}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
-                      <option value="CASH">Cash</option>
-                      <option value="CHEQUE">Cheque</option>
-                      <option value="BANK_TRANSFER">Bank Transfer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Ref</label>
-                    <input value={p.ref} onChange={e => setPayments({...payments, [fee.id]: {...p, ref: e.target.value}})}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" placeholder="Optional" />
-                  </div>
-                </div>
+                {fees.map((fee: any) => {
+                  const duePaise = feeDuePaise(fee);
+                  const p = payments[fee.id] || { amount: 0, method: 'CASH', ref: '' };
+                  const monthLabel = `${MONTHS[(fee.month || 1) - 1]} ${fee.year}`;
+                  return (
+                    <div key={fee.id} className="mb-4 pl-3 border-l border-warm-card-border/30">
+                      <p className="text-[10px] text-warm-muted/60 mb-2">{monthLabel} · Due: {(duePaise / 100).toLocaleString()} PKR</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount</label>
+                          <input type="number" value={p.amount} onChange={e => setPayments({...payments, [fee.id]: {...p, amount: Number(e.target.value)}})}
+                            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Method</label>
+                          <select value={p.method} onChange={e => setPayments({...payments, [fee.id]: {...p, method: e.target.value}})}
+                            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+                            <option value="CASH">Cash</option>
+                            <option value="CHEQUE">Cheque</option>
+                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Ref</label>
+                          <input value={p.ref} onChange={e => setPayments({...payments, [fee.id]: {...p, ref: e.target.value}})}
+                            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent" placeholder="Optional" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -242,7 +254,6 @@ export default function FamilyPayPage() {
         </div>
       )}
 
-      {/* Receipt Result */}
       {receipt && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 text-center">
           <p className="text-green-400 font-medium text-sm mb-2">✓ Payment Recorded</p>

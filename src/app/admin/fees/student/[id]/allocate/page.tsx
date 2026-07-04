@@ -20,6 +20,7 @@ export default function AllocatePaymentPage() {
   const router = useRouter();
   const studentId = params.id as string;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const [pending, setPending] = useState<{ amountPaise: number; paymentMethod: string; reference: string } | null>(null);
   const [data, setData] = useState<any>(null);
@@ -42,12 +43,12 @@ export default function AllocatePaymentPage() {
 
   // ─── Load student fee data ────────────────────────────────────────
   useEffect(() => {
-    if (!token || !studentId) return;
-    fetch(`${config.apiUrl}/admin/students/${studentId}/fee`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!token || !studentId || !ayId) return;
+    fetch(`${config.apiUrl}/admin/students/${studentId}/fee?academicYearId=${ayId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(json => { if (json.success) setData(json.data); })
       .finally(() => setLoading(false));
-  }, [studentId, token]);
+  }, [studentId, token, ayId]);
 
   // ─── Build grouped items: current month (collapsible) + previous months ──
   const { currentMonthItems, previousItems, currentMonthLabel } = useMemo(() => {

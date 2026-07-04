@@ -167,7 +167,47 @@ describe('GenerateFees', () => {
   });
 });
 
-// REPORTS
+// FAMILY PAY
+describe('FamilyPay — AY scope', () => {
+  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
+  it('family search includes academicYearId', async () => {
+    const urls: string[] = [];
+    global.fetch = vi.fn((url: string) => {
+      urls.push(url);
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
+    });
+    render(<FamilyPayPage />);
+    fireEvent.change(await screen.findByPlaceholderText(/Search by father name/), { target: { value: 'Ali' } });
+    fireEvent.click(await screen.findByText('Search'));
+    await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
+  });
+  it('shows multiple unpaid months per student', async () => {
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes('/families')) {
+        return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [{
+          id: 'fam1', fatherName: 'Ali', phone: '0300',
+          students: [{
+            id: 's1', name: 'Ahmed', group: { name: 'Class 2', section: 'A' },
+            studentFees: [
+              { id: 'sf1', month: 5, year: 2026, netAmount: 500000, paidAmount: 0, extraItems: [] },
+              { id: 'sf2', month: 6, year: 2026, netAmount: 500000, paidAmount: 100000, extraItems: [{ amount: 20000 }] },
+            ],
+          }],
+        }] }) } as any);
+      }
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
+    });
+    render(<FamilyPayPage />);
+    fireEvent.change(await screen.findByPlaceholderText(/Search by father name/), { target: { value: 'Ali' } });
+    fireEvent.click(await screen.findByText('Search'));
+    fireEvent.click(await screen.findByText('Select'));
+    await waitFor(() => {
+      expect(screen.getByText(/May 2026/)).toBeInTheDocument();
+      expect(screen.getByText(/Jun 2026/)).toBeInTheDocument();
+    });
+  });
+});
+
 describe('FeeReports', () => {
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
   it('shows tabs', async () => {

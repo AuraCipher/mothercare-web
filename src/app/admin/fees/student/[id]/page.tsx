@@ -26,11 +26,12 @@ export default function StudentFeeDetailPage() {
   const [addExtraAmt, setAddExtraAmt] = useState(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   const loadData = async () => {
-    if (!token || !params.id) return;
+    if (!token || !params.id || !ayId) return;
     try {
-      const res = await fetch(`${config.apiUrl}/admin/students/${params.id}/fee`, {
+      const res = await fetch(`${config.apiUrl}/admin/students/${params.id}/fee?academicYearId=${ayId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -38,7 +39,7 @@ export default function StudentFeeDetailPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [params.id]);
+  useEffect(() => { loadData(); }, [params.id, ayId]);
 
   const fees = data?.studentFees || [];
   const getExtraTotal = (sf: any) => (sf.extraItems || []).reduce((s: number, e: any) => s + e.amount, 0);
