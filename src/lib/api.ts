@@ -11,6 +11,28 @@ import config from '@/config';
  */
 const PUB_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY || '';
 
+/** Build branch + academic year query params from localStorage. */
+function buildScopeParams(extra?: Record<string, string | undefined>): URLSearchParams {
+  const q = new URLSearchParams();
+  if (typeof window !== 'undefined') {
+    const branchId = localStorage.getItem('activeBranchId');
+    const academicYearId = localStorage.getItem('activeAYId');
+    if (academicYearId) q.set('academicYearId', academicYearId);
+    if (branchId) q.set('branchId', branchId);
+  }
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) q.set(k, v);
+    }
+  }
+  return q;
+}
+
+export function scopeQuery(extra?: Record<string, string | undefined>): string {
+  const s = buildScopeParams(extra).toString();
+  return s ? `?${s}` : '';
+}
+
 export async function apiRequest<T = any>(
   path: string,
   options: RequestInit = {},
@@ -52,7 +74,7 @@ export const api = {
   meBranches: () => apiRequest('/me/branches'),
 
   stats: () =>
-    apiRequest('/admin/stats'),
+    apiRequest(`/admin/stats${scopeQuery()}`),
 
   logout: () =>
     apiRequest('/auth/logout', { method: 'POST' }),
@@ -80,7 +102,7 @@ export const api = {
     apiRequest(`/admin/branches/${id}`, { method: 'DELETE' }),
 
   getBranchStats: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}/stats`),
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}/stats${scopeQuery()}`),
 
   removeAdmin: (branchId: string, userId: string) =>
     apiRequest(`/admin/branches/${branchId}/remove-admin/${userId}`, { method: 'POST' }),
@@ -156,8 +178,11 @@ export const api = {
     apiRequest(`/admin/branches/${branchId}/sections/${id}`, { method: 'DELETE' }),
 
   // ─── Old groups (backward compat) ───────────────────
-  getGroups: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/admin/groups'),
+  getGroups: (params?: { section?: string }) => {
+    const q = buildScopeParams(params?.section ? { section: params.section } : undefined);
+    const qs = q.toString();
+    return apiRequest<{ success: boolean; data: any[] }>(`/admin/groups${qs ? `?${qs}` : ''}`);
+  },
 
   createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; academicYearId?: string }) =>
     apiRequest('/admin/groups', {
@@ -169,14 +194,16 @@ export const api = {
     apiRequest(`/admin/groups/${id}`, { method: 'DELETE' }),
 
   // ─── Students ────────────────────────────────────────────
-  getStudents: (params?: { search?: string; groupId?: string; academicYearId?: string; rollNumber?: string; page?: number; limit?: number }) => {
-    const q = new URLSearchParams();
-    if (params?.search) q.set('search', params.search);
-    if (params?.groupId) q.set('groupId', params.groupId);
-    if (params?.academicYearId) q.set('academicYearId', params.academicYearId);
-    if (params?.rollNumber) q.set('rollNumber', params.rollNumber);
-    if (params?.page) q.set('page', String(params.page));
-    if (params?.limit) q.set('limit', String(params.limit));
+  getStudents: (params?: { search?: string; groupId?: string; academicYearId?: string; branchId?: string; rollNumber?: string; page?: number; limit?: number }) => {
+    const q = buildScopeParams({
+      search: params?.search,
+      groupId: params?.groupId,
+      academicYearId: params?.academicYearId,
+      branchId: params?.branchId,
+      rollNumber: params?.rollNumber,
+      page: params?.page ? String(params.page) : undefined,
+      limit: params?.limit ? String(params.limit) : undefined,
+    });
     const qs = q.toString();
     return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/students${qs ? `?${qs}` : ''}`);
   },
