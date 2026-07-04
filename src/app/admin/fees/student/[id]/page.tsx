@@ -54,6 +54,19 @@ export default function StudentFeeDetailPage() {
     setShowPayModal(true);
   };
 
+  const handleGoToAllocate = () => {
+    if (!params.id || payAmount <= 0) return;
+    const amountPaise = Math.round(payAmount * 100);
+    if (amountPaise > totalRemainingPaise) {
+      showToast('error', `Amount exceeds total due (${totalRemainingPkr.toLocaleString()} PKR)`);
+      return;
+    }
+    sessionStorage.setItem(`pendingPayment:${params.id}`, JSON.stringify({
+      amountPaise, paymentMethod: payMethod, reference: payRef,
+    }));
+    router.push(`/admin/fees/student/${params.id}/allocate`);
+  };
+
   const handleWaterfallPay = async () => {
     if (!token || !params.id || payAmount <= 0) return;
     const amountPaise = Math.round(payAmount * 100);
@@ -658,9 +671,9 @@ export default function StudentFeeDetailPage() {
                   )}
                 </div>
                 <div className="flex gap-2 mt-5">
-                  <button onClick={handleWaterfallPay} disabled={saving || payAmount <= 0}
+                  <button onClick={handleGoToAllocate} disabled={payAmount <= 0}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-                    <Save size={13} /> {saving ? 'Processing...' : `Pay ${payAmount.toLocaleString()} PKR`}
+                    <Save size={13} /> Next
                   </button>
                   <button onClick={() => setShowPayModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
                 </div>
