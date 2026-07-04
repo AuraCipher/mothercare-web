@@ -156,9 +156,19 @@ export default function CollectionsPage() {
         </div>
       </div>
 
-      {/* Three states: empty → all NO_FEE → normal table */}
+      {/* Empty / no-fee / table */}
       {displayFees.length === 0 ? (
-        <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/40">No students found</div>
+        period === 'monthly' ? (
+          <div className="rounded-xl border border-warm-card-border p-12 text-center">
+            <p className="text-sm text-warm-muted/60 mb-4">No fees generated for {MONTHS[month]} {year} yet</p>
+            <button onClick={() => router.push('/admin/fees/generate')}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-5 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+              Generate Now
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/40">No students found</div>
+        )
       ) : displayFees.every((f: any) => f.status === 'NO_FEE') ? (
         <div className="rounded-xl border border-warm-card-border p-12 text-center">
           <p className="text-sm text-warm-muted/60 mb-4">No fee structures generated for {MONTHS[month]} {year} yet</p>
