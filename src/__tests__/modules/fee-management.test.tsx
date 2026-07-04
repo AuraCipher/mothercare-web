@@ -9,10 +9,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../helpers/test-utils';
 
 const mockPush = vi.hoisted(() => vi.fn());
+const mockReplace = vi.hoisted(() => vi.fn());
 const mockShowToast = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, back: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: mockPush, back: vi.fn(), replace: mockReplace }),
   useParams: () => ({ id: 's-1' }),
   usePathname: () => '/admin/fees',
   useSearchParams: () => new URLSearchParams(),
@@ -639,29 +640,24 @@ describe('FeesDashboardPage', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// FAMILY PAY PAGE
+// LEGACY FAMILY-PAY REDIRECT
 // ═══════════════════════════════════════════════════════════════════
 
-describe('FamilyPayPage', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+describe('FamilyPayRedirectPage', () => {
+  beforeEach(() => { vi.clearAllMocks(); mockReplace.mockClear(); });
 
-  it('renders page title', async () => {
-    const { default: FamilyPayPage } = await import('@/app/admin/fees/collections/family-pay/page');
-    render(<FamilyPayPage />);
-    expect(await screen.findByText('Family Combined Payment')).toBeInTheDocument();
+  it('shows redirect message', async () => {
+    const { default: FamilyPayRedirectPage } = await import('@/app/admin/fees/collections/family-pay/page');
+    render(<FamilyPayRedirectPage />);
+    expect(await screen.findByText(/Redirecting to Families/)).toBeInTheDocument();
   });
 
-  it('shows search input', async () => {
-    const { default: FamilyPayPage } = await import('@/app/admin/fees/collections/family-pay/page');
-    render(<FamilyPayPage />);
-    expect(await screen.findByPlaceholderText(/Search by father name/)).toBeInTheDocument();
-  });
-
-  it('shows Search button', async () => {
-    const { default: FamilyPayPage } = await import('@/app/admin/fees/collections/family-pay/page');
-    render(<FamilyPayPage />);
-    const searchBtns = await screen.findAllByText('Search');
-    expect(searchBtns.length).toBeGreaterThanOrEqual(1);
+  it('redirects to families hub by default', async () => {
+    const { default: FamilyPayRedirectPage } = await import('@/app/admin/fees/collections/family-pay/page');
+    render(<FamilyPayRedirectPage />);
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/admin/fees/families');
+    });
   });
 });
 

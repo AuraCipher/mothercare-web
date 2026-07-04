@@ -9,8 +9,10 @@ import { render, screen, fireEvent, waitFor } from '../helpers/test-utils';
 import CollectionsPage from '../../app/admin/fees/collections/page';
 import GenerateFeesPage from '../../app/admin/fees/generate/page';
 import FeeReportsPage from '../../app/admin/fees/reports/page';
-import FamilyPayPage from '../../app/admin/fees/collections/family-pay/page';
+import FamilyPayRedirectPage from '../../app/admin/fees/collections/family-pay/page';
 import FeeHeadsPage from '../../app/admin/fees/heads/page';
+
+const mockReplace = vi.hoisted(() => vi.fn());
 
 const mockShowToast = vi.hoisted(() => vi.fn());
 vi.mock('@/components/toast', () => ({ showToast: mockShowToast }));
@@ -23,9 +25,10 @@ vi.mock('lucide-react', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: mockReplace }),
   useParams: () => ({ id: 's-1' }),
   usePathname: () => '/admin/fees',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 let lsStore: Record<string, string> = {};
@@ -171,43 +174,15 @@ describe('GenerateFees', () => {
   });
 });
 
-// FAMILY PAY
-describe('FamilyPay — AY scope', () => {
-  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('family search includes academicYearId', async () => {
-    const urls: string[] = [];
-    global.fetch = vi.fn((url: string) => {
-      urls.push(url);
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
-    });
-    render(<FamilyPayPage />);
-    fireEvent.change(await screen.findByPlaceholderText(/Search by father name/), { target: { value: 'Ali' } });
-    fireEvent.click(await screen.findByText('Search'));
-    await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
-  });
-  it('shows multiple unpaid months per student', async () => {
-    global.fetch = vi.fn((url: string) => {
-      if (url.includes('/families')) {
-        return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [{
-          id: 'fam1', fatherName: 'Ali', phone: '0300',
-          students: [{
-            id: 's1', name: 'Ahmed', group: { name: 'Class 2', section: 'A' },
-            studentFees: [
-              { id: 'sf1', month: 5, year: 2026, netAmount: 500000, paidAmount: 0, extraItems: [] },
-              { id: 'sf2', month: 6, year: 2026, netAmount: 500000, paidAmount: 100000, extraItems: [{ amount: 20000 }] },
-            ],
-          }],
-        }] }) } as any);
-      }
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
-    });
-    render(<FamilyPayPage />);
-    fireEvent.change(await screen.findByPlaceholderText(/Search by father name/), { target: { value: 'Ali' } });
-    fireEvent.click(await screen.findByText('Search'));
-    fireEvent.click(await screen.findByText('Select'));
+// LEGACY FAMILY-PAY REDIRECT
+describe('FamilyPayRedirect — legacy route', () => {
+  beforeEach(() => { vi.clearAllMocks(); mockReplace.mockClear(); setupLS(); });
+
+  it('redirects to families hub', async () => {
+    render(<FamilyPayRedirectPage />);
+    expect(await screen.findByText(/Redirecting to Families/)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/May 2026/)).toBeInTheDocument();
-      expect(screen.getByText(/Jun 2026/)).toBeInTheDocument();
+      expect(mockReplace).toHaveBeenCalledWith('/admin/fees/families');
     });
   });
 });
@@ -224,13 +199,6 @@ describe('FeeReports', () => {
     global.fetch = mockFetch({ success: true, data: { totalDue: 50000000, totalCollected: 30000000, pendingCount: 45, collectionRate: 60 } }); render(<FeeReportsPage />);
     expect(await screen.findByText('500,000')).toBeInTheDocument();
   });
-});
-
-// FAMILY PAY
-describe('FamilyPay', () => {
-  beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('renders page title', async () => { render(<FamilyPayPage />); expect(await screen.findByText('Family Combined Payment')).toBeInTheDocument(); });
-  it('shows search input', async () => { render(<FamilyPayPage />); expect(await screen.findByPlaceholderText(/Search by father name/)).toBeInTheDocument(); });
 });
 
 // FEE HEADS ERRORS
