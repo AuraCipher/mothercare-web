@@ -465,13 +465,14 @@ export default function StudentFeeDetailPage() {
           parent line (total, date, receipt, print/download) with one
           child line per month it covered. */}
       <h2 className="text-sm font-medium text-warm-cream mb-3">Payment History</h2>
-      <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
-        <div className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] bg-warm-card/70 px-4 py-3">
+      <div className="rounded-xl border border-warm-card-border overflow-x-auto mb-6">
+        <div className="min-w-[680px]">
+        <div className="grid grid-cols-[100px_180px_minmax(100px,1fr)_100px_90px_80px] gap-x-4 bg-warm-card/70 px-4 py-3">
           <div className="text-[10px] text-warm-muted font-medium">Date</div>
           <div className="text-[10px] text-warm-muted font-medium">Receipt</div>
           <div className="text-[10px] text-warm-muted font-medium">Month</div>
-          <div className="text-[10px] text-warm-muted font-medium text-right">Amount</div>
-          <div className="text-[10px] text-warm-muted font-medium">Method</div>
+          <div className="text-[10px] text-warm-muted font-medium text-right pr-1">Amount</div>
+          <div className="text-[10px] text-warm-muted font-medium pl-1">Method</div>
           <div className="text-[10px] text-warm-muted font-medium text-center">Print</div>
         </div>
 
@@ -519,14 +520,14 @@ export default function StudentFeeDetailPage() {
           return groups.map(group => (
             <div key={group.base} className="border-t border-warm-card-border/20">
               {/* Parent row — one line per payment transaction */}
-              <div className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] px-4 py-3 items-center hover:bg-warm-card/20 transition-colors">
+              <div className="grid grid-cols-[100px_180px_minmax(100px,1fr)_100px_90px_80px] gap-x-4 px-4 py-3 items-center hover:bg-warm-card/20 transition-colors">
                 <div className="text-xs text-warm-muted">{new Date(group.date).toLocaleDateString()}</div>
                 <div className="text-xs text-warm-cream font-mono">{group.base}</div>
                 <div className="text-xs text-warm-muted/50">
                   {group.items.length > 1 ? `${group.items.length} months` : `${MONTHS[(group.items[0].fee.month || 1) - 1]} ${group.items[0].fee.year}`}
                 </div>
-                <div className="text-xs text-green-400 text-right font-medium">{(group.totalAmount / 100).toLocaleString()}</div>
-                <div className="text-xs text-warm-muted">{group.primary.payment.paymentMethod}</div>
+                <div className="text-xs text-green-400 text-right font-medium pr-1">{(group.totalAmount / 100).toLocaleString()}</div>
+                <div className="text-xs text-warm-muted pl-1">{group.primary.payment.paymentMethod}</div>
                 <div className="flex items-center justify-center gap-1">
                   <button onClick={() => handlePrint(group.primary.payment, group.primary.fee, totalRemainingPaise)} className="p-1 text-warm-muted hover:text-warm-accent transition-colors" title="Print Receipt">
                     <Printer size={13} />
@@ -539,11 +540,11 @@ export default function StudentFeeDetailPage() {
 
               {/* Child rows — per-month breakdown, only when the payment spans more than one month */}
               {group.items.length > 1 && group.items.map(({ payment: p, fee: sf }) => (
-                <div key={p.id} className="grid grid-cols-[100px_180px_1fr_130px_100px_80px] px-4 py-2 items-center bg-warm-card/10 border-t border-warm-card-border/10">
+                <div key={p.id} className="grid grid-cols-[100px_180px_minmax(100px,1fr)_100px_90px_80px] gap-x-4 px-4 py-2 items-center bg-warm-card/10 border-t border-warm-card-border/10">
                   <div></div>
                   <div className="pl-4 text-[10px] text-warm-muted/40 font-mono">{p.receiptNumber}</div>
                   <div className="text-[11px] text-warm-muted/70">{MONTHS[(sf.month || 1) - 1]} {sf.year}</div>
-                  <div className="text-[11px] text-green-400/70 text-right">{(p.amount / 100).toLocaleString()}</div>
+                  <div className="text-[11px] text-green-400/70 text-right pr-1">{(p.amount / 100).toLocaleString()}</div>
                   <div></div>
                   <div></div>
                 </div>
@@ -551,6 +552,7 @@ export default function StudentFeeDetailPage() {
             </div>
           ));
         })()}
+        </div>
       </div>
 
       {/* Add Extra Due Modal */}
