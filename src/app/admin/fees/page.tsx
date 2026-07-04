@@ -2,29 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, Users, FileText, Calendar, BarChart, ArrowRight } from 'lucide-react';
+import { DollarSign, Users, FileText, Calendar, BarChart3, ArrowRight, TrendingUp } from 'lucide-react';
 import config from '@/config';
+import { buildFeeScopeQuery, formatPkr } from '@/lib/feeAnalytics';
 
 export default function FeesDashboardPage() {
   const router = useRouter();
-  const [summary, setSummary] = useState<any>(null);
-  const [defaulters, setDefaulters] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
 
   useEffect(() => {
     if (!token || !ayId) return;
     const now = new Date();
-    const m = now.getMonth() + 1;
-    const y = now.getFullYear();
-    const ayParam = `&academicYearId=${ayId}`;
-    fetch(`${config.apiUrl}/admin/fees/summary?month=${m}&year=${y}${ayParam}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()).then(j => { if (j.success) setSummary(j.data); }).catch(() => {});
-    fetch(`${config.apiUrl}/admin/fees/defaulter?month=${m}&year=${y}${ayParam}&take=5`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()).then(j => { if (j.success) setDefaulters(j.data.slice(0, 5)); }).catch(() => {});
-  }, [ayId]);
+    fetch(`${config.apiUrl}/admin/fees/analytics${buildFeeScopeQuery({
+      period: 'monthly',
+      month: String(now.getMonth() + 1),
+      year: String(now.getFullYear()),
+    })}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(j => { if (j.success) setAnalytics(j.data); })
+      .catch(() => {});
+  }, [ayId, token]);
+
+  const summary = analytics?.summary;
 
   const cards = [
     { icon: DollarSign, label: 'Fee Heads', desc: 'Manage what to charge', href: '/admin/fees/heads', color: 'text-green-400' },
@@ -32,7 +33,8 @@ export default function FeesDashboardPage() {
     { icon: Calendar, label: 'Generate Fees', desc: 'Create monthly fees', href: '/admin/fees/generate', color: 'text-yellow-400' },
     { icon: FileText, label: 'Collections', desc: 'Record payments & dues', href: '/admin/fees/collections', color: 'text-pink-400' },
     { icon: Users, label: 'Families', desc: 'Group siblings & pay together', href: '/admin/fees/families', color: 'text-purple-400' },
-    { icon: BarChart, label: 'Reports', desc: 'Collection stats & defaulters', href: '/admin/fees/reports', color: 'text-cyan-400' },
+    { icon: BarChart3, label: 'Analytics', desc: 'Charts, trends & KPIs', href: '/admin/fees/analytics', color: 'text-cyan-400' },
+    { icon: TrendingUp, label: 'Reports', desc: 'Generate & export printable reports', href: '/admin/fees/reports', color: 'text-orange-400' },
   ];
 
   return (
@@ -42,8 +44,7 @@ export default function FeesDashboardPage() {
         <h1 className="text-xl font-light text-warm-cream">Fees & Payments</h1>
       </div>
 
-      {/* All 6 cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         {cards.map(c => {
           const Icon = c.icon;
           return (
@@ -57,7 +58,6 @@ export default function FeesDashboardPage() {
         })}
       </div>
 
-      {/* Quick Actions — most used */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
         <h2 className="text-sm font-medium text-warm-cream mb-3">Quick Actions</h2>
         <div className="flex flex-wrap gap-2">
@@ -69,47 +69,50 @@ export default function FeesDashboardPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
             <Calendar size={13} /> Generate Monthly Fees
           </button>
-          <button onClick={() => router.push('/admin/fees/families')}
+          <button onClick={() => router.push('/admin/fees/analytics')}
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-            <Users size={13} /> Manage Families
+            <BarChart3 size={13} /> View Analytics
           </button>
           <button onClick={() => router.push('/admin/fees/reports')}
             className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-            <BarChart size={13} /> View Reports
+            <TrendingUp size={13} /> Export Reports
           </button>
         </div>
       </div>
 
-      {/* This Month Summary */}
       {summary && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-          <h2 className="text-sm font-medium text-warm-cream mb-4">This Month Summary</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div><p className="text-[10px] text-warm-muted/50 uppercase">Total Due</p><p className="text-lg font-light text-warm-cream mt-1">{(summary.totalDue / 100).toLocaleString()}</p></div>
-            <div><p className="text-[10px] text-warm-muted/50 uppercase">Collected</p><p className="text-lg font-light text-green-400 mt-1">{(summary.totalCollected / 100).toLocaleString()}</p></div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-warm-cream">This Month</h2>
+            <button onClick={() => router.push('/admin/fees/analytics')} className="text-[10px] text-warm-accent hover:underline">
+              Full Analytics →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
+            <div><p className="text-[10px] text-warm-muted/50 uppercase">Total Due</p><p className="text-lg font-light text-warm-cream mt-1">{formatPkr(summary.totalDue)}</p></div>
+            <div><p className="text-[10px] text-warm-muted/50 uppercase">Collected</p><p className="text-lg font-light text-green-400 mt-1">{formatPkr(summary.totalCollected)}</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase">Pending</p><p className="text-lg font-light text-red-400 mt-1">{summary.pendingCount} students</p></div>
             <div><p className="text-[10px] text-warm-muted/50 uppercase">Rate</p><p className="text-lg font-light text-warm-accent mt-1">{summary.collectionRate}%</p></div>
+          </div>
+          <div className="w-full h-2 bg-warm-card-border/20 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-green-500/70 transition-all" style={{ width: `${Math.min(summary.collectionRate, 100)}%` }} />
           </div>
         </div>
       )}
 
-      {/* Top Defaulters */}
-      {defaulters.length > 0 && (
+      {analytics?.topDefaulters?.length > 0 && (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium text-warm-cream">Top Defaulters</h2>
             <button onClick={() => router.push('/admin/fees/reports')} className="text-[10px] text-warm-accent hover:underline">View All</button>
           </div>
           <div className="space-y-2.5">
-            {defaulters.map((f: any) => {
-              const due = ((f.netAmount - f.paidAmount) / 100).toLocaleString();
-              return (
-                <div key={f.id} className="flex items-center justify-between border-b border-warm-card-border/5 pb-2 last:border-0">
-                  <span className="text-xs text-warm-muted/70">{f.student?.name}</span>
-                  <span className="text-xs text-red-400 font-medium">{due} PKR</span>
-                </div>
-              );
-            })}
+            {analytics.topDefaulters.slice(0, 5).map((d: any) => (
+              <div key={d.id} className="flex items-center justify-between border-b border-warm-card-border/5 pb-2 last:border-0">
+                <span className="text-xs text-warm-muted/70">{d.studentName}</span>
+                <span className="text-xs text-red-400 font-medium">{formatPkr(d.pending)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
