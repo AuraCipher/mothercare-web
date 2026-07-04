@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { showToast } from '@/components/toast';
-import { RefreshCw, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, CheckCircle, ChevronDown, ChevronRight, Edit3 } from 'lucide-react';
 import config from '@/config';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -29,7 +29,11 @@ export default function GenerateFeesPage() {
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [classesPanelOpen, setClassesPanelOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<{ generated: number; skipped: number; updated: number; total: number } | null>(null);
+  const [activeMode, setActiveMode] = useState<'generate' | 'update' | 'regenerate' | null>(null);
+  const [result, setResult] = useState<{
+    generated: number; skipped: number; updated: number; total: number;
+    deleted?: number; protected?: number; mode?: string;
+  } | null>(null);
   const [loadingHeads, setLoadingHeads] = useState(true);
   const [loadingSections, setLoadingSections] = useState(true);
 
@@ -129,11 +133,13 @@ export default function GenerateFeesPage() {
     };
   };
 
-  const handleGenerate = async () => {
+  const handleAction = async (mode: 'generate' | 'update' | 'regenerate') => {
     if (!token) return;
     if (!ayId) { showToast('error', 'Select an academic year first'); return; }
     if (selectedGroupIds.size === 0) { showToast('error', 'Select at least one class'); return; }
+    if (mode === 'regenerate' && !window.confirm('Regenerate will delete unpaid fees for the selected month and recreate them. Fees with payments are protected. Continue?')) return;
     setGenerating(true);
+    setActiveMode(mode);
     setResult(null);
     try {
       const res = await fetch(`${config.apiUrl}/admin/student-fees/generate`, {
@@ -145,13 +151,19 @@ export default function GenerateFeesPage() {
           headIds: Array.from(selectedHeadIds),
           groupIds: Array.from(selectedGroupIds),
           academicYearId: ayId,
+          mode,
         }),
       });
       const json = await res.json();
-      if (json.success) { setResult(json.data); showToast('success', `Generated ${json.data.generated} fees`); }
-      else showToast('error', json.message || 'Failed');
+      if (json.success) {
+        setResult(json.data);
+        const d = json.data;
+        if (mode === 'generate') showToast('success', `Generated ${d.generated} new fees`);
+        else if (mode === 'update') showToast('success', `Updated ${d.updated} fees`);
+        else showToast('success', `Regenerated: ${d.generated} created, ${d.deleted ?? 0} deleted`);
+      } else showToast('error', json.message || 'Failed');
     } catch { showToast('error', 'Failed'); }
-    finally { setGenerating(false); }
+    finally { setGenerating(false); setActiveMode(null); }
   };
 
   const byCategory: Record<string, any[]> = {};
@@ -187,11 +199,23 @@ export default function GenerateFeesPage() {
             <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
               className="rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-2.5 text-sm text-warm-cream outline-none focus:border-warm-accent w-24" />
           </div>
-          <button onClick={handleGenerate} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
-            {generating ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
-            {generating ? 'Generating...' : 'Generate'}
-          </button>
+          <div className="flex flex-wrap gap-2 ml-auto">
+            <button onClick={() => handleAction('generate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
+              {generating && activeMode === 'generate' ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+              {generating && activeMode === 'generate' ? 'Generating...' : 'Generate'}
+            </button>
+            <button onClick={() => handleAction('update')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-4 py-2.5 text-sm font-medium text-warm-accent hover:bg-warm-accent/20 disabled:opacity-50 transition-colors">
+              {generating && activeMode === 'update' ? <RefreshCw size={15} className="animate-spin" /> : <Edit3 size={15} />}
+              {generating && activeMode === 'update' ? 'Updating...' : 'Update'}
+            </button>
+            <button onClick={() => handleAction('regenerate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-900/20 px-4 py-2.5 text-sm font-medium text-orange-300 hover:bg-orange-900/30 disabled:opacity-50 transition-colors">
+              {generating && activeMode === 'regenerate' ? <RefreshCw size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+              {generating && activeMode === 'regenerate' ? 'Regenerating...' : 'Regenerate'}
+            </button>
+          </div>
         </div>
 
         {/* Classes — whole panel collapsed by default, all selected */}
@@ -302,11 +326,25 @@ export default function GenerateFeesPage() {
 
         {result && (
           <div className="rounded-lg border border-warm-card-border/30 bg-warm-card/50 p-4">
-            <p className="text-sm text-warm-cream">
-              Generated: <strong className="text-green-400">{result.generated}</strong>
-              {result.updated > 0 && <span className="ml-2 text-warm-accent">· Updated: <strong>{result.updated}</strong></span>}
-            </p>
-            <p className="text-xs text-warm-muted/60 mt-1">Skipped (already exist): {result.skipped}</p>
+            <p className="text-xs text-warm-muted/50 uppercase tracking-wider mb-2">{result.mode || 'generate'} result</p>
+            {result.mode === 'generate' && (
+              <p className="text-sm text-warm-cream">
+                Generated: <strong className="text-green-400">{result.generated}</strong>
+              </p>
+            )}
+            {result.mode === 'update' && (
+              <p className="text-sm text-warm-cream">
+                Updated: <strong className="text-warm-accent">{result.updated}</strong>
+              </p>
+            )}
+            {result.mode === 'regenerate' && (
+              <p className="text-sm text-warm-cream">
+                Created: <strong className="text-green-400">{result.generated}</strong>
+                {(result.deleted ?? 0) > 0 && <span className="ml-2">· Deleted unpaid: <strong className="text-orange-300">{result.deleted}</strong></span>}
+                {(result.protected ?? 0) > 0 && <span className="ml-2">· Protected (paid): <strong>{result.protected}</strong></span>}
+              </p>
+            )}
+            <p className="text-xs text-warm-muted/60 mt-1">Skipped: {result.skipped}</p>
             <p className="text-xs text-warm-muted/60">Students processed: {result.total}</p>
           </div>
         )}

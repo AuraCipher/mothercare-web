@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Search } from 'lucide-react';
 import config from '@/config';
+import StudentPayModal from '@/components/fees/StudentPayModal';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE_SIZE = 100;
 
 function readPeriod(): 'monthly' | 'full' {
   if (typeof window === 'undefined') return 'monthly';
@@ -24,6 +26,11 @@ export default function CollectionsPage() {
   const [rollFilter, setRollFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [fatherQuery, setFatherQuery] = useState('');
+  const [debouncedFather, setDebouncedFather] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
+  const [payStudentId, setPayStudentId] = useState<string | null>(null);
   const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
@@ -42,6 +49,13 @@ export default function CollectionsPage() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedFather(fatherQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [fatherQuery]);
+
+  useEffect(() => { setPage(1); }, [month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter]);
+
   const loadData = useCallback(async () => {
     if (!token || !ayId) return;
     const gen = ++loadGenRef.current;
@@ -52,9 +66,12 @@ export default function CollectionsPage() {
         year: String(year),
         period,
         academicYearId: ayId,
+        page: String(page),
+        limit: String(PAGE_SIZE),
       });
       if (classFilter) params.set('groupId', classFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
+      if (debouncedFather) params.set('fatherSearch', debouncedFather);
       if (rollFilter.trim()) params.set('roll', rollFilter.trim());
 
       const [fRes, sRes] = await Promise.all([
@@ -71,6 +88,7 @@ export default function CollectionsPage() {
         setFees([]);
       } else {
         setFees(fRes.data);
+        if (fRes.pagination) setPagination(fRes.pagination);
       }
       if (sRes.success) setSections(sRes.data);
     } catch {
@@ -81,7 +99,7 @@ export default function CollectionsPage() {
     } finally {
       if (gen === loadGenRef.current) setLoading(false);
     }
-  }, [token, ayId, branchId, month, year, period, classFilter, debouncedSearch, rollFilter]);
+  }, [token, ayId, branchId, month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -180,9 +198,14 @@ export default function CollectionsPage() {
             <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted/50" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by name, roll, or father name..."
+                placeholder="Search by name or roll..."
                 className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-8 pr-3 py-2 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
             </div>
+          </div>
+          <div className="min-w-[140px] flex-1 max-w-xs">
+            <input value={fatherQuery} onChange={e => setFatherQuery(e.target.value)}
+              placeholder="Father name or phone"
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent" />
           </div>
           <div className="min-w-[80px]">
             <input value={rollFilter} onChange={e => setRollFilter(e.target.value)}
@@ -270,7 +293,7 @@ export default function CollectionsPage() {
                 const isEstimated = period === 'full' && f._isEstimated;
                 return (
                   <tr key={s.id || f.id || idx} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
-                    <td className="px-3 py-2.5 text-xs text-warm-muted/50">{idx + 1}</td>
+                    <td className="px-3 py-2.5 text-xs text-warm-muted/50">{idx + 1 + (page - 1) * PAGE_SIZE}</td>
                     <td className="px-2 py-2.5 text-xs text-warm-muted">{s.rollNumber || '—'}</td>
                     <td className="px-3 py-2.5">
                       <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
@@ -314,7 +337,7 @@ export default function CollectionsPage() {
                         isAyArchived ? (
                           <span className="text-[10px] text-warm-muted/40">—</span>
                         ) : (
-                          <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
+                          <button onClick={() => setPayStudentId(s.id)}
                             className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
                             Pay
                           </button>
@@ -329,6 +352,38 @@ export default function CollectionsPage() {
         </div>
       </div>
       ) : null}
+
+      {pagination.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-xs text-warm-muted/60">
+          <span>
+            Page {pagination.page} of {pagination.totalPages} · {pagination.total} students
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="rounded-lg border border-warm-card-border px-3 py-1.5 hover:text-warm-cream disabled:opacity-40 transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+              disabled={page >= pagination.totalPages || loading}
+              className="rounded-lg border border-warm-card-border px-3 py-1.5 hover:text-warm-cream disabled:opacity-40 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      <StudentPayModal
+        studentId={payStudentId || ''}
+        open={!!payStudentId}
+        onClose={() => setPayStudentId(null)}
+        token={token}
+        ayId={ayId}
+      />
 
     </main>
   );
