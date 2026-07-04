@@ -15,6 +15,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, back: vi.fn(), replace: vi.fn() }),
   useParams: () => ({ id: 's-1' }),
   usePathname: () => '/admin/fees',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/components/toast', () => ({ showToast: mockShowToast }));
@@ -441,6 +442,23 @@ describe('CollectionsPage', () => {
     expect(screen.queryByText('Sara')).not.toBeInTheDocument();
   });
 
+  it('shows family chip and Family pay button when student belongs to a family', async () => {
+    global.fetch = mockCollectionsFetch([
+      {
+        student: {
+          id: 's1', name: 'Ahmed', rollNumber: '1', familyId: 'fam1',
+          family: { id: 'fam1', name: 'Khan Family' },
+          group: { name: 'Class 2', section: 'A' }, parents: [],
+        },
+        netAmount: 500000, paidAmount: 0, status: 'UNPAID', fee: { id: 'sf1' },
+      },
+    ]);
+    const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
+    render(<CollectionsPage />);
+    expect(await screen.findByText('Khan Family')).toBeInTheDocument();
+    expect(await screen.findByText('Family')).toBeInTheDocument();
+  });
+
   it('full AY empty state shows No students found', async () => {
     global.fetch = mockCollectionsFetch([]);
     const { default: CollectionsPage } = await import('@/app/admin/fees/collections/page');
@@ -601,7 +619,7 @@ describe('FeesDashboardPage', () => {
     expect(await screen.findByText('Fee Structures')).toBeInTheDocument();
     expect(await screen.findByText('Generate Fees')).toBeInTheDocument();
     expect(await screen.findByText('Collections')).toBeInTheDocument();
-    expect(await screen.findByText('Family Pay')).toBeInTheDocument();
+    expect(await screen.findByText('Families')).toBeInTheDocument();
     expect(await screen.findByText('Reports')).toBeInTheDocument();
   });
 
