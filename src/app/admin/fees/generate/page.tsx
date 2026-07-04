@@ -194,62 +194,71 @@ export default function GenerateFeesPage() {
           </button>
         </div>
 
-        {/* Classes — grouped, collapsed by default, all selected */}
+        {/* Classes — whole panel collapsed by default, all selected */}
         <div className="mb-6">
-          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-3">Classes to Include</label>
-          {loadingSections ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map(i => <div key={i} className="h-10 animate-pulse rounded-lg bg-warm-card/50" />)}
-            </div>
-          ) : sections.length === 0 ? (
-            <p className="text-xs text-warm-muted/40">No classes found for this academic year.</p>
-          ) : (
-            <div className="rounded-lg border border-warm-card-border/40 divide-y divide-warm-card-border/20">
-              {groupedSections.map(([className, classSections]) => {
-                const expanded = expandedClasses.has(className);
-                const hasMultiple = classSections.length > 1 || !!classSections[0]?.section;
-                const { allSelected, someSelected } = classGroupState(classSections);
-                return (
-                  <div key={className}>
-                    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-warm-card/30 transition-colors">
-                      {hasMultiple ? (
-                        <button type="button" onClick={() => toggleExpanded(className)}
-                          className="p-0.5 text-warm-muted hover:text-warm-cream transition-colors">
-                          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
-                      ) : (
-                        <span className="w-5" />
-                      )}
-                      <label className="flex flex-1 items-center gap-3 cursor-pointer min-w-0">
-                        <input type="checkbox"
-                          checked={allSelected}
-                          ref={el => { if (el) el.indeterminate = someSelected; }}
-                          onChange={() => hasMultiple ? toggleClassGroup(className, classSections) : toggleGroup(classSections[0].id)}
-                          className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent shrink-0" />
-                        <span className="text-sm text-warm-cream truncate">{className}</span>
-                        {hasMultiple && (
-                          <span className="text-[10px] text-warm-muted/50 shrink-0">
-                            {classSections.filter(s => selectedGroupIds.has(s.id)).length}/{classSections.length}
-                          </span>
+          <button type="button" onClick={() => setClassesPanelOpen(o => !o)}
+            className="flex w-full items-center gap-2 mb-3 text-left group">
+            {classesPanelOpen ? <ChevronDown size={14} className="text-warm-muted" /> : <ChevronRight size={14} className="text-warm-muted" />}
+            <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider group-hover:text-warm-muted transition-colors">Classes to Include</span>
+            {!loadingSections && sections.length > 0 && (
+              <span className="text-[10px] text-warm-accent/80 ml-auto">{classesSummary}</span>
+            )}
+          </button>
+          {classesPanelOpen && (
+            loadingSections ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <div key={i} className="h-10 animate-pulse rounded-lg bg-warm-card/50" />)}
+              </div>
+            ) : sections.length === 0 ? (
+              <p className="text-xs text-warm-muted/40">No classes found for this academic year.</p>
+            ) : (
+              <div className="rounded-lg border border-warm-card-border/40 divide-y divide-warm-card-border/20">
+                {groupedSections.map(([className, classSections]) => {
+                  const expanded = expandedClasses.has(className);
+                  const hasMultiple = classSections.length > 1 || !!classSections[0]?.section;
+                  const { allSelected, someSelected } = classGroupState(classSections);
+                  return (
+                    <div key={className}>
+                      <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-warm-card/30 transition-colors">
+                        {hasMultiple ? (
+                          <button type="button" onClick={() => toggleExpanded(className)}
+                            className="p-0.5 text-warm-muted hover:text-warm-cream transition-colors">
+                            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        ) : (
+                          <span className="w-5" />
                         )}
-                      </label>
-                    </div>
-                    {hasMultiple && expanded && (
-                      <div className="pb-1">
-                        {classSections.map(sec => (
-                          <label key={sec.id}
-                            className="flex items-center gap-3 pl-10 pr-3 py-1.5 hover:bg-warm-card/20 cursor-pointer transition-colors">
-                            <input type="checkbox" checked={selectedGroupIds.has(sec.id)} onChange={() => toggleGroup(sec.id)}
-                              className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
-                            <span className="text-xs text-warm-muted">{sectionLabel(sec)}</span>
-                          </label>
-                        ))}
+                        <label className="flex flex-1 items-center gap-3 cursor-pointer min-w-0">
+                          <input type="checkbox"
+                            checked={allSelected}
+                            ref={el => { if (el) el.indeterminate = someSelected; }}
+                            onChange={() => hasMultiple ? toggleClassGroup(className, classSections) : toggleGroup(classSections[0].id)}
+                            className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent shrink-0" />
+                          <span className="text-sm text-warm-cream truncate">{className}</span>
+                          {hasMultiple && (
+                            <span className="text-[10px] text-warm-muted/50 shrink-0">
+                              {classSections.filter(s => selectedGroupIds.has(s.id)).length}/{classSections.length}
+                            </span>
+                          )}
+                        </label>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      {hasMultiple && expanded && (
+                        <div className="pb-1">
+                          {classSections.map(sec => (
+                            <label key={sec.id}
+                              className="flex items-center gap-3 pl-10 pr-3 py-1.5 hover:bg-warm-card/20 cursor-pointer transition-colors">
+                              <input type="checkbox" checked={selectedGroupIds.has(sec.id)} onChange={() => toggleGroup(sec.id)}
+                                className="rounded border-warm-card-border bg-[#1a1614] text-warm-accent focus:ring-warm-accent" />
+                              <span className="text-xs text-warm-muted">{sectionLabel(sec)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
           )}
         </div>
 

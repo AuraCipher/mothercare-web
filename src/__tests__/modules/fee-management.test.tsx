@@ -222,8 +222,9 @@ describe('GenerateFeesPage', () => {
   it('pre-selects all classes by default', async () => {
     const { default: GenerateFeesPage } = await import('@/app/admin/fees/generate/page');
     render(<GenerateFeesPage />);
-    await screen.findByText('Class 1');
-    expect(screen.getByText('Class 1')).toBeInTheDocument();
+    expect(await screen.findByText(/All 3 selected/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Classes to Include'));
+    expect(await screen.findByText('Class 1')).toBeInTheDocument();
     expect(screen.getByText('Class 2')).toBeInTheDocument();
   });
 
