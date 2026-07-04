@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { ArrowLeft, Users, CreditCard, History } from 'lucide-react';
 import config from '@/config';
+import FamilyPayModal from '@/components/fees/FamilyPayModal';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -21,6 +22,7 @@ export default function FamilyDetailPage() {
   const router = useRouter();
   const [family, setFamily] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [payOpen, setPayOpen] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -80,12 +82,20 @@ export default function FamilyDetailPage() {
           </div>
         </div>
         <button
-          onClick={() => router.push(`/admin/fees/collections/family-pay?familyId=${family.id}`)}
+          onClick={() => setPayOpen(true)}
           className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent/20 px-4 py-2 text-xs text-warm-accent hover:bg-warm-accent/30 transition-colors"
         >
           <CreditCard size={14} /> Pay as Family
         </button>
       </div>
+
+      <FamilyPayModal
+        familyId={id}
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        token={token}
+        ayId={ayId}
+      />
 
       {/* Summary bar */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
