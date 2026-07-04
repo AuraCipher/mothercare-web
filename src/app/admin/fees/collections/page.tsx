@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Search } from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import config from '@/config';
 import StudentPayModal from '@/components/fees/StudentPayModal';
+import FamilyPayModal from '@/components/fees/FamilyPayModal';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PAGE_SIZE = 100;
 
@@ -31,6 +32,7 @@ export default function CollectionsPage() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
   const [payStudentId, setPayStudentId] = useState<string | null>(null);
+  const [payFamilyId, setPayFamilyId] = useState<string | null>(null);
   const [period, setPeriod] = useState<'monthly' | 'full'>('monthly');
   const [viewMode, setViewMode] = useState<'class' | 'alpha'>('class');
   const [loading, setLoading] = useState(true);
@@ -281,7 +283,7 @@ export default function CollectionsPage() {
                 <th className="text-right px-3 py-3 text-[10px] text-warm-muted font-medium">Paid</th>
                 <th className="text-right px-3 py-3 text-[10px] text-warm-muted font-medium">Due</th>
                 <th className="text-center px-2 py-3 text-[10px] text-warm-muted font-medium w-16">Status</th>
-                <th className="text-center px-2 py-3 text-[10px] text-warm-muted font-medium w-16">Action</th>
+                <th className="text-center px-2 py-3 text-[10px] text-warm-muted font-medium w-28">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -291,13 +293,24 @@ export default function CollectionsPage() {
                 const due = !isNoFee ? (f.netAmount - f.paidAmount) / 100 : 0;
                 const father = getFather(s);
                 const isEstimated = period === 'full' && f._isEstimated;
+                const family = s.family;
+                const hasFamily = !!s.familyId && !!family?.id;
                 return (
                   <tr key={s.id || f.id || idx} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{idx + 1 + (page - 1) * PAGE_SIZE}</td>
                     <td className="px-2 py-2.5 text-xs text-warm-muted">{s.rollNumber || '—'}</td>
                     <td className="px-3 py-2.5">
                       <button onClick={() => router.push(`/admin/fees/student/${s.id}`)}
-                        className="text-xs text-warm-cream hover:text-warm-accent transition-colors text-left">{s.name || 'Unknown'}</button>
+                        className="text-xs text-warm-cream hover:text-warm-accent transition-colors text-left block">{s.name || 'Unknown'}</button>
+                      {hasFamily && (
+                        <button
+                          onClick={() => router.push(`/admin/fees/families/${family.id}`)}
+                          className="mt-0.5 inline-flex items-center gap-1 rounded bg-purple-900/25 px-1.5 py-0.5 text-[9px] text-purple-300/90 hover:bg-purple-900/40 transition-colors"
+                          title={`Family: ${family.name}`}
+                        >
+                          <Users size={9} /> {family.name}
+                        </button>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/60">{s.group?.name || ''}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-xs text-warm-muted/50">{father}</td>
@@ -337,10 +350,21 @@ export default function CollectionsPage() {
                         isAyArchived ? (
                           <span className="text-[10px] text-warm-muted/40">—</span>
                         ) : (
-                          <button onClick={() => setPayStudentId(s.id)}
-                            className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors">
-                            Pay
-                          </button>
+                          <div className="flex flex-col items-center gap-1">
+                            <button onClick={() => setPayStudentId(s.id)}
+                              className="rounded bg-warm-accent/20 px-2.5 py-1.5 text-[10px] text-warm-accent hover:bg-warm-accent/30 transition-colors w-full">
+                              Pay
+                            </button>
+                            {hasFamily && due > 0 && (
+                              <button
+                                onClick={() => setPayFamilyId(family.id)}
+                                className="rounded bg-purple-900/30 px-2 py-1 text-[9px] text-purple-300 hover:bg-purple-900/45 transition-colors w-full"
+                                title={`Pay via family ${family.name}`}
+                              >
+                                Family
+                              </button>
+                            )}
+                          </div>
                         )
                       )}
                     </td>
@@ -381,6 +405,14 @@ export default function CollectionsPage() {
         studentId={payStudentId || ''}
         open={!!payStudentId}
         onClose={() => setPayStudentId(null)}
+        token={token}
+        ayId={ayId}
+      />
+
+      <FamilyPayModal
+        familyId={payFamilyId || ''}
+        open={!!payFamilyId}
+        onClose={() => setPayFamilyId(null)}
         token={token}
         ayId={ayId}
       />

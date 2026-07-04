@@ -3,10 +3,12 @@
 import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
-import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2, Users } from 'lucide-react';
 import config from '@/config';
 import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
 import type { ReceiptData, ReceiptMonthSection } from '@/lib/receipt';
+import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
+import FamilyPayModal from '@/components/fees/FamilyPayModal';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function StudentFeeDetailPage() {
@@ -24,6 +26,7 @@ export default function StudentFeeDetailPage() {
   const [addExtraModal, setAddExtraModal] = useState<any>(null);
   const [addExtraName, setAddExtraName] = useState('');
   const [addExtraAmt, setAddExtraAmt] = useState(0);
+  const [showFamilyPay, setShowFamilyPay] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -203,6 +206,15 @@ export default function StudentFeeDetailPage() {
 
   const fetchAndPrintReceipt = async (payment: any, studentFee?: any, remainingOverride?: number, action: 'print' | 'download' = 'print') => {
     const paymentId = payment?.id;
+    const familyPaymentId = payment?.familyPayment?.id || payment?.familyPaymentId;
+
+    if (familyPaymentId && token) {
+      try {
+        await fetchAndPrintFamilyReceipt(familyPaymentId, token, config.apiUrl, action);
+        return;
+      } catch { /* fall through to individual receipt */ }
+    }
+
     let receiptData: ReceiptData | null = null;
 
     // Try to fetch snapshot from backend
@@ -327,6 +339,17 @@ export default function StudentFeeDetailPage() {
           <div><p className="text-[10px] text-warm-muted/50 uppercase">Class</p><p className="text-sm text-warm-muted mt-1">{data.group?.name || ''}{data.group?.section ? ` — ${data.group.section}` : ''}</p></div>
           <div><p className="text-[10px] text-warm-muted/50 uppercase">Father</p><p className="text-sm text-warm-muted mt-1">{fatherName}</p></div>
         </div>
+        {data.family && (
+          <div className="mt-3 pt-3 border-t border-warm-card-border/30">
+            <p className="text-[10px] text-warm-muted/50 uppercase">Family</p>
+            <button
+              onClick={() => router.push(`/admin/fees/families/${data.family.id}`)}
+              className="mt-0.5 inline-flex items-center gap-1 text-xs text-purple-300 hover:text-purple-200 transition-colors"
+            >
+              <Users size={12} /> {data.family.name}
+            </button>
+          </div>
+        )}
         {data.customFeeAmount && (
           <div className="mt-3 pt-3 border-t border-warm-card-border/30">
             <p className="text-[10px] text-warm-muted/50 uppercase">Custom Fee</p>
@@ -339,10 +362,18 @@ export default function StudentFeeDetailPage() {
             <p className="text-2xl font-light text-warm-accent">{totalRemainingPkr.toLocaleString()} PKR</p>
           </div>
           {totalRemainingPaise > 0 && !isAyArchived && (
-            <button onClick={openPayModal}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-              <Save size={15} /> Pay Now
-            </button>
+            <div className="flex flex-wrap gap-2 justify-end">
+              {data.family?.id && (
+                <button onClick={() => setShowFamilyPay(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-900/20 px-4 py-2.5 text-xs text-purple-300 hover:bg-purple-900/35 transition-colors">
+                  <Users size={14} /> Pay via Family
+                </button>
+              )}
+              <button onClick={openPayModal}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                <Save size={15} /> Pay Now
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -510,7 +541,8 @@ export default function StudentFeeDetailPage() {
               items[0].payment.createdAt,
             );
             const sorted = [...items].sort((a, b) => (b.fee.year - a.fee.year) || (b.fee.month - a.fee.month));
-            return { base, items: sorted, primary, totalAmount, date: latestCreatedAt };
+            const familyPayment = items.find(it => it.payment.familyPayment)?.payment.familyPayment;
+            return { base, items: sorted, primary, totalAmount, date: latestCreatedAt, familyPayment };
           }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
           if (groups.length === 0) {
@@ -522,9 +554,20 @@ export default function StudentFeeDetailPage() {
               {/* Parent row — one line per payment transaction */}
               <div className="grid grid-cols-[100px_180px_minmax(100px,1fr)_100px_90px_80px] gap-x-4 px-4 py-3 items-center hover:bg-warm-card/20 transition-colors">
                 <div className="text-xs text-warm-muted">{new Date(group.date).toLocaleDateString()}</div>
-                <div className="text-xs text-warm-cream font-mono">{group.base}</div>
+                <div className="text-xs text-warm-cream font-mono">
+                  {group.familyPayment ? group.familyPayment.receiptNumber : group.base}
+                </div>
                 <div className="text-xs text-warm-muted/50">
-                  {group.items.length > 1 ? `${group.items.length} months` : `${MONTHS[(group.items[0].fee.month || 1) - 1]} ${group.items[0].fee.year}`}
+                  {group.familyPayment ? (
+                    <span className="inline-flex items-center gap-1 text-purple-300/80">
+                      Via family
+                      {group.items.length > 1 ? ` · ${group.items.length} lines` : ` · ${MONTHS[(group.items[0].fee.month || 1) - 1]} ${group.items[0].fee.year}`}
+                    </span>
+                  ) : group.items.length > 1 ? (
+                    `${group.items.length} months`
+                  ) : (
+                    `${MONTHS[(group.items[0].fee.month || 1) - 1]} ${group.items[0].fee.year}`
+                  )}
                 </div>
                 <div className="text-xs text-green-400 text-right font-medium pr-1">{(group.totalAmount / 100).toLocaleString()}</div>
                 <div className="text-xs text-warm-muted pl-1">{group.primary.payment.paymentMethod}</div>
@@ -691,6 +734,16 @@ export default function StudentFeeDetailPage() {
             )}
           </div>
         </div>
+      )}
+
+      {data.family?.id && (
+        <FamilyPayModal
+          familyId={data.family.id}
+          open={showFamilyPay}
+          onClose={() => setShowFamilyPay(false)}
+          token={token}
+          ayId={ayId}
+        />
       )}
     </main>
   );
