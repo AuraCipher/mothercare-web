@@ -88,7 +88,12 @@ export default function FeeStructuresPage() {
                           {editing ? (
                             <div className="flex items-center gap-1 justify-center">
                               <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                                className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-1 text-xs text-warm-cream text-center outline-none" autoFocus />
+                                className="w-20 rounded border border-warm-accent bg-[#1a1614] px-2 py-1 text-xs text-warm-cream text-center outline-none"
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveCell(sec.id, h.id);
+                                  if (e.key === 'Escape') setEditCell(null);
+                                }} />
                               <button onClick={() => handleSaveCell(sec.id, h.id)} className="text-xs text-green-400 hover:underline">✓</button>
                               <button onClick={() => setEditCell(null)} className="text-xs text-warm-muted hover:underline">✕</button>
                             </div>
