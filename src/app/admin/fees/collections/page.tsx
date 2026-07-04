@@ -7,6 +7,7 @@ import { Search, Users } from 'lucide-react';
 import config from '@/config';
 import StudentPayModal from '@/components/fees/StudentPayModal';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
+import { FEE_STATUS_OPTIONS, type FeeStatusFilter } from '@/lib/feeStatusFilter';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PAGE_SIZE = 100;
 
@@ -29,6 +30,7 @@ export default function CollectionsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [fatherQuery, setFatherQuery] = useState('');
   const [debouncedFather, setDebouncedFather] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FeeStatusFilter>('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
   const [payStudentId, setPayStudentId] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function CollectionsPage() {
     return () => clearTimeout(t);
   }, [fatherQuery]);
 
-  useEffect(() => { setPage(1); }, [month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter]);
+  useEffect(() => { setPage(1); }, [month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter, statusFilter]);
 
   const loadData = useCallback(async () => {
     if (!token || !ayId) return;
@@ -75,6 +77,7 @@ export default function CollectionsPage() {
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (debouncedFather) params.set('fatherSearch', debouncedFather);
       if (rollFilter.trim()) params.set('roll', rollFilter.trim());
+      if (statusFilter) params.set('feeStatus', statusFilter);
 
       const [fRes, sRes] = await Promise.all([
         fetch(`${config.apiUrl}/admin/fees/students-list?${params}`, {
@@ -101,7 +104,7 @@ export default function CollectionsPage() {
     } finally {
       if (gen === loadGenRef.current) setLoading(false);
     }
-  }, [token, ayId, branchId, month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter, page]);
+  }, [token, ayId, branchId, month, year, period, classFilter, debouncedSearch, debouncedFather, rollFilter, statusFilter, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -221,6 +224,12 @@ export default function CollectionsPage() {
               <option key={s.id} value={s.id}>{s.name}{s.section ? ` — ${s.section}` : ''}</option>
             ))}
           </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as FeeStatusFilter)}
+            className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent">
+            {FEE_STATUS_OPTIONS.map(opt => (
+              <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <div className="flex gap-1">
             {(['class', 'alpha'] as const).map(v => (
               <button key={v} onClick={() => setViewMode(v)}
@@ -249,7 +258,11 @@ export default function CollectionsPage() {
           ))}
         </div>
       ) : showEmpty ? (
-        period === 'monthly' ? (
+        statusFilter ? (
+          <div className="rounded-xl border border-warm-card-border p-12 text-center text-xs text-warm-muted/50">
+            No students match the selected payment status
+          </div>
+        ) : period === 'monthly' ? (
           <div className="rounded-xl border border-warm-card-border p-12 text-center">
             <p className="text-sm text-warm-muted/60 mb-4">No fees generated for {MONTHS[month]} {year} yet</p>
             <button onClick={() => router.push('/admin/fees/generate')}

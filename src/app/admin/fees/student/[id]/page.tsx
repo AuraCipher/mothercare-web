@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2, Users } from 'lucide-react';
 import config from '@/config';
-import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
+import { printReceipt as upgradedPrintReceipt, downloadReceipt, receiptDataFromSnapshot } from '@/lib/receipt';
 import type { ReceiptData, ReceiptMonthSection } from '@/lib/receipt';
 import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
@@ -226,53 +226,7 @@ export default function StudentFeeDetailPage() {
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {
-            const snap = json.data;
-            // Build ReceiptData from snapshot — prefer the stored per-month
-            // allocation breakdown (waterfall/family payments spanning
-            // multiple months); fall back to a single synthetic line only
-            // when the snapshot predates the allocations field.
-            const allocations = Array.isArray(snap.allocations) && snap.allocations.length > 0
-              ? snap.allocations
-              : snap.currentMonthLabel
-                ? [{ label: snap.currentMonthLabel, amountPaise: snap.amountPaidPaise }]
-                : [];
-            receiptData = {
-              receiptNumber: snap.receiptNumber,
-              date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              paymentMethod: snap.paymentMethod,
-              reference: snap.reference || undefined,
-              totalPaidPaise: snap.amountPaidPaise,
-              balanceRemainingPaise: snap.balanceAfterPaise,
-              studentName: snap.studentName,
-              studentClass: snap.studentClass,
-              studentRoll: snap.studentRoll || undefined,
-              fatherName: snap.fatherName || undefined,
-              isFullyPaid: snap.isFullyPaid,
-              isFromSnapshot: true,
-              snapshotCreatedAt: snap.createdAt,
-              snapshotPrintCount: snap.printCount,
-              currentMonth: (() => {
-                // Normalize head/extra items regardless of which field name
-                // this snapshot was written with — snapshots created before
-                // the amount->amountPaise fix still have "amount" in the DB
-                // and will forever (no backfill), snapshots from now on have
-                // "amountPaise". Support both so old receipts don't show NaN.
-                const normalizeItems = (items: any[]) =>
-                  (items || []).map((h: any) => ({ name: h.name, amountPaise: h.amountPaise ?? h.amount ?? 0 }));
-                const normalizedHeads = normalizeItems(snap.currentMonthHeads);
-                const normalizedExtras = normalizeItems(snap.currentMonthExtras);
-                return {
-                  label: snap.currentMonthLabel,
-                  breakdown: normalizedHeads,
-                  extraItems: normalizedExtras,
-                  totalPaise: normalizedHeads.reduce((s: number, h: any) => s + h.amountPaise, 0),
-                  paidPaise: snap.amountPaidPaise,
-                };
-              })(),
-              previousBalancePaise: snap.previousBalancePaise,
-              totalDuePaise: snap.totalDuePaise,
-              allocations,
-            };
+            receiptData = receiptDataFromSnapshot(json.data);
           }
         }
       } catch { /* snapshot fetch failed — fall through to live computation */ }

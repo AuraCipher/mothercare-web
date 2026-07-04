@@ -7,6 +7,7 @@ import { ArrowLeft, Users, CreditCard, History, Printer } from 'lucide-react';
 import config from '@/config';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
 import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
+import { FEE_STATUS_OPTIONS, type FeeStatusFilter } from '@/lib/feeStatusFilter';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -25,6 +26,7 @@ export default function FamilyDetailPage() {
   const [family, setFamily] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<FeeStatusFilter>('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -33,7 +35,9 @@ export default function FamilyDetailPage() {
     if (!token || !id || !ayId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${config.apiUrl}/admin/families/${id}?academicYearId=${ayId}`, {
+      const params = new URLSearchParams({ academicYearId: ayId });
+      if (statusFilter) params.set('feeStatus', statusFilter);
+      const res = await fetch(`${config.apiUrl}/admin/families/${id}?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -44,7 +48,7 @@ export default function FamilyDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id, ayId]);
+  }, [token, id, ayId, statusFilter]);
 
   useEffect(() => { loadFamily(); }, [loadFamily]);
 
@@ -138,14 +142,28 @@ export default function FamilyDetailPage() {
 
       {/* Per-student dues */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-        <h2 className="text-sm font-medium text-warm-cream mb-4">Student Dues</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-sm font-medium text-warm-cream">Student Dues</h2>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as FeeStatusFilter)}
+            className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent"
+          >
+            {FEE_STATUS_OPTIONS.map(opt => (
+              <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
         {(family.students || []).length === 0 ? (
-          <p className="text-xs text-warm-muted/50">No active students in this family</p>
+          <p className="text-xs text-warm-muted/50">
+            {statusFilter ? `No ${statusFilter} students in this family` : 'No active students in this family'}
+          </p>
         ) : (
           <div className="space-y-4">
             {(family.students || []).map((s: any) => {
               const cls = [s.group?.name, s.group?.section].filter(Boolean).join(' — ');
               const unpaidFees = (s.studentFees || []).filter((f: any) => (f.remainingPaise ?? 0) > 0);
+              const status = s.feeStatus || 'UNPAID';
               return (
                 <div key={s.id} className="border-b border-warm-card-border/10 pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between gap-2 mb-2">
@@ -156,9 +174,17 @@ export default function FamilyDetailPage() {
                       {s.name}
                       <span className="text-warm-muted/50 ml-2">{cls}{s.rollNumber ? ` · ${s.rollNumber}` : ''}</span>
                     </button>
-                    <span className={`text-xs font-medium shrink-0 ${(s.totalDuePaise ?? 0) > 0 ? 'text-red-400' : 'text-green-400/80'}`}>
-                      {(s.totalDuePaise ?? 0) > 0 ? `${formatPkr(s.totalDuePaise)} PKR` : 'Clear'}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                        status === 'PAID' || status === 'OVERPAID' ? 'bg-green-900/20 text-green-400' :
+                        status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
+                        status === 'UNPAID' ? 'bg-red-900/20 text-red-400' :
+                        'bg-warm-card-border/30 text-warm-muted/50'
+                      }`}>{status}</span>
+                      <span className={`text-xs font-medium ${(s.totalDuePaise ?? 0) > 0 ? 'text-red-400' : 'text-green-400/80'}`}>
+                        {(s.totalDuePaise ?? 0) > 0 ? `${formatPkr(s.totalDuePaise)} PKR` : 'Clear'}
+                      </span>
+                    </div>
                   </div>
                   {unpaidFees.length > 0 && (
                     <div className="ml-2 space-y-1">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { Search, Users, Plus, ArrowRight } from 'lucide-react';
 import config from '@/config';
+import { FEE_STATUS_OPTIONS, type FeeStatusFilter } from '@/lib/feeStatusFilter';
 
 function formatPkr(paise: number) {
   return (paise / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -15,6 +16,7 @@ export default function FamiliesPage() {
   const [families, setFamilies] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FeeStatusFilter>('');
   const [loading, setLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -32,6 +34,7 @@ export default function FamiliesPage() {
       const params = new URLSearchParams();
       if (ayId) params.set('academicYearId', ayId);
       if (debouncedSearch) params.set('search', debouncedSearch);
+      if (statusFilter) params.set('feeStatus', statusFilter);
 
       const res = await fetch(`${config.apiUrl}/admin/families?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -44,7 +47,7 @@ export default function FamiliesPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, ayId, debouncedSearch]);
+  }, [token, ayId, debouncedSearch, statusFilter]);
 
   useEffect(() => { loadFamilies(); }, [loadFamilies]);
 
@@ -66,14 +69,25 @@ export default function FamiliesPage() {
         </button>
       </div>
 
-      <div className="mb-5 relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted/40" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by family name, father, phone, or student…"
-          className="w-full rounded-lg border border-warm-card-border bg-warm-card py-2.5 pl-9 pr-3 text-xs text-warm-cream placeholder:text-warm-muted/40 focus:border-warm-accent/50 focus:outline-none"
-        />
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted/40" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by family name, father, phone, or student…"
+            className="w-full rounded-lg border border-warm-card-border bg-warm-card py-2.5 pl-9 pr-3 text-xs text-warm-cream placeholder:text-warm-muted/40 focus:border-warm-accent/50 focus:outline-none"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as FeeStatusFilter)}
+          className="rounded-lg border border-warm-card-border bg-warm-card px-3 py-2.5 text-xs text-warm-cream outline-none focus:border-warm-accent/50"
+        >
+          {FEE_STATUS_OPTIONS.map(opt => (
+            <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (

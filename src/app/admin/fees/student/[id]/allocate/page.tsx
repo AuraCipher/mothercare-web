@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
 import { ArrowLeft, Save, Printer, Download, ChevronDown } from 'lucide-react';
 import config from '@/config';
-import { printReceipt as upgradedPrintReceipt, downloadReceipt } from '@/lib/receipt';
-import type { ReceiptData } from '@/lib/receipt';
+import { printReceipt as upgradedPrintReceipt, downloadReceipt, receiptDataFromSnapshot } from '@/lib/receipt';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -276,40 +275,7 @@ export default function AllocatePaymentPage() {
       const json = await res.json();
       if (!json.success) { showToast('error', 'Receipt not available'); return; }
       const snap = json.data;
-      const normalizeItems = (arr: any[]) => (arr || []).map((h: any) => ({ name: h.name, amountPaise: h.amountPaise ?? h.amount ?? 0 }));
-      const heads = normalizeItems(snap.currentMonthHeads);
-      const extras = normalizeItems(snap.currentMonthExtras);
-      const allocations = Array.isArray(snap.allocations) && snap.allocations.length > 0
-        ? snap.allocations
-        : snap.currentMonthLabel
-          ? [{ label: snap.currentMonthLabel, amountPaise: snap.amountPaidPaise }]
-          : [];
-      const receiptData: ReceiptData = {
-        receiptNumber: snap.receiptNumber,
-        date: new Date(snap.paymentDate || snap.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        paymentMethod: snap.paymentMethod,
-        reference: snap.reference || undefined,
-        totalPaidPaise: snap.amountPaidPaise,
-        balanceRemainingPaise: snap.balanceAfterPaise,
-        studentName: snap.studentName,
-        studentClass: snap.studentClass,
-        studentRoll: snap.studentRoll || undefined,
-        fatherName: snap.fatherName || undefined,
-        isFullyPaid: snap.isFullyPaid,
-        isFromSnapshot: true,
-        snapshotCreatedAt: snap.createdAt,
-        snapshotPrintCount: snap.printCount,
-        currentMonth: {
-          label: snap.currentMonthLabel,
-          breakdown: heads,
-          extraItems: extras,
-          totalPaise: heads.reduce((s: number, h: any) => s + h.amountPaise, 0),
-          paidPaise: snap.amountPaidPaise,
-        },
-        previousBalancePaise: snap.previousBalancePaise,
-        totalDuePaise: snap.totalDuePaise,
-        allocations,
-      };
+      const receiptData = receiptDataFromSnapshot(snap);
       if (action === 'print') upgradedPrintReceipt(receiptData); else downloadReceipt(receiptData);
     } catch {
       showToast('error', 'Failed to load receipt');
