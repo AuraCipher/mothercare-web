@@ -6,15 +6,14 @@ import { ChevronLeft, Minus, PackagePlus, Plus, ShoppingCart, X } from 'lucide-r
 import { api } from '@/lib/api';
 import { formatCanteenMoney, formatStockDisplay, totalStockUnits, type CanteenProduct } from '@/lib/canteen';
 import { showToast } from '@/components/toast';
+import {
+  CreditAllocationSection,
+  creditLinesAreValid,
+  creditLinesToPayload,
+  type CreditLine,
+} from './credit-allocation';
 
 type CartLine = { product: CanteenProduct; quantity: number };
-
-type CreditPerson = {
-  id: string;
-  name: string;
-  rollNumber?: string;
-  phone?: string | null;
-};
 
 const fieldClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent';
@@ -37,14 +36,9 @@ function CanteenSalesContent() {
   const [submitting, setSubmitting] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
-  const [creditOpen, setCreditOpen] = useState(false);
-  const [personType, setPersonType] = useState<'STUDENT' | 'TEACHER' | 'STAFF'>('STUDENT');
-  const [searchQ, setSearchQ] = useState('');
-  const [persons, setPersons] = useState<CreditPerson[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<CreditPerson | null>(null);
-  const [personIdField, setPersonIdField] = useState<'studentId' | 'userId'>('studentId');
   const [cashAmount, setCashAmount] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
+  const [creditLines, setCreditLines] = useState<CreditLine[]>([]);
   const [qtyDraft, setQtyDraft] = useState<Record<string, string>>({});
   const [presetAccount, setPresetAccount] = useState<{ id: string; displayName: string } | null>(null);
 
@@ -54,6 +48,7 @@ function CanteenSalesContent() {
     if (!cart.length) {
       setCashAmount('');
       setCreditAmount('');
+      setCreditLines([]);
       return;
     }
     const productsTotal = cart.reduce((s, l) => s + Number(l.product.unitPrice) * l.quantity, 0);
@@ -65,6 +60,11 @@ function CanteenSalesContent() {
       setCreditAmount('0');
     }
   }, [cartSignature, presetAccount?.id]);
+
+  useEffect(() => {
+    const credit = creditAmount.trim() === '' ? 0 : Number(creditAmount);
+    if (credit <= 0) setCreditLines([]);
+  }, [creditAmount]);
 
   const loadProducts = useCallback(() => {
     setLoading(true);
@@ -187,7 +187,12 @@ function CanteenSalesContent() {
     }));
   };
 
-  const postSale = async (creditPayload?: Record<string, string>) => {
+  const creditTotal = creditAmount.trim() === '' ? 0 : Number(creditAmount);
+  const creditInvalid = creditTotal > 0
+    && !presetAccount
+    && !creditLinesAreValid(creditLines, creditTotal);
+
+  const postSale = async () => {
     if (!cart.length) {
       showToast('error', 'Add at least one product');
       return;
@@ -207,23 +212,34 @@ function CanteenSalesContent() {
       showToast('error', 'Cash + credit must equal products total');
       return;
     }
+    if (credit > 0 && !presetAccount && !creditLinesAreValid(creditLines, credit)) {
+      showToast('error', 'Assign credit amounts that add up to total credit');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await api.postCanteenSale({
+      const payload: Record<string, unknown> = {
         items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
         cashAmount: cash,
         creditAmount: credit,
-        ...(credit > 0 && presetAccount ? { accountId: presetAccount.id } : {}),
-        ...creditPayload,
-      });
+      };
+
+      if (credit > 0) {
+        if (presetAccount) {
+          payload.accountId = presetAccount.id;
+        } else {
+          payload.creditAllocations = creditLinesToPayload(creditLines);
+        }
+      }
+
+      await api.postCanteenSale(payload);
       showToast('success', "Today's sale recorded");
       setCart([]);
       setCashAmount('');
       setCreditAmount('');
+      setCreditLines([]);
       setQtyDraft({});
-      setCreditOpen(false);
-      setSelectedPerson(null);
       loadProducts();
     } catch (e: unknown) {
       showToast('error', e instanceof Error ? e.message : 'Sale failed');
@@ -237,37 +253,7 @@ function CanteenSalesContent() {
       showToast('error', 'Add at least one product');
       return;
     }
-
-    const credit = creditAmount.trim() === '' ? 0 : Number(creditAmount);
-    if (credit > 0 && !presetAccount) {
-      setCreditOpen(true);
-      setPersonType('STUDENT');
-      setSelectedPerson(null);
-      setSearchQ('');
-      return;
-    }
-
     postSale();
-  };
-
-  useEffect(() => {
-    if (!creditOpen) return;
-    const idField = personType === 'STUDENT' ? 'studentId' : 'userId';
-    setPersonIdField(idField);
-    api.getCanteenCreditPersons(personType, searchQ || undefined)
-      .then((r) => setPersons(r.data || []))
-      .catch(() => setPersons([]));
-  }, [creditOpen, personType, searchQ]);
-
-  const confirmCredit = () => {
-    if (!selectedPerson) {
-      showToast('error', 'Select a person from this branch');
-      return;
-    }
-    postSale({
-      personType,
-      [personIdField]: selectedPerson.id,
-    });
   };
 
   const filteredProducts = useMemo(() => {
@@ -439,9 +425,17 @@ function CanteenSalesContent() {
             </p>
           )}
 
+          {!presetAccount && creditTotal > 0 && Number.isFinite(creditTotal) && (
+            <CreditAllocationSection
+              creditTotal={creditTotal}
+              lines={creditLines}
+              onChange={setCreditLines}
+            />
+          )}
+
           <button
             type="button"
-            disabled={submitting || !cart.length || paymentMismatch || totalSales <= 0}
+            disabled={submitting || !cart.length || paymentMismatch || totalSales <= 0 || creditInvalid}
             onClick={confirmSale}
             className="w-full rounded-lg bg-warm-accent py-2.5 text-sm font-medium text-[#1a1614] disabled:opacity-50"
           >
@@ -546,66 +540,6 @@ function CanteenSalesContent() {
                 Done
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {creditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#1a1614] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-warm-cream">Credit sale — branch person only</h3>
-              <button type="button" onClick={() => setCreditOpen(false)} className="text-warm-muted">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex gap-2 mb-3">
-              {(['STUDENT', 'TEACHER', 'STAFF'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => { setPersonType(t); setSelectedPerson(null); }}
-                  className={`flex-1 rounded-lg py-1.5 text-xs ${
-                    personType === t ? 'bg-warm-accent text-[#1a1614]' : 'border border-warm-card-border text-warm-muted'
-                  }`}
-                >
-                  {t.charAt(0) + t.slice(1).toLowerCase()}
-                </button>
-              ))}
-            </div>
-            <input
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Search name or roll…"
-              className="w-full mb-3 rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream outline-none"
-            />
-            <ul className="max-h-48 overflow-y-auto space-y-1 mb-4">
-              {persons.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPerson(p)}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-xs ${
-                      selectedPerson?.id === p.id ? 'bg-warm-accent/20 text-warm-accent' : 'hover:bg-warm-card text-warm-cream'
-                    }`}
-                  >
-                    {p.name}
-                    {p.rollNumber ? ` · ${p.rollNumber}` : ''}
-                  </button>
-                </li>
-              ))}
-              {persons.length === 0 && (
-                <li className="text-xs text-warm-muted py-2">No matches in this branch</li>
-              )}
-            </ul>
-            <button
-              type="button"
-              disabled={submitting || !selectedPerson}
-              onClick={confirmCredit}
-              className="w-full rounded-lg bg-warm-accent py-2.5 text-sm font-medium text-[#1a1614] disabled:opacity-50"
-            >
-              Confirm credit · {formatCanteenMoney(Number(creditAmount) || 0)}
-            </button>
           </div>
         </div>
       )}
