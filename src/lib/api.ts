@@ -763,4 +763,13 @@ export const api = {
 
   reactivateStaffMember: (userId: string) =>
     apiRequest(`/admin/staff/${userId}/reactivate${scopeQuery()}`, { method: 'POST' }),
+
+  setStaffPassword: (userId: string, newPassword: string, adminPassword: string) =>
+    apiRequest(`/admin/staff/${userId}/set-password${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword, adminPassword }),
+    }),
+
+  sendStaffCredentials: (userId: string) =>
+    apiRequest(`/admin/staff/${userId}/send-credentials${scopeQuery()}`, { method: 'POST' }),
 };
