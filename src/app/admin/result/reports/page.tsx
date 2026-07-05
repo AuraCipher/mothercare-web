@@ -7,7 +7,7 @@ import { showToast } from '@/components/toast';
 import { api } from '@/lib/api';
 import { classLabel, downloadCsv } from '@/lib/feeAnalytics';
 
-type ReportType = 'standard' | 'fail-list' | 'class-summary' | 'report-cards';
+type ReportType = 'standard' | 'fail-list' | 'class-summary';
 
 const ALL_EXAMS = '';
 type OutcomeFilter = '' | 'passed' | 'failed';
@@ -19,7 +19,6 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   standard: 'Student Results',
   'fail-list': 'Fail List',
   'class-summary': 'Class Summary',
-  'report-cards': 'Report Cards',
 };
 
 const OUTCOME_LABELS: Record<OutcomeFilter, string> = {
@@ -38,7 +37,6 @@ type ReportRow = {
   overall?: string;
   grade?: string;
   rank?: string;
-  status?: string;
   failCount?: number;
   studentCount?: number;
   passRate?: number;
@@ -174,12 +172,6 @@ export default function ResultReportsPage() {
     setReport(null);
   };
 
-  useEffect(() => {
-    if (examId && reportType === 'report-cards') {
-      setReportType('standard');
-    }
-  }, [examId, reportType]);
-
   const sessionName = sessions.find((s) => s.id === sessionId)?.name || 'Session';
   const examName = examId ? (examsInSession.find((e) => e.id === examId)?.name || 'Exam') : null;
   const className = classId
@@ -196,10 +188,6 @@ export default function ResultReportsPage() {
     }
     if (!sessionId) {
       showToast('error', 'Select an exam session');
-      return;
-    }
-    if (reportType === 'report-cards' && examId) {
-      showToast('error', 'Report cards are session-level — clear exam filter or choose another report type');
       return;
     }
 
@@ -463,21 +451,6 @@ export default function ResultReportsPage() {
               overall: row.reportCard ? pctStr(row.reportCard.overallPercentage) : '—',
               grade: row.reportCard?.overallGrade ?? '—',
             });
-          } else if (reportType === 'report-cards') {
-            if (!row.reportCard) continue;
-            const rc = row.reportCard;
-            const rcPass = isPassing(rc.overallPercentage, rc.overallGrade);
-            if (outcomeFilter === 'passed' && !rcPass) continue;
-            if (outcomeFilter === 'failed' && rcPass) continue;
-            allRows.push({
-              roll: row.student?.rollNumber || '—',
-              name: row.student?.name || '',
-              section: sectionLabel,
-              overall: pctStr(rc.overallPercentage),
-              grade: rc.overallGrade,
-              rank: rc.classRank != null ? String(rc.classRank) : '—',
-              status: rc.status || '—',
-            });
           } else {
             // Session-level: one row per student — no per-subject columns
             allRows.push({
@@ -504,10 +477,6 @@ export default function ResultReportsPage() {
         headers = showSection
           ? ['Roll', 'Class', 'Name', 'Overall', 'Grade', 'Rank']
           : ['Roll', 'Name', 'Overall', 'Grade', 'Rank'];
-      } else if (reportType === 'report-cards') {
-        headers = showSection
-          ? ['Roll', 'Class', 'Name', 'Overall', 'Grade', 'Rank', 'Status']
-          : ['Roll', 'Name', 'Overall', 'Grade', 'Rank', 'Status'];
       } else {
         headers = showSection
           ? ['Roll', 'Class', 'Name', 'Failed Subjects', 'Overall', 'Grade']
@@ -561,11 +530,6 @@ export default function ResultReportsPage() {
           ? [r.roll, r.section, r.name, ...tail]
           : [r.roll, r.name, ...tail];
       }
-      if (report.reportType === 'report-cards') {
-        return report.showSection
-          ? [r.roll, r.section, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—']
-          : [r.roll, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—'];
-      }
       const tail = report.headers.slice(report.headers.length - (report.headers.includes('Rank') ? 3 : 2));
       const tailValues = tail.map((h) => {
         if (h === 'Overall' || h === 'Avg %') return r.overall ?? '—';
@@ -599,12 +563,6 @@ export default function ResultReportsPage() {
         const cells = report.showSection
           ? `<td>${r.roll}</td><td>${r.section}</td><td>${r.name}</td><td>${r.failCount ?? 0}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td>`
           : `<td>${r.roll}</td><td>${r.name}</td><td>${r.failCount ?? 0}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td>`;
-        return `<tr>${cells}</tr>`;
-      }
-      if (report.reportType === 'report-cards') {
-        const cells = report.showSection
-          ? `<td>${r.roll}</td><td>${r.section}</td><td>${r.name}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td><td>${r.status ?? '—'}</td>`
-          : `<td>${r.roll}</td><td>${r.name}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td><td>${r.status ?? '—'}</td>`;
         return `<tr>${cells}</tr>`;
       }
       const cells = report.showSection
@@ -661,15 +619,6 @@ export default function ResultReportsPage() {
       if (header === 'Failed Subjects') return <span className="text-red-400">{r.failCount ?? 0}</span>;
       if (header === 'Overall' || header === 'Avg %') return r.overall;
       if (header === 'Grade' || header === 'Outcome') return r.grade;
-    }
-    if (report?.reportType === 'report-cards') {
-      if (header === 'Roll') return r.roll;
-      if (header === 'Class') return r.section;
-      if (header === 'Name') return r.name;
-      if (header === 'Overall') return r.overall;
-      if (header === 'Grade') return r.grade;
-      if (header === 'Rank') return r.rank;
-      if (header === 'Status') return r.status;
     }
     if (header === 'Roll') return r.roll;
     if (header === 'Class') return r.section;
@@ -760,9 +709,8 @@ export default function ResultReportsPage() {
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
             >
               {(Object.keys(REPORT_TYPE_LABELS) as ReportType[]).map((t) => (
-                <option key={t} value={t} disabled={t === 'report-cards' && !!examId}>
+                <option key={t} value={t}>
                   {t === 'standard' && examId ? 'Exam Marks Sheet' : REPORT_TYPE_LABELS[t]}
-                  {t === 'report-cards' && examId ? ' (session only)' : ''}
                 </option>
               ))}
             </select>
