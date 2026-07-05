@@ -1,13 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, UserPlus, Search, X, Edit3, Trash2, ExternalLink, Shield,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import config from '@/config';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
+import AvatarImage from '@/components/avatar-image';
 import {
   PermissionMatrix,
   emptyPermMap,
@@ -25,7 +27,18 @@ type StaffRow = {
   status: string;
   branchRole: string;
   permissions: ModulePermission[];
+  profilePhotoId?: string | null;
+  employeeId?: string | null;
+  qualification?: string | null;
 };
+
+const emptyCreateForm = () => ({
+  name: '', username: '', email: '', phone: '',
+  employeeId: '', qualification: '', specialization: '',
+  joiningDate: '', salary: '', emergencyContact: '', address: '',
+  dateOfBirth: '', gender: '', bloodGroup: '', fatherName: '',
+  cardId: '', severeDisease: '', experience: '', bio: '',
+});
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -36,12 +49,13 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-function Input({ value, onChange, placeholder, type = 'text' }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+function Input({ value, onChange, placeholder, type = 'text', step }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; step?: string;
 }) {
   return (
     <input
       type={type}
+      step={step}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -49,6 +63,9 @@ function Input({ value, onChange, placeholder, type = 'text' }: {
     />
   );
 }
+
+const selectClass =
+  'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors';
 
 export default function StaffPage() {
   const router = useRouter();
@@ -60,7 +77,10 @@ export default function StaffPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [cf, setCf] = useState({ name: '', username: '', email: '', phone: '' });
+  const [cf, setCf] = useState(emptyCreateForm);
+  const [createPhotoId, setCreatePhotoId] = useState<string | null>(null);
+  const [createPhotoPreview, setCreatePhotoPreview] = useState<string | null>(null);
+  const createPhotoRef = useRef<HTMLInputElement>(null);
   const [createPerms, setCreatePerms] = useState(emptyPermMap);
 
   const [confirm, setConfirm] = useState<{
@@ -83,9 +103,31 @@ export default function StaffPage() {
   useEffect(() => { load(); }, [load]);
 
   const resetCreate = () => {
-    setCf({ name: '', username: '', email: '', phone: '' });
+    setCf(emptyCreateForm());
+    setCreatePhotoId(null);
+    setCreatePhotoPreview(null);
     setCreatePerms(emptyPermMap());
     setCreateError('');
+  };
+
+  const uploadCreatePhoto = async (file: File) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('purpose', 'profile');
+      const res = await fetch(`${config.apiUrl}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || 'Upload failed');
+      setCreatePhotoId(result.data.id);
+      setCreatePhotoPreview(URL.createObjectURL(file));
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to upload photo');
+    }
   };
 
   const handleCreate = async () => {
@@ -106,6 +148,22 @@ export default function StaffPage() {
         username: cf.username.trim(),
         email: cf.email.trim() || undefined,
         phone: cf.phone.trim() || undefined,
+        employeeId: cf.employeeId.trim() || undefined,
+        fatherName: cf.fatherName.trim() || undefined,
+        qualification: cf.qualification.trim() || undefined,
+        specialization: cf.specialization.trim() || undefined,
+        joiningDate: cf.joiningDate || undefined,
+        dateOfBirth: cf.dateOfBirth || undefined,
+        address: cf.address.trim() || undefined,
+        salary: cf.salary.trim() ? Number(cf.salary) : undefined,
+        gender: cf.gender || undefined,
+        bloodGroup: cf.bloodGroup.trim() || undefined,
+        emergencyContact: cf.emergencyContact.trim() || undefined,
+        cardId: cf.cardId.trim() || undefined,
+        severeDisease: cf.severeDisease.trim() || undefined,
+        experience: cf.experience.trim() || undefined,
+        bio: cf.bio.trim() || undefined,
+        profilePhotoId: createPhotoId || undefined,
         permissions,
       });
       setShowCreate(false);
@@ -174,7 +232,7 @@ export default function StaffPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load()}
-            placeholder="Search by name or username…"
+            placeholder="Search by name, username, or employee ID…"
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2 pl-9 pr-3 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
           />
         </div>
@@ -230,17 +288,31 @@ export default function StaffPage() {
                 onClick={() => router.push(`/admin/staff/${s.userId}`)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-                  <Shield size={18} className="text-violet-400" />
+                <div className="relative shrink-0">
+                  {s.profilePhotoId ? (
+                    <AvatarImage
+                      fileId={s.profilePhotoId}
+                      className="h-10 w-10 rounded-lg border border-warm-card-border object-cover"
+                      fallback={s.name?.charAt(0)}
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+                      <Shield size={18} className="text-violet-400" />
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-warm-cream">
                     {s.name}
+                    {s.employeeId && (
+                      <span className="text-[10px] font-normal text-warm-muted/60">({s.employeeId})</span>
+                    )}
                     {s.username && (
                       <span className="text-[10px] font-normal text-warm-muted/60">@{s.username}</span>
                     )}
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-warm-muted">
+                    {s.qualification && <span>{s.qualification}</span>}
                     <span className="truncate">{formatModuleSummary(s.permissions)}</span>
                     <span className={`inline-flex items-center gap-1 ${
                       s.status === 'active' ? 'text-green-400' : 'text-warm-muted/50'
@@ -314,22 +386,121 @@ export default function StaffPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => createPhotoRef.current?.click()}
+                  className="group relative shrink-0"
+                >
+                  {createPhotoPreview || createPhotoId ? (
+                    <img
+                      src={createPhotoPreview || `${config.apiUrl}/api/uploads/${createPhotoId}`}
+                      alt="Preview"
+                      className="h-20 w-16 rounded-lg border-2 border-warm-card-border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-16 items-center justify-center rounded-lg border-2 border-dashed border-warm-card-border bg-[#1a1614] text-[10px] text-warm-muted group-hover:border-warm-accent">
+                      Photo
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={createPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadCreatePhoto(file);
+                    e.target.value = '';
+                  }}
+                />
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  <Field label="Full Name" required>
+                    <Input value={cf.name} onChange={(v) => setCf((p) => ({ ...p, name: v }))} placeholder="e.g. Ms. Rubina Shaheen" />
+                  </Field>
+                  <Field label="Email">
+                    <Input value={cf.email} onChange={(v) => setCf((p) => ({ ...p, email: v }))} placeholder="optional" />
+                  </Field>
+                </div>
+              </div>
+
+              <Field label="Username" required>
+                <Input value={cf.username} onChange={(v) => setCf((p) => ({ ...p, username: v }))} placeholder="e.g. rubina_fees" />
+              </Field>
+
+              <hr className="border-warm-card-border" />
+              <p className="text-[10px] font-medium uppercase tracking-wider text-warm-muted">Profile details</p>
+
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Full Name" required>
-                  <Input value={cf.name} onChange={(v) => setCf((p) => ({ ...p, name: v }))} placeholder="e.g. Ali Khan" />
+                <Field label="Employee ID">
+                  <Input value={cf.employeeId} onChange={(v) => setCf((p) => ({ ...p, employeeId: v }))} placeholder="e.g. STF-122" />
                 </Field>
-                <Field label="Username" required>
-                  <Input value={cf.username} onChange={(v) => setCf((p) => ({ ...p, username: v }))} placeholder="e.g. ali_fees" />
+                <Field label="Father Name">
+                  <Input value={cf.fatherName} onChange={(v) => setCf((p) => ({ ...p, fatherName: v }))} />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Email">
-                  <Input value={cf.email} onChange={(v) => setCf((p) => ({ ...p, email: v }))} placeholder="optional" />
+                <Field label="Qualification">
+                  <Input value={cf.qualification} onChange={(v) => setCf((p) => ({ ...p, qualification: v }))} placeholder="e.g. M.Sc. (Biology)" />
                 </Field>
+                <Field label="Specialization">
+                  <Input value={cf.specialization} onChange={(v) => setCf((p) => ({ ...p, specialization: v }))} placeholder="e.g. Science (Sections)" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Joining Date">
+                  <Input type="date" value={cf.joiningDate} onChange={(v) => setCf((p) => ({ ...p, joiningDate: v }))} />
+                </Field>
+                <Field label="Date of Birth">
+                  <Input type="date" value={cf.dateOfBirth} onChange={(v) => setCf((p) => ({ ...p, dateOfBirth: v }))} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="Phone">
-                  <Input value={cf.phone} onChange={(v) => setCf((p) => ({ ...p, phone: v }))} placeholder="optional" />
+                  <Input value={cf.phone} onChange={(v) => setCf((p) => ({ ...p, phone: v }))} placeholder="+92 300 …" />
+                </Field>
+                <Field label="Emergency Contact">
+                  <Input value={cf.emergencyContact} onChange={(v) => setCf((p) => ({ ...p, emergencyContact: v }))} />
                 </Field>
               </div>
+              <Field label="Address">
+                <Input value={cf.address} onChange={(v) => setCf((p) => ({ ...p, address: v }))} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Salary">
+                  <Input type="number" step="0.01" value={cf.salary} onChange={(v) => setCf((p) => ({ ...p, salary: v }))} />
+                </Field>
+                <Field label="Blood Group">
+                  <Input value={cf.bloodGroup} onChange={(v) => setCf((p) => ({ ...p, bloodGroup: v }))} />
+                </Field>
+                <Field label="Card ID">
+                  <Input value={cf.cardId} onChange={(v) => setCf((p) => ({ ...p, cardId: v }))} />
+                </Field>
+                <Field label="Severe Disease">
+                  <Input value={cf.severeDisease} onChange={(v) => setCf((p) => ({ ...p, severeDisease: v }))} />
+                </Field>
+                <Field label="Gender">
+                  <select value={cf.gender} onChange={(e) => setCf((p) => ({ ...p, gender: e.target.value }))} className={selectClass}>
+                    <option value="">— Select —</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </Field>
+                <Field label="Experience">
+                  <Input value={cf.experience} onChange={(v) => setCf((p) => ({ ...p, experience: v }))} placeholder="e.g. 5 years" />
+                </Field>
+              </div>
+              <Field label="Bio">
+                <textarea
+                  value={cf.bio}
+                  onChange={(e) => setCf((p) => ({ ...p, bio: e.target.value }))}
+                  rows={3}
+                  className={`${selectClass} resize-none placeholder:text-warm-muted/40`}
+                  placeholder="Short summary"
+                />
+              </Field>
 
               <hr className="border-warm-card-border" />
               <p className="text-[10px] font-medium uppercase tracking-wider text-warm-muted">Module access</p>
