@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart3, ChevronLeft, RefreshCw, TrendingUp, ArrowRight, Calculator } from 'lucide-react';
+import { BarChart3, ChevronLeft, RefreshCw, TrendingUp, ArrowRight, GraduationCap } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import {
@@ -223,10 +223,10 @@ export default function ResultAnalyticsPage() {
           </button>
           <button
             type="button"
-            onClick={() => router.push('/admin/result/compute')}
+            onClick={() => router.push('/admin/result/report-cards')}
             className="inline-flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream"
           >
-            <Calculator size={11} /> Compute <ArrowRight size={10} />
+            <GraduationCap size={11} /> Report Cards <ArrowRight size={10} />
           </button>
           <button
             type="button"

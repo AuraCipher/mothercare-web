@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ClipboardList, ChevronRight, Calendar, Plus, BarChart3, TrendingUp, Calculator } from 'lucide-react';
+import { ClipboardList, ChevronRight, Calendar, Plus, BarChart3, TrendingUp, GraduationCap } from 'lucide-react';
 import ExamSessionModal from './components/exam-session-modal';
 
 interface ExamSession {
@@ -39,8 +39,8 @@ export default function ResultGradeHubPage() {
 
   const cards = [
     { icon: BarChart3, label: 'Analytics', desc: 'Pass/fail, grades, charts & trends', href: '/admin/result/analytics', color: 'text-cyan-400' },
-    { icon: Calculator, label: 'Compute', desc: 'Generate results & report cards', href: '/admin/result/compute', color: 'text-green-400' },
-    { icon: TrendingUp, label: 'Reports', desc: 'Class result sheets & report cards', href: '/admin/result/reports', color: 'text-orange-400' },
+    { icon: GraduationCap, label: 'Report Cards', desc: 'Generate & print exam report cards', href: '/admin/result/report-cards', color: 'text-amber-400' },
+    { icon: TrendingUp, label: 'Reports', desc: 'Generate class result sheets & exports', href: '/admin/result/reports', color: 'text-orange-400' },
   ];
 
   const loadSessions = () => {
