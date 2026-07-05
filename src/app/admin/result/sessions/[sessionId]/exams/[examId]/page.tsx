@@ -7,6 +7,7 @@ import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 import CollapsibleSection from '../../../../components/collapsible-section';
 import ExamStructureSection, { structureSummary } from '../../../../components/exam-structure-section';
+import MarksEntrySection from '../../../../components/marks-entry-section';
 import type { ExamType } from '../../../../components/exam-type-manager-modal';
 import { ChevronLeft, FileText, Trash2 } from 'lucide-react';
 
@@ -44,6 +45,7 @@ export default function ExamDetailPage() {
   const [saveError, setSaveError] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [structureSubtitle, setStructureSubtitle] = useState('Classes & subjects — generate on exam setup');
+  const [marksSubtitle, setMarksSubtitle] = useState('Enter marks per class');
 
   const [confirm, setConfirm] = useState<{
     open: boolean;
@@ -358,6 +360,19 @@ export default function ExamDetailPage() {
               readOnly={isReadOnly}
               examActive={isActive}
               onStructureChange={(classes) => setStructureSubtitle(structureSummary(classes))}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Marks entry"
+            subtitle={marksSubtitle}
+            defaultOpen={false}
+          >
+            <MarksEntrySection
+              examId={examId}
+              readOnly={isReadOnly}
+              examActive={isActive}
+              onProgressChange={setMarksSubtitle}
             />
           </CollapsibleSection>
 
