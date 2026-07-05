@@ -7,6 +7,7 @@ import { ChevronLeft, Calendar, Settings2, Plus } from 'lucide-react';
 import ExamTypeManagerModal from '../../components/exam-type-manager-modal';
 import CreateExamModal from '../../components/create-exam-modal';
 import ExamListSection, { type ExamListItem } from '../../components/exam-list-section';
+import ResultsSection from '../../components/results-section';
 import CollapsibleSection, { MiniProgressBar } from '../../components/collapsible-section';
 
 interface SessionSummary {
@@ -96,6 +97,10 @@ export default function ResultSessionPage() {
       ? 'No exams yet'
       : `${exams.length} exam${exams.length !== 1 ? 's' : ''} · ${summary.marksProgress.percent}% session progress`
     : undefined;
+
+  const resultsSubtitle = summary
+    ? `${summary.subjectResultCount} results · ${summary.reportCardCount} report cards`
+    : 'Compute after marks are entered';
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -188,6 +193,20 @@ export default function ResultSessionPage() {
               sessionId={sessionId}
               exams={exams}
               progressByExamId={progressByExamId}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Results & report cards"
+            subtitle={resultsSubtitle}
+            defaultOpen={false}
+          >
+            <ResultsSection
+              sessionId={sessionId}
+              readOnly={isReadOnly}
+              resultCount={summary.subjectResultCount}
+              reportCardCount={summary.reportCardCount}
+              onChanged={() => loadData(true)}
             />
           </CollapsibleSection>
 
