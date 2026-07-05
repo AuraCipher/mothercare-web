@@ -23,6 +23,7 @@ type ColumnState = {
   linkId: string;
   subjectName: string;
   subjectCode: string | null;
+  isActive: boolean;
   totalMarks: string;
   passingMarks: string;
   serverTotalMarks: number | null;
@@ -30,11 +31,19 @@ type ColumnState = {
   cells: Record<string, { marks: string; isAbsent: boolean; entryId: string | null }>;
 };
 
+const noSpinner =
+  '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+
 const cellInputClass =
-  'w-14 rounded border border-warm-card-border bg-[#1a1614] px-1.5 py-1 text-center text-xs text-warm-cream outline-none focus:border-warm-accent disabled:opacity-50';
+  `w-16 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-center text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent disabled:opacity-50 ${noSpinner}`;
 
 const metaInputClass =
-  'w-12 rounded border border-warm-card-border bg-[#1a1614] px-1 py-0.5 text-center text-[10px] text-warm-cream outline-none focus:border-warm-accent disabled:opacity-50';
+  `w-14 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-center text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent disabled:opacity-50 ${noSpinner}`;
+
+/** Opaque surfaces for sticky cells — transparent bg causes scroll overlap glitches */
+const gridSurface = 'bg-[#24201e]';
+const gridHeaderSurface = 'bg-[#2a2624]';
+const stickyLeftShadow = 'shadow-[2px_0_6px_rgba(0,0,0,0.35)]';
 
 function classLabel(c: { name: string; section: string | null }) {
   return c.section ? `${c.name} — ${c.section}` : c.name;
@@ -95,13 +104,17 @@ export default function MarksEntrySection({
 
   const classOptions = useMemo(() => {
     return structure
-      .filter((c) => c.isActive && c.subjects.some((s) => s.isActive))
+      .filter((c) => c.isActive && c.subjects.length > 0)
       .map((c) => ({
         classId: c.classId,
         label: classLabel(c.class),
-        subjects: c.subjects
-          .filter((s) => s.isActive)
-          .map((s) => ({ linkId: s.id, subjectName: s.subject.name })),
+        subjects: [...c.subjects]
+          .sort((a, b) => a.subject.name.localeCompare(b.subject.name))
+          .map((s) => ({
+            linkId: s.id,
+            subjectName: s.subject.name,
+            isActive: s.isActive,
+          })),
       }));
   }, [structure]);
 
@@ -121,8 +134,10 @@ export default function MarksEntrySection({
     const cls = structure.find((c) => c.classId === classId && c.isActive);
     if (!cls) return;
 
-    const activeSubjects = cls.subjects.filter((s) => s.isActive);
-    if (activeSubjects.length === 0) {
+    const subjectRows = [...cls.subjects].sort((a, b) =>
+      a.subject.name.localeCompare(b.subject.name),
+    );
+    if (subjectRows.length === 0) {
       setStudents([]);
       setColumns([]);
       return;
@@ -131,12 +146,23 @@ export default function MarksEntrySection({
     setGridLoading(true);
     setGridError('');
     try {
-      const grids = await Promise.all(
-        activeSubjects.map((s) => api.getResultMarksGrid(s.id).then((r) => ({ linkId: s.id, grid: r.data }))),
+      const results = await Promise.allSettled(
+        subjectRows.map((s) =>
+          api.getResultMarksGrid(s.id).then((r) => ({ subject: s, grid: r.data })),
+        ),
       );
 
-      const first = grids[0]?.grid;
-      const studentRows: StudentRow[] = (first?.students || []).map((s: any) => ({
+      const loaded = results
+        .map((result, index) => {
+          const subject = subjectRows[index];
+          if (result.status === 'fulfilled') {
+            return { subject, grid: result.value.grid };
+          }
+          return { subject, grid: null };
+        });
+
+      const firstGrid = loaded.find((row) => row.grid)?.grid;
+      const studentRows: StudentRow[] = (firstGrid?.students || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         rollNumber: s.rollNumber ?? null,
@@ -144,26 +170,35 @@ export default function MarksEntrySection({
       setStudents(studentRows);
 
       setColumns(
-        grids.map(({ linkId, grid }) => ({
-          linkId,
-          subjectName: grid.subject?.name || 'Subject',
-          subjectCode: grid.subject?.code ?? null,
-          totalMarks: grid.totalMarks != null ? String(grid.totalMarks) : '',
-          passingMarks: grid.passingMarks != null ? String(grid.passingMarks) : '',
-          serverTotalMarks: grid.totalMarks ?? null,
-          serverPassingMarks: grid.passingMarks ?? null,
+        loaded.map(({ subject, grid }) => ({
+          linkId: subject.id,
+          subjectName: grid?.subject?.name || subject.subject.name,
+          subjectCode: grid?.subject?.code ?? subject.subject.code ?? null,
+          isActive: subject.isActive,
+          totalMarks: grid?.totalMarks != null ? String(grid.totalMarks) : '',
+          passingMarks: grid?.passingMarks != null ? String(grid.passingMarks) : '',
+          serverTotalMarks: grid?.totalMarks ?? null,
+          serverPassingMarks: grid?.passingMarks ?? null,
           cells: Object.fromEntries(
-            (grid.students || []).map((s: any) => [
-              s.id,
-              {
-                marks: s.marksObtained != null ? String(s.marksObtained) : '',
-                isAbsent: s.isAbsent ?? false,
-                entryId: s.entryId ?? null,
-              },
-            ]),
+            (grid?.students || studentRows).map((s: any) => {
+              const fromGrid = grid?.students?.find((g: any) => g.id === s.id);
+              return [
+                s.id,
+                {
+                  marks: fromGrid?.marksObtained != null ? String(fromGrid.marksObtained) : '',
+                  isAbsent: fromGrid?.isAbsent ?? false,
+                  entryId: fromGrid?.entryId ?? null,
+                },
+              ];
+            }),
           ),
         })),
       );
+
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        showToast('error', `${failed} subject column${failed !== 1 ? 's' : ''} failed to load`);
+      }
     } catch (e: any) {
       setGridError(e.message || 'Failed to load marks grid');
       setStudents([]);
@@ -352,7 +387,7 @@ export default function MarksEntrySection({
         </label>
         {selectedClass && (
           <span className="text-[10px] text-warm-muted/60">
-            {selectedClass.subjects.length} subject{selectedClass.subjects.length !== 1 ? 's' : ''}
+            {selectedClass.subjects.filter((s) => s.isActive).length}/{selectedClass.subjects.length} subjects active
           </span>
         )}
       </div>
@@ -373,61 +408,81 @@ export default function MarksEntrySection({
       ) : students.length === 0 ? (
         <p className="py-6 text-center text-xs text-warm-muted/50">No active students in this class.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-warm-card-border/60">
-          <table className="min-w-full border-collapse text-left">
+        <>
+          <p className="text-[10px] text-warm-muted/60">
+            Set Total and Pass per subject column, then enter marks. Missing subjects? Use Sync classes in Structure.
+            The checkbox beside each mark is Absent — use it when the student did not sit that subject.
+          </p>
+          <div className={`overflow-hidden rounded-lg border border-warm-card-border/60 ${gridSurface}`}>
+            <div
+              className="mcs-scrollbar-x mcs-scrollbar-y isolate max-h-[calc(11rem+2.75rem*10)] overflow-auto"
+            >
+          <table className="w-max min-w-full border-separate border-spacing-0 text-left">
             <thead>
-              <tr className="border-b border-warm-card-border/40 bg-warm-card/30">
-                <th className="sticky left-0 z-10 bg-warm-card/95 px-3 py-2 text-[10px] font-medium text-warm-muted">
+              <tr>
+                <th
+                  className={`sticky left-0 top-0 z-40 w-[128px] min-w-[128px] max-w-[128px] border-b border-warm-card-border/40 ${gridHeaderSurface} ${stickyLeftShadow} px-3 py-2 text-left text-[10px] font-medium text-warm-muted`}
+                >
                   Student
                 </th>
-                <th className="px-2 py-2 text-[10px] font-medium text-warm-muted">Roll</th>
                 {columns.map((col) => {
                   const filled = columnFilledCount(col, students.map((s) => s.id));
                   const complete = filled === students.length;
+                  const colEditable = editable && col.isActive;
                   return (
-                    <th key={col.linkId} className="min-w-[120px] border-l border-warm-card-border/30 px-2 py-2 align-top">
-                      <div className="space-y-1.5">
-                        <p className="truncate text-[10px] font-medium text-warm-cream" title={col.subjectName}>
+                    <th
+                      key={col.linkId}
+                      className={`sticky top-0 z-30 min-w-[108px] border-b border-l border-warm-card-border/30 ${gridHeaderSurface} px-2 py-2 align-top ${!col.isActive ? 'opacity-45' : ''}`}
+                    >
+                      <div className="flex flex-col items-center gap-1.5 text-center">
+                        <p className="w-full truncate text-[10px] font-medium text-warm-cream" title={col.subjectName}>
                           {col.subjectName}
                         </p>
-                        <div className="flex flex-wrap items-center gap-1 text-[9px] text-warm-muted">
-                          <span>Total</span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={col.totalMarks}
-                            disabled={!editable}
-                            onChange={(e) => updateColumnMeta(col.linkId, 'totalMarks', e.target.value)}
-                            className={metaInputClass}
-                            placeholder="—"
-                          />
-                          <span>Pass</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={col.passingMarks}
-                            disabled={!editable}
-                            onChange={(e) => updateColumnMeta(col.linkId, 'passingMarks', e.target.value)}
-                            className={metaInputClass}
-                            placeholder="—"
-                          />
+                        {!col.isActive && (
+                          <span className="text-[9px] text-warm-muted/60">Inactive</span>
+                        )}
+                        <div className="flex w-full items-center justify-center gap-2 text-[10px] text-warm-muted">
+                          <label className="flex flex-col items-center gap-0.5">
+                            <span>Total</span>
+                            <input
+                              type="number"
+                              min={1}
+                              inputMode="numeric"
+                              value={col.totalMarks}
+                              disabled={!colEditable}
+                              onChange={(e) => updateColumnMeta(col.linkId, 'totalMarks', e.target.value)}
+                              className={metaInputClass}
+                              placeholder="—"
+                            />
+                          </label>
+                          <label className="flex flex-col items-center gap-0.5">
+                            <span>Pass</span>
+                            <input
+                              type="number"
+                              min={0}
+                              inputMode="numeric"
+                              value={col.passingMarks}
+                              disabled={!colEditable}
+                              onChange={(e) => updateColumnMeta(col.linkId, 'passingMarks', e.target.value)}
+                              className={metaInputClass}
+                              placeholder="—"
+                            />
+                          </label>
                         </div>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className={`text-[9px] ${complete ? 'text-green-400/80' : 'text-warm-muted/60'}`}>
-                            {filled}/{students.length}
-                          </span>
-                          {editable && (
-                            <button
-                              type="button"
-                              onClick={() => saveColumn(col)}
-                              disabled={savingColumnId === col.linkId}
-                              className="inline-flex items-center gap-0.5 rounded bg-warm-accent/90 px-1.5 py-0.5 text-[9px] font-medium text-[#1a1614] hover:bg-warm-accent disabled:opacity-50"
-                            >
-                              <Save size={9} />
-                              {savingColumnId === col.linkId ? '…' : 'Save'}
-                            </button>
-                          )}
-                        </div>
+                        <span className={`text-[10px] ${complete ? 'text-green-400/80' : 'text-warm-muted/60'}`}>
+                          {filled}/{students.length}
+                        </span>
+                        {colEditable && (
+                          <button
+                            type="button"
+                            onClick={() => saveColumn(col)}
+                            disabled={savingColumnId === col.linkId}
+                            className="inline-flex items-center gap-1 rounded-lg bg-warm-accent px-2.5 py-1 text-[10px] font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50"
+                          >
+                            <Save size={11} />
+                            {savingColumnId === col.linkId ? '…' : 'Save'}
+                          </button>
+                        )}
                       </div>
                     </th>
                   );
@@ -436,39 +491,43 @@ export default function MarksEntrySection({
             </thead>
             <tbody>
               {students.map((student) => (
-                <tr key={student.id} className="border-b border-warm-card-border/20 last:border-b-0">
-                  <td className="sticky left-0 z-10 bg-[#24201e] px-3 py-1.5 text-xs text-warm-cream">
-                    {student.name}
-                  </td>
-                  <td className="px-2 py-1.5 text-[10px] text-warm-muted/70">
-                    {student.rollNumber ?? '—'}
+                <tr key={student.id} className="h-11">
+                  <td
+                    className={`sticky left-0 z-20 h-11 w-[128px] min-w-[128px] max-w-[128px] border-b border-warm-card-border/20 ${gridSurface} ${stickyLeftShadow} px-3 align-middle text-xs text-warm-cream`}
+                  >
+                    <span className="block truncate">{student.name}</span>
                   </td>
                   {columns.map((col) => {
                     const cell = col.cells[student.id] ?? { marks: '', isAbsent: false, entryId: null };
+                    const colEditable = editable && col.isActive;
                     return (
-                      <td key={col.linkId} className="border-l border-warm-card-border/20 px-2 py-1.5">
+                      <td
+                        key={col.linkId}
+                        className={`h-11 border-b border-l border-warm-card-border/20 px-2 align-middle ${!col.isActive ? 'opacity-45' : ''}`}
+                      >
                         <div className="flex items-center justify-center gap-1.5">
                           <input
                             type="number"
                             min={0}
+                            inputMode="numeric"
                             value={cell.marks}
-                            disabled={!editable || cell.isAbsent}
+                            disabled={!colEditable || cell.isAbsent}
                             onChange={(e) => updateCell(col.linkId, student.id, { marks: e.target.value })}
                             className={cellInputClass}
                             placeholder="—"
                           />
                           <label
-                            className={`flex items-center gap-0.5 text-[9px] text-warm-muted ${editable ? 'cursor-pointer' : ''}`}
-                            title="Absent"
+                            className={`flex flex-col items-center gap-0.5 text-[9px] leading-none text-warm-muted ${colEditable ? 'cursor-pointer' : ''}`}
+                            title="Absent — student did not sit this subject"
                           >
                             <input
                               type="checkbox"
                               checked={cell.isAbsent}
-                              disabled={!editable}
+                              disabled={!colEditable}
                               onChange={(e) => updateCell(col.linkId, student.id, { isAbsent: e.target.checked })}
-                              className="h-3 w-3 rounded accent-warm-accent"
+                              className="h-3.5 w-3.5 rounded accent-warm-accent"
                             />
-                            A
+                            <span>Abs</span>
                           </label>
                         </div>
                       </td>
@@ -478,7 +537,9 @@ export default function MarksEntrySection({
               ))}
             </tbody>
           </table>
-        </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
