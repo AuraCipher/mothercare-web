@@ -61,6 +61,49 @@ body {
   display: none;               /* Chrome/Safari/Opera */
 }
 
+/* Visible horizontal scrollbar for wide data tables */
+.mcs-scrollbar-x {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(196, 168, 130, 0.5) rgba(240, 235, 227, 0.08);
+  -ms-overflow-style: auto;
+}
+.mcs-scrollbar-x::-webkit-scrollbar {
+  display: block;
+  height: 10px;
+}
+.mcs-scrollbar-x::-webkit-scrollbar-track {
+  background: rgba(240, 235, 227, 0.06);
+  border-radius: 999px;
+}
+.mcs-scrollbar-x::-webkit-scrollbar-thumb {
+  background: rgba(196, 168, 130, 0.45);
+  border-radius: 999px;
+}
+.mcs-scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background: rgba(196, 168, 130, 0.7);
+}
+
+.mcs-scrollbar-y {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(196, 168, 130, 0.5) rgba(240, 235, 227, 0.08);
+  -ms-overflow-style: auto;
+}
+.mcs-scrollbar-y::-webkit-scrollbar {
+  display: block;
+  width: 10px;
+}
+.mcs-scrollbar-y::-webkit-scrollbar-track {
+  background: rgba(240, 235, 227, 0.06);
+  border-radius: 999px;
+}
+.mcs-scrollbar-y::-webkit-scrollbar-thumb {
+  background: rgba(196, 168, 130, 0.45);
+  border-radius: 999px;
+}
+.mcs-scrollbar-y::-webkit-scrollbar-thumb:hover {
+  background: rgba(196, 168, 130, 0.7);
+}
+
 /* Keep dark background on autofilled inputs (browser override fix) */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
