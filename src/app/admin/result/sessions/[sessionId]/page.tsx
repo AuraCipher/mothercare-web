@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ClipboardList, ChevronLeft, Calendar, FileText, Layers } from 'lucide-react';
+import { ClipboardList, ChevronLeft, Calendar, FileText, Layers, Settings2 } from 'lucide-react';
+import ExamTypeManagerModal from '../../components/exam-type-manager-modal';
 
 interface SessionSummary {
   session: { id: string; name: string; startDate: string; endDate: string };
@@ -38,19 +39,34 @@ export default function ResultSessionPage() {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [typesModalOpen, setTypesModalOpen] = useState(false);
 
   const activeAYId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
+  const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
+
+  const loadSummary = useCallback((silent = false) => {
+    if (!activeAYId || !sessionId) return;
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
+    api.getResultSessionSummary(sessionId)
+      .then((res) => setSummary(res.data))
+      .catch((e: any) => {
+        if (!silent) setError(e.message || 'Failed to load session');
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  }, [activeAYId, sessionId]);
 
   useEffect(() => {
     if (!activeAYId || !sessionId) {
       setLoading(false);
       return;
     }
-    api.getResultSessionSummary(sessionId)
-      .then((res) => setSummary(res.data))
-      .catch((e: any) => setError(e.message || 'Failed to load session'))
-      .finally(() => setLoading(false));
-  }, [activeAYId, sessionId]);
+    loadSummary();
+  }, [activeAYId, sessionId, loadSummary]);
 
   if (!activeAYId) {
     return (
@@ -83,12 +99,27 @@ export default function ResultSessionPage() {
         </div>
       ) : summary ? (
         <>
-          <div className="mb-6">
-            <h1 className="text-xl font-light text-warm-cream">{summary.session.name}</h1>
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-warm-muted">
-              <Calendar size={12} />
-              {fmtDate(summary.session.startDate)} — {fmtDate(summary.session.endDate)}
-            </p>
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-light text-warm-cream">{summary.session.name}</h1>
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-warm-muted">
+                <Calendar size={12} />
+                {fmtDate(summary.session.startDate)} — {fmtDate(summary.session.endDate)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTypesModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-warm-card-border bg-warm-card px-3.5 py-2 text-xs font-medium text-warm-cream transition-colors hover:border-warm-accent/40 hover:bg-warm-card/80"
+            >
+              <Settings2 size={14} className="text-warm-accent" />
+              Manage Types
+              {summary.typeCount > 0 && (
+                <span className="rounded bg-warm-accent/15 px-1.5 py-0.5 text-[10px] text-warm-accent">
+                  {summary.typeCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Overall marks progress */}
@@ -156,11 +187,19 @@ export default function ResultSessionPage() {
             </div>
           )}
 
-          {/* Phase 2 placeholder */}
+          {/* Phase 3 — exams (next) */}
           <div className="rounded-xl border border-dashed border-warm-card-border bg-warm-card/50 p-6 text-center">
-            <p className="text-sm text-warm-muted">Exam types &amp; exam management</p>
-            <p className="mt-1 text-xs text-warm-muted/60">Phase 2 — next step after your review</p>
+            <p className="text-sm text-warm-muted">Exam creation &amp; structure</p>
+            <p className="mt-1 text-xs text-warm-muted/60">Phase 3 — after your review</p>
           </div>
+
+          <ExamTypeManagerModal
+            sessionId={sessionId}
+            open={typesModalOpen}
+            readOnly={isReadOnly}
+            onClose={() => setTypesModalOpen(false)}
+            onChanged={() => loadSummary(true)}
+          />
         </>
       ) : null}
     </main>
