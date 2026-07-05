@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 import CollapsibleSection from '../../../../components/collapsible-section';
+import ExamStructureSection, { structureSummary } from '../../../../components/exam-structure-section';
 import type { ExamType } from '../../../../components/exam-type-manager-modal';
 import { ChevronLeft, FileText, Trash2 } from 'lucide-react';
 
@@ -42,6 +43,7 @@ export default function ExamDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [structureSubtitle, setStructureSubtitle] = useState('Classes & subjects — generate on exam setup');
 
   const [confirm, setConfirm] = useState<{
     open: boolean;
@@ -348,12 +350,15 @@ export default function ExamDetailPage() {
 
           <CollapsibleSection
             title="Structure"
-            subtitle="Classes & subjects — generate on exam setup"
+            subtitle={structureSubtitle}
             defaultOpen={false}
           >
-            <p className="text-center text-xs text-warm-muted py-4">
-              Phase 4 — generate and configure class/subject structure here.
-            </p>
+            <ExamStructureSection
+              examId={examId}
+              readOnly={isReadOnly}
+              examActive={isActive}
+              onStructureChange={(classes) => setStructureSubtitle(structureSummary(classes))}
+            />
           </CollapsibleSection>
 
           <ConfirmModal
