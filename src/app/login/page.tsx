@@ -3,6 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { firstAllowedPath } from '@/lib/staff-permissions';
+
+async function resolveAdminLanding(token: string): Promise<string> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return '/admin';
+    const payload = JSON.parse(atob(parts[1]));
+    const branchId = payload.branchIds?.[0];
+    if (!branchId) return '/admin';
+    localStorage.setItem('activeBranchId', branchId);
+    const res = await api.mePermissions(branchId);
+    if (res.data?.isRestricted) return firstAllowedPath(res.data);
+  } catch {
+    /* fall through */
+  }
+  return '/admin';
+}
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -30,7 +47,7 @@ export default function LoginPage() {
         if (payload.role === 'super_admin') {
           router.replace('/ceo');
         } else {
-          router.replace('/admin');
+          resolveAdminLanding(token).then((path) => router.replace(path));
         }
         return;
       }
@@ -66,7 +83,8 @@ export default function LoginPage() {
         } else if (data.user?.role === 'super_admin') {
           router.push('/ceo');
         } else {
-          router.push('/admin');
+          const path = await resolveAdminLanding(data.token);
+          router.push(path);
         }
       } else {
         setError(data.message || 'Invalid credentials');
