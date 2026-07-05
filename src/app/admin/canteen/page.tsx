@@ -45,11 +45,11 @@ export default function CanteenHubPage() {
 
   const adminCards = [
     { icon: ShoppingCart, label: 'Daily Sales', desc: 'Record cash & credit sales', href: '/admin/canteen/sales', color: 'text-green-400' },
+    { icon: BarChart3, label: 'Daily Summary', desc: "Today's sales breakdown", href: '/admin/canteen/summary', color: 'text-cyan-400' },
+    { icon: Users, label: 'Credit Accounts', desc: 'Bakaya balances & settlement', href: '/admin/canteen/accounts', color: 'text-pink-400' },
     { icon: Tag, label: 'Products', desc: 'Catalog, categories & pricing', href: '/admin/canteen/products', color: 'text-violet-400' },
     { icon: Boxes, label: 'Inventory', desc: 'Stock levels & low-stock alerts', href: '/admin/canteen/inventory', color: 'text-blue-400' },
     { icon: Truck, label: 'Suppliers', desc: 'Restock & supplier payments', href: '/admin/canteen/suppliers', color: 'text-yellow-400' },
-    { icon: Users, label: 'Credit Accounts', desc: 'Bakaya balances & settlement', href: '/admin/canteen/accounts', color: 'text-pink-400' },
-    { icon: BarChart3, label: 'Daily Summary', desc: "Today's sales breakdown", href: '/admin/canteen/summary', color: 'text-cyan-400' },
   ];
 
   if (!branchId) {
