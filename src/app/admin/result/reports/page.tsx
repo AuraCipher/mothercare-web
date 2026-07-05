@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, ChevronLeft, BarChart3, ArrowRight } from 'lucide-react';
+import { TrendingUp, ChevronLeft, Calculator, ArrowRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import ResultsSection from '../components/results-section';
@@ -96,10 +96,10 @@ export default function ResultReportsPage() {
         </div>
         <button
           type="button"
-          onClick={() => router.push('/admin/result/analytics')}
+          onClick={() => router.push('/admin/result/compute')}
           className="inline-flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream"
         >
-          <BarChart3 size={11} /> Compute results <ArrowRight size={10} />
+          <Calculator size={11} /> Compute results <ArrowRight size={10} />
         </button>
       </div>
 

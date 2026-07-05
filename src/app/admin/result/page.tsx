@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ClipboardList, ChevronRight, Calendar, Plus, BarChart3, TrendingUp } from 'lucide-react';
+import { ClipboardList, ChevronRight, Calendar, Plus, BarChart3, TrendingUp, Calculator } from 'lucide-react';
 import ExamSessionModal from './components/exam-session-modal';
 
 interface ExamSession {
@@ -38,7 +38,8 @@ export default function ResultGradeHubPage() {
   const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
   const cards = [
-    { icon: BarChart3, label: 'Analytics', desc: 'Progress, KPIs & compute results', href: '/admin/result/analytics', color: 'text-cyan-400' },
+    { icon: BarChart3, label: 'Analytics', desc: 'Progress, KPIs, charts & trends', href: '/admin/result/analytics', color: 'text-cyan-400' },
+    { icon: Calculator, label: 'Compute', desc: 'Generate results & report cards', href: '/admin/result/compute', color: 'text-green-400' },
     { icon: TrendingUp, label: 'Reports', desc: 'Class result sheets & report cards', href: '/admin/result/reports', color: 'text-orange-400' },
   ];
 
@@ -127,7 +128,7 @@ export default function ResultGradeHubPage() {
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
