@@ -244,14 +244,6 @@ function CanteenSalesContent() {
     postSale();
   };
 
-  const submitSale = async (_paymentType: 'CASH' | 'CREDIT', creditPayload?: Record<string, string>) => {
-    await postSale(creditPayload);
-  };
-
-  const openCredit = () => {
-    confirmSale();
-  };
-
   useEffect(() => {
     if (!creditOpen) return;
     const idField = personType === 'STUDENT' ? 'studentId' : 'userId';
@@ -397,29 +389,58 @@ function CanteenSalesContent() {
           </ul>
         )}
 
-        <div className="border-t border-warm-card-border bg-[#1a1614]/30 px-4 py-4 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-warm-muted">Total</span>
-            <span className="text-lg font-medium text-warm-cream tabular-nums">{formatCanteenMoney(total)}</span>
+        <div className="border-t border-warm-card-border bg-[#1a1614]/30 px-4 py-4 space-y-4">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-warm-muted">Products total</span>
+            <span className="font-medium text-warm-cream tabular-nums">{formatCanteenMoney(total)}</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              disabled={submitting || !cart.length}
-              onClick={() => submitSale('CASH')}
-              className="rounded-lg bg-warm-accent py-2.5 text-sm font-medium text-[#1a1614] disabled:opacity-50"
-            >
-              Cash
-            </button>
-            <button
-              type="button"
-              disabled={submitting || !cart.length}
-              onClick={openCredit}
-              className="rounded-lg border border-warm-card-border py-2.5 text-sm text-warm-cream hover:bg-warm-card/80 disabled:opacity-50"
-            >
-              {presetAccount ? `Credit · ${presetAccount.displayName}` : 'Credit (Bakaya)'}
-            </button>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Total cash (PKR)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                placeholder="0"
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Total credit (PKR)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="0"
+                className={fieldClass}
+              />
+            </div>
           </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-3 py-2.5 text-sm">
+            <span className="text-warm-muted">Total sales</span>
+            <span className="text-lg font-medium text-warm-accent tabular-nums">{formatCanteenMoney(totalSales)}</span>
+          </div>
+
+          {paymentMismatch && (
+            <p className="text-[11px] text-amber-400">
+              Cash + credit must equal products total ({formatCanteenMoney(total)}).
+            </p>
+          )}
+
+          <button
+            type="button"
+            disabled={submitting || !cart.length || paymentMismatch || totalSales <= 0}
+            onClick={confirmSale}
+            className="w-full rounded-lg bg-warm-accent py-2.5 text-sm font-medium text-[#1a1614] disabled:opacity-50"
+          >
+            {submitting ? 'Saving…' : "Confirm today's sales"}
+          </button>
         </div>
       </section>
 
@@ -577,7 +598,7 @@ function CanteenSalesContent() {
               onClick={confirmCredit}
               className="w-full rounded-lg bg-warm-accent py-2.5 text-sm font-medium text-[#1a1614] disabled:opacity-50"
             >
-              Confirm credit · {formatCanteenMoney(total)}
+              Confirm credit · {formatCanteenMoney(Number(creditAmount) || 0)}
             </button>
           </div>
         </div>
