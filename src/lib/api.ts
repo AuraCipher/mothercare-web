@@ -455,4 +455,41 @@ export const api = {
 
   deleteResultExamType: (sessionId: string, typeId: string) =>
     apiRequest(`/admin/result/sessions/${sessionId}/types/${typeId}`, { method: 'DELETE' }),
+
+  getResultExams: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/sessions/${sessionId}/exams${scopeQuery()}`),
+
+  createResultExam: (sessionId: string, data: {
+    name: string;
+    examTypeId: string;
+    weightOverride?: number;
+    startDate: string;
+    endDate?: string;
+  }) =>
+    apiRequest(`/admin/result/sessions/${sessionId}/exams`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getResultExam: (examId: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/result/exams/${examId}${scopeQuery()}`),
+
+  updateResultExam: (examId: string, data: {
+    name?: string;
+    examTypeId?: string;
+    weightOverride?: number | null;
+    startDate?: string;
+    endDate?: string | null;
+    status?: 'DRAFT' | 'ACTIVE';
+  }) =>
+    apiRequest(`/admin/result/exams/${examId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteResultExam: (examId: string) =>
+    apiRequest(`/admin/result/exams/${examId}`, { method: 'DELETE' }),
+
+  getResultExamStructure: (examId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure${scopeQuery()}`),
 };
