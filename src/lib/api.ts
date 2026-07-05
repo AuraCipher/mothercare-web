@@ -525,4 +525,43 @@ export const api = {
 
   deleteResultMarksEntry: (entryId: string) =>
     apiRequest(`/admin/result/marks/${entryId}`, { method: 'DELETE' }),
+
+  computeResultSession: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: { classSubjectCount: number; studentCount: number } }>(
+      `/admin/result/sessions/${sessionId}/compute-results`,
+      { method: 'POST' },
+    ),
+
+  getClassResults: (sessionId: string, classId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/result/sessions/${sessionId}/classes/${classId}/results${scopeQuery()}`,
+    ),
+
+  computeReportCardsSession: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: { classCount: number; reportCardCount: number } }>(
+      `/admin/result/sessions/${sessionId}/compute-report-cards`,
+      { method: 'POST' },
+    ),
+
+  computeReportCardsClass: (sessionId: string, classId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/result/sessions/${sessionId}/classes/${classId}/compute-report-cards`,
+      { method: 'POST' },
+    ),
+
+  getClassReportCards: (sessionId: string, classId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/result/sessions/${sessionId}/classes/${classId}/report-cards${scopeQuery()}`,
+    ),
+
+  publishReportCard: (reportCardId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/result/report-cards/${reportCardId}/publish`,
+      { method: 'POST' },
+    ),
+
+  getStudentReportCard: (studentId: string, sessionId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/result/students/${studentId}/sessions/${sessionId}/report-card${scopeQuery()}`,
+    ),
 };
