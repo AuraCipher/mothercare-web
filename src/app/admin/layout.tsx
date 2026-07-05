@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
+import { StaffModuleShell } from '@/components/staff-module-shell';
+import { firstAllowedPath, type StaffAccess } from '@/lib/staff-permissions';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
@@ -65,6 +67,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [activeAYId, setActiveAYId] = useState<string | null>(null);
   const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
+  const [staffAccess, setStaffAccess] = useState<StaffAccess | null>(null);
+  const [loadingPermissions, setLoadingPermissions] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -132,7 +136,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => { cancelled = true; };
   }, [router]);
 
-  // Cross-tab logout sync: if token is removed from localStorage in another tab,
+  useEffect(() => {
+    if (!activeBranchId || loadingUser) return;
+    let cancelled = false;
+    setLoadingPermissions(true);
+    api.mePermissions(activeBranchId)
+      .then((res) => {
+        if (!cancelled) setStaffAccess(res.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setStaffAccess(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPermissions(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeBranchId, loadingUser]);
+
+  useEffect(() => {
+    if (!staffAccess?.isRestricted || loadingPermissions) return;
+    if (pathname === '/admin' || pathname === '/admin/') {
+      router.replace(firstAllowedPath(staffAccess));
+    }
+  }, [staffAccess, loadingPermissions, pathname, router]);
+
+  // Cross-tab logout sync:
   // immediately log out this tab too.
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
@@ -188,6 +216,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#1a1614]">
         <p className="text-sm text-warm-muted">Loading…</p>
+      </div>
+    );
+  }
+
+  if (staffAccess?.isRestricted && !loadingPermissions) {
+    return (
+      <>
+        <StaffModuleShell access={staffAccess} userName={user?.name}>
+          {children}
+        </StaffModuleShell>
+        <ToastContainer />
+      </>
+    );
+  }
+
+  if (loadingPermissions && !authError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#1a1614]">
+        <p className="text-sm text-warm-muted">Loading access…</p>
       </div>
     );
   }

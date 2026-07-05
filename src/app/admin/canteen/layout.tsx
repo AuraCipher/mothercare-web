@@ -48,6 +48,22 @@ export default function CanteenLayout({ children }: { children: React.ReactNode 
 
     (async () => {
       try {
+        const permRes = await api.mePermissions(branchId);
+        if (permRes.data?.isRestricted) {
+          const canteen = permRes.data.permissions.find((p) => p.module === 'CANTEEN');
+          if (!canteen?.canRead) {
+            router.replace('/admin');
+            return;
+          }
+          const level: CanteenAccessLevel =
+            canteen.canUpdate || canteen.canDelete ? 'admin' : 'sales';
+          setAccess(level);
+          if (level === 'sales' && STAFF_BLOCKED.some((p) => pathname.startsWith(p))) {
+            router.replace('/admin/canteen/sales');
+          }
+          return;
+        }
+
         const res = await api.meBranches();
         const members = res.data || [];
         const member = members.find((m: { branch: { id: string } }) => m.branch.id === branchId);
