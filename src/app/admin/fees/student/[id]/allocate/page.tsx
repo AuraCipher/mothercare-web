@@ -14,6 +14,19 @@ type Item =
   | { kind: 'head'; key: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean }
   | { kind: 'extra'; key: string; studentFeeId: string; feeExtraItemId: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean };
 
+function isItemPaid(item: Item): boolean {
+  if (item.kind === 'previousMonth') return false;
+  return Boolean(item.isPaid) || item.duePaise <= 0;
+}
+
+function isItemSelectable(item: Item): boolean {
+  return !isItemPaid(item) && item.duePaise > 0;
+}
+
+function itemStickerPaise(item: Item): number {
+  return item.kind === 'previousMonth' ? 0 : item.stickerPaise;
+}
+
 function priorPaidMaps(fee: any) {
   const byHead = new Map<string, number>();
   const byExtra = new Map<string, number>();
@@ -165,7 +178,7 @@ export default function AllocatePaymentPage() {
 
   // All selectable items (exclude already-paid heads/extras)
   const selectableItems: Item[] = useMemo(
-    () => [...previousItems, ...currentMonthItems.filter(i => !i.isPaid && i.duePaise > 0)],
+    () => [...previousItems, ...currentMonthItems.filter(isItemSelectable)],
     [previousItems, currentMonthItems],
   );
 
@@ -204,7 +217,7 @@ export default function AllocatePaymentPage() {
   const canSubmit = fundedTotal >= amountToPay && amountToPay > 0;
 
   const toggle = (item: Item) => {
-    if (item.isPaid || item.duePaise <= 0) return;
+    if (isItemPaid(item)) return;
     if (checked.has(item.key)) {
       const next = new Set(checked);
       next.delete(item.key);
@@ -320,7 +333,7 @@ export default function AllocatePaymentPage() {
         {pending.reference ? ` · Ref: ${pending.reference}` : ''}
       </p>
 
-      {selectableItems.length === 0 && currentMonthItems.every(i => i.isPaid) && previousItems.length === 0 ? (
+      {selectableItems.length === 0 && currentMonthItems.every(isItemPaid) && previousItems.length === 0 ? (
         <div className="rounded-xl border border-warm-card-border p-6 text-center text-xs text-warm-muted/40">No dues found for this student.</div>
       ) : (
         <div className="rounded-xl border border-warm-card-border overflow-hidden mb-5">
@@ -339,14 +352,14 @@ export default function AllocatePaymentPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-warm-muted/60">
-                    {currentMonthItems.filter(i => !i.isPaid).reduce((s, i) => s + i.duePaise, 0) / 100} due
+                    {currentMonthItems.filter(i => !isItemPaid(i)).reduce((s, i) => s + i.duePaise, 0) / 100} due
                   </p>
                 </div>
               </button>
 
               {/* Collapsible sub-rows */}
               {currentMonthOpen && currentMonthItems.map(item => {
-                const isPaid = item.isPaid || item.duePaise <= 0;
+                const isPaid = isItemPaid(item);
                 const isChecked = !isPaid && checked.has(item.key);
                 const funded = fundedByKey.get(item.key) || 0;
                 const isPartial = isChecked && funded > 0 && funded < item.duePaise;
@@ -374,7 +387,7 @@ export default function AllocatePaymentPage() {
                     </div>
                     <div className="text-right">
                       {isPaid ? (
-                        <p className="text-[10px] text-green-400/70">{(item.stickerPaise / 100).toLocaleString()} paid</p>
+                        <p className="text-[10px] text-green-400/70">{(itemStickerPaise(item) / 100).toLocaleString()} paid</p>
                       ) : (
                         <>
                           <p className="text-xs text-warm-muted/60">{(item.duePaise / 100).toLocaleString()} due</p>

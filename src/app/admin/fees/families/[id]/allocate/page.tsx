@@ -8,8 +8,11 @@ import config from '@/config';
 import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import {
   type AllocateItem,
+  type StudentAllocateBlock,
   buildAllocateItemsForStudent,
   buildStudentAllocatePayloads,
+  isAllocateItemPaid,
+  isAllocateItemSelectable,
 } from '@/lib/feeAllocate';
 
 export default function FamilyAllocatePage() {
@@ -51,18 +54,18 @@ export default function FamilyAllocatePage() {
       .finally(() => setLoading(false));
   }, [familyId, token, ayId]);
 
-  const studentBlocks = useMemo(() => {
+  const studentBlocks = useMemo((): StudentAllocateBlock[] => {
     if (!family) return [];
     return (family.students || []).map((s: any) => {
       const { currentMonthItems, previousItems, currentMonthLabel } = buildAllocateItemsForStudent(
         s.id, s.name, s.studentFees || [],
       );
       return { student: s, currentMonthItems, previousItems, currentMonthLabel };
-    }).filter(b => b.previousItems.length > 0 || b.currentMonthItems.some(i => !i.isPaid && i.duePaise > 0));
+    }).filter((b: StudentAllocateBlock) => b.previousItems.length > 0 || b.currentMonthItems.some(isAllocateItemSelectable));
   }, [family]);
 
   const allItems: AllocateItem[] = useMemo(
-    () => studentBlocks.flatMap(b => [...b.previousItems, ...b.currentMonthItems.filter(i => !i.isPaid && i.duePaise > 0)]),
+    () => studentBlocks.flatMap(b => [...b.previousItems, ...b.currentMonthItems.filter(isAllocateItemSelectable)]),
     [studentBlocks],
   );
 
@@ -101,7 +104,7 @@ export default function FamilyAllocatePage() {
   const canSubmit = fundedTotal >= amountToPay && amountToPay > 0;
 
   const toggle = useCallback((item: AllocateItem) => {
-    if (item.isPaid || item.duePaise <= 0) return;
+    if (isAllocateItemPaid(item)) return;
     setChecked(prev => {
       if (prev.has(item.key)) {
         const next = new Set(prev);
@@ -221,7 +224,7 @@ export default function FamilyAllocatePage() {
         <div className="rounded-xl border border-warm-card-border overflow-hidden mb-5 space-y-0">
           {studentBlocks.map(block => {
             const isOpen = openStudents.has(block.student.id);
-            const studentDue = [...block.previousItems, ...block.currentMonthItems.filter(i => !i.isPaid)]
+            const studentDue = [...block.previousItems, ...block.currentMonthItems.filter(i => !isAllocateItemPaid(i))]
               .reduce((s, i) => s + i.duePaise, 0);
             return (
               <div key={block.student.id} className="border-b border-warm-card-border/20 last:border-b-0">
@@ -249,7 +252,7 @@ export default function FamilyAllocatePage() {
                       </div>
                     )}
                     {block.currentMonthItems.map(item => {
-                      const isPaid = item.isPaid || item.duePaise <= 0;
+                      const isPaid = isAllocateItemPaid(item);
                       const isChecked = !isPaid && checked.has(item.key);
                       const funded = fundedByKey.get(item.key) || 0;
                       const isPartial = isChecked && funded > 0 && funded < item.duePaise;
