@@ -723,4 +723,44 @@ export const api = {
     apiRequest<{ success: boolean; data: any }>(
       `/admin/canteen/summary${canteenQuery({ date: date || new Date().toISOString().slice(0, 10) })}`,
     ),
+
+  mePermissions: (branchId?: string) =>
+    apiRequest<{ success: boolean; data: import('@/lib/staff-permissions').StaffAccess }>(
+      `/me/permissions${scopeQuery(branchId ? { branchId } : undefined)}`,
+    ),
+
+  getStaffList: (params?: { search?: string; status?: string }) =>
+    apiRequest<{ success: boolean; data: any[]; meta: { total: number } }>(
+      `/admin/staff${scopeQuery({
+        search: params?.search,
+        status: params?.status,
+      })}`,
+    ),
+
+  getStaffMember: (userId: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/staff/${userId}${scopeQuery()}`),
+
+  createStaffMember: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/staff${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateStaffMember: (userId: string, data: { name?: string; email?: string; phone?: string }) =>
+    apiRequest(`/admin/staff/${userId}${scopeQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  updateStaffPermissions: (userId: string, permissions: unknown[]) =>
+    apiRequest(`/admin/staff/${userId}/permissions${scopeQuery()}`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions }),
+    }),
+
+  deactivateStaffMember: (userId: string) =>
+    apiRequest(`/admin/staff/${userId}/deactivate${scopeQuery()}`, { method: 'POST' }),
+
+  reactivateStaffMember: (userId: string) =>
+    apiRequest(`/admin/staff/${userId}/reactivate${scopeQuery()}`, { method: 'POST' }),
 };
