@@ -4,11 +4,110 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Package, Plus, Truck, Wallet } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatCanteenDateTime, formatCanteenMoney } from '@/lib/canteen';
+import { formatCanteenDateTime, formatCanteenMoney, formatStockDisplay, unitsPerBoxOf } from '@/lib/canteen';
 import { showToast } from '@/components/toast';
 
 const fieldClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent';
+
+type RestockLine = {
+  productId: string;
+  stockBoxes: string;
+  stockUnits: string;
+  unitCost: string;
+  lineTotalPaid: string;
+};
+
+const emptyRestockLine = (): RestockLine => ({
+  productId: '',
+  stockBoxes: '',
+  stockUnits: '',
+  unitCost: '',
+  lineTotalPaid: '',
+});
+
+function parseRestockQuantity(
+  product: { unitsPerBox?: number | null } | undefined,
+  stockBoxes: string,
+  stockUnits: string,
+): number | null {
+  if (!product) return null;
+  const upb = unitsPerBoxOf(product.unitsPerBox);
+  const boxes = stockBoxes.trim() === '' ? 0 : Number(stockBoxes);
+  const units = stockUnits.trim() === '' ? 0 : Number(stockUnits);
+
+  if (upb > 1) {
+    if (!Number.isInteger(boxes) || boxes < 0 || !Number.isInteger(units) || units < 0) return null;
+    if (boxes === 0 && units === 0) return null;
+    const total = boxes * upb + units;
+    return total > 0 ? total : null;
+  }
+
+  if (stockUnits.trim() === '') return null;
+  if (!Number.isInteger(units) || units <= 0) return null;
+  return units;
+}
+
+function buildRestockItem(
+  line: RestockLine,
+  product: { id: string; unitsPerBox?: number | null },
+) {
+  const quantity = parseRestockQuantity(product, line.stockBoxes, line.stockUnits);
+  if (quantity == null) return null;
+
+  let unitCost: number;
+  let lineTotal: number;
+
+  if (line.lineTotalPaid.trim() !== '') {
+    lineTotal = Number(line.lineTotalPaid);
+    if (!Number.isFinite(lineTotal) || lineTotal < 0) return null;
+    unitCost = lineTotal / quantity;
+  } else if (line.unitCost.trim() !== '') {
+    unitCost = Number(line.unitCost);
+    if (!Number.isFinite(unitCost) || unitCost < 0) return null;
+    lineTotal = quantity * unitCost;
+  } else {
+    return null;
+  }
+
+  return { productId: line.productId, quantity, unitCost, lineTotal };
+}
+
+function syncLineCosts(
+  line: RestockLine,
+  product: { unitsPerBox?: number | null } | undefined,
+  source: 'unit' | 'total' | 'qty',
+): RestockLine {
+  const next = { ...line };
+  const quantity = product ? parseRestockQuantity(product, line.stockBoxes, line.stockUnits) : null;
+  if (!quantity) return next;
+
+  if (source === 'unit' && line.unitCost.trim() !== '') {
+    const unitCost = Number(line.unitCost);
+    if (Number.isFinite(unitCost) && unitCost >= 0) {
+      next.lineTotalPaid = String(Math.round(unitCost * quantity * 100) / 100);
+    }
+  } else if (source === 'total' && line.lineTotalPaid.trim() !== '') {
+    const total = Number(line.lineTotalPaid);
+    if (Number.isFinite(total) && total >= 0) {
+      next.unitCost = String(Math.round((total / quantity) * 100) / 100);
+    }
+  } else if (source === 'qty') {
+    if (line.lineTotalPaid.trim() !== '') {
+      const total = Number(line.lineTotalPaid);
+      if (Number.isFinite(total) && total >= 0) {
+        next.unitCost = String(Math.round((total / quantity) * 100) / 100);
+      }
+    } else if (line.unitCost.trim() !== '') {
+      const unitCost = Number(line.unitCost);
+      if (Number.isFinite(unitCost) && unitCost >= 0) {
+        next.lineTotalPaid = String(Math.round(unitCost * quantity * 100) / 100);
+      }
+    }
+  }
+
+  return next;
+}
 
 type SupplierDetail = {
   supplier: {
@@ -53,7 +152,7 @@ export default function CanteenSupplierDetailPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activePanel, setActivePanel] = useState<'orders' | 'payments' | 'restock' | 'pay'>('orders');
-  const [restockLines, setRestockLines] = useState([{ productId: '', quantity: '1', unitCost: '' }]);
+  const [restockLines, setRestockLines] = useState<RestockLine[]>([emptyRestockLine()]);
   const [payAmount, setPayAmount] = useState('');
   const [payNote, setPayNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -107,21 +206,34 @@ export default function CanteenSupplierDetailPage() {
 
   const submitRestock = async () => {
     const items = restockLines
-      .filter((l) => l.productId && l.quantity && l.unitCost)
-      .map((l) => ({
-        productId: l.productId,
-        quantity: Number(l.quantity),
-        unitCost: Number(l.unitCost),
-      }));
+      .map((l) => {
+        if (!l.productId || !productIds.has(l.productId)) return null;
+        const product = activeProducts.find((p) => p.id === l.productId);
+        const built = product ? buildRestockItem(l, product) : null;
+        if (!built) return null;
+        return { productId: built.productId, quantity: built.quantity, unitCost: built.unitCost };
+      })
+      .filter((l): l is { productId: string; quantity: number; unitCost: number } => l !== null);
+
     if (!items.length) {
-      showToast('error', 'Add at least one product line');
+      showToast('error', 'Select product, boxes and/or units, and unit cost');
       return;
     }
+
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (seen.has(item.productId)) {
+        showToast('error', 'Same product cannot appear twice — combine quantities');
+        return;
+      }
+      seen.add(item.productId);
+    }
+
     setSubmitting(true);
     try {
       await api.createCanteenRestock({ supplierId: id, items, paidImmediately: false });
       showToast('success', 'Restock order recorded');
-      setRestockLines([{ productId: '', quantity: '1', unitCost: '' }]);
+      setRestockLines([emptyRestockLine()]);
       load();
       setActivePanel('orders');
     } catch (e: unknown) {
@@ -166,6 +278,19 @@ export default function CanteenSupplierDetailPage() {
 
   const { supplier, stats, purchases, payments } = detail;
   const owed = stats.remainingOwed;
+  const activeProducts = products.filter((p) => p.isActive !== false);
+  const productIds = new Set(activeProducts.map((p) => p.id));
+  const productMap = new Map(activeProducts.map((p) => [p.id, p]));
+
+  const parsedRestockLines = restockLines.map((line) => {
+    const product = line.productId ? productMap.get(line.productId) : undefined;
+    const built = product ? buildRestockItem(line, product) : null;
+    return { line, product, built };
+  });
+
+  const hasValidRestockLine = parsedRestockLines.some((r) => r.built != null);
+
+  const orderGrandTotal = parsedRestockLines.reduce((sum, r) => sum + (r.built?.lineTotal ?? 0), 0);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -308,32 +433,160 @@ export default function CanteenSupplierDetailPage() {
       )}
 
       {activePanel === 'restock' && (
-        <section className="rounded-xl border border-warm-card-border bg-warm-card p-5 space-y-3 max-w-lg">
-          <h2 className="text-sm font-medium text-warm-cream">New restock order</h2>
-          {restockLines.map((line, i) => (
-            <div key={i} className="grid grid-cols-3 gap-2">
-              <select
-                value={line.productId}
-                onChange={(e) => {
-                  const next = [...restockLines];
-                  next[i].productId = e.target.value;
-                  setRestockLines(next);
-                }}
-                className={`col-span-1 ${fieldClass}`}
-              >
-                <option value="" className="bg-[#1a1614]">Product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-[#1a1614]">{p.name}</option>
-                ))}
-              </select>
-              <input value={line.quantity} onChange={(e) => { const n = [...restockLines]; n[i].quantity = e.target.value; setRestockLines(n); }} placeholder="Qty" className={fieldClass} />
-              <input value={line.unitCost} onChange={(e) => { const n = [...restockLines]; n[i].unitCost = e.target.value; setRestockLines(n); }} placeholder="Unit cost" className={fieldClass} />
-            </div>
-          ))}
-          <button type="button" onClick={() => setRestockLines([...restockLines, { productId: '', quantity: '1', unitCost: '' }])} className="text-xs text-warm-accent inline-flex items-center gap-1">
+        <section className="rounded-xl border border-warm-card-border bg-warm-card p-5 space-y-4 max-w-2xl">
+          <div>
+            <h2 className="text-sm font-medium text-warm-cream">New restock order</h2>
+            <p className="mt-1 text-[11px] text-warm-muted">Enter boxes and/or units, then unit cost or total paid for that product.</p>
+          </div>
+          {parsedRestockLines.map(({ line, product, built }, i) => {
+            const touched = line.productId || line.stockBoxes || line.stockUnits || line.unitCost || line.lineTotalPaid;
+            const productMissing = !!touched && (!line.productId || !productIds.has(line.productId));
+            const qtyTouched = line.stockBoxes !== '' || line.stockUnits !== '';
+            const qtyMissing = !!touched && line.productId && !qtyTouched;
+            const costTouched = line.unitCost !== '' || line.lineTotalPaid !== '';
+            const costMissing = !!touched && line.productId && qtyTouched && !costTouched;
+            const qtyInvalid = qtyTouched && line.productId && !parseRestockQuantity(product, line.stockBoxes, line.stockUnits) && costTouched;
+            const boxed = product && unitsPerBoxOf(product.unitsPerBox) > 1;
+
+            const patchLine = (patch: Partial<RestockLine>, syncSource?: 'unit' | 'total' | 'qty') => {
+              const next = [...restockLines];
+              let updated = { ...next[i], ...patch };
+              if (syncSource) {
+                updated = syncLineCosts(updated, productMap.get(updated.productId), syncSource);
+              }
+              next[i] = updated;
+              setRestockLines(next);
+            };
+
+            return (
+              <div key={i} className="rounded-lg border border-warm-card-border/60 bg-[#1a1614]/40 p-3 space-y-2">
+                <select
+                  value={line.productId}
+                  onChange={(e) => {
+                    const next = [...restockLines];
+                    next[i] = { ...emptyRestockLine(), productId: e.target.value };
+                    setRestockLines(next);
+                  }}
+                  className={`${fieldClass} ${productMissing ? 'border-red-500/50' : ''}`}
+                >
+                  <option value="" disabled className="bg-[#1a1614] text-warm-muted">Select product…</option>
+                  {activeProducts.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-[#1a1614]">{p.name}</option>
+                  ))}
+                </select>
+
+                {product && boxed ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Boxes</label>
+                      <input
+                        value={line.stockBoxes}
+                        onChange={(e) => patchLine({ stockBoxes: e.target.value }, 'qty')}
+                        placeholder="0"
+                        type="number"
+                        min="0"
+                        step="1"
+                        className={fieldClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Extra units</label>
+                      <input
+                        value={line.stockUnits}
+                        onChange={(e) => patchLine({ stockUnits: e.target.value }, 'qty')}
+                        placeholder="0"
+                        type="number"
+                        min="0"
+                        step="1"
+                        className={fieldClass}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Units</label>
+                    <input
+                      value={line.stockUnits}
+                      onChange={(e) => patchLine({ stockUnits: e.target.value }, 'qty')}
+                      placeholder="Quantity"
+                      type="number"
+                      min="1"
+                      step="1"
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
+
+                {product && boxed && (
+                  <p className="text-[10px] text-warm-muted">1 box = {unitsPerBoxOf(product.unitsPerBox)} units</p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Cost per unit (PKR)</label>
+                    <input
+                      value={line.unitCost}
+                      onChange={(e) => patchLine({ unitCost: e.target.value }, 'unit')}
+                      placeholder="Single piece"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] uppercase text-warm-muted/60">Total paid (PKR)</label>
+                    <input
+                      value={line.lineTotalPaid}
+                      onChange={(e) => patchLine({ lineTotalPaid: e.target.value }, 'total')}
+                      placeholder="For this product line"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={fieldClass}
+                    />
+                  </div>
+                </div>
+
+                {built && product && (
+                  <div className="rounded-lg border border-warm-accent/20 bg-warm-accent/5 px-3 py-2.5 text-xs text-warm-cream">
+                    <span className="font-medium text-warm-accent">{formatCanteenMoney(built.lineTotal)}</span>
+                    {' '}paid for{' '}
+                    <span className="font-medium">
+                      {boxed
+                        ? formatStockDisplay({
+                          stockBoxes: line.stockBoxes.trim() === '' ? 0 : Number(line.stockBoxes),
+                          stockUnits: line.stockUnits.trim() === '' ? 0 : Number(line.stockUnits),
+                          unitsPerBox: product.unitsPerBox,
+                        })
+                        : `${built.quantity} unit${built.quantity === 1 ? '' : 's'}`}
+                    </span>
+                    <span className="text-warm-muted">
+                      {' '}({built.quantity} units @ {formatCanteenMoney(built.unitCost)}/unit)
+                    </span>
+                  </div>
+                )}
+
+                {productMissing && <p className="text-[10px] text-red-400">Choose a product</p>}
+                {qtyMissing && <p className="text-[10px] text-red-400">Enter boxes and/or units</p>}
+                {costMissing && <p className="text-[10px] text-red-400">Enter cost per unit or total paid</p>}
+                {qtyInvalid && <p className="text-[10px] text-red-400">Invalid quantity</p>}
+              </div>
+            );
+          })}
+          {activeProducts.length === 0 && (
+            <p className="text-xs text-warm-muted">No products yet. Add products before restocking.</p>
+          )}
+          <button type="button" onClick={() => setRestockLines([...restockLines, emptyRestockLine()])} className="text-xs text-warm-accent inline-flex items-center gap-1">
             <Plus size={12} /> Add line
           </button>
-          <button type="button" disabled={submitting} onClick={submitRestock} className="w-full rounded-lg bg-warm-accent py-2.5 text-xs font-medium text-[#1a1614] disabled:opacity-50">
+          {orderGrandTotal > 0 && (
+            <div className="flex items-center justify-between rounded-lg border border-warm-accent/30 bg-warm-accent/5 px-4 py-3">
+              <span className="text-xs text-warm-muted">Order total</span>
+              <span className="text-base font-medium text-warm-cream">{formatCanteenMoney(orderGrandTotal)}</span>
+            </div>
+          )}
+          <button type="button" disabled={submitting || !hasValidRestockLine || activeProducts.length === 0} onClick={submitRestock} className="w-full rounded-lg bg-warm-accent py-2.5 text-xs font-medium text-[#1a1614] disabled:opacity-50">
             {submitting ? 'Saving…' : 'Save order'}
           </button>
         </section>
