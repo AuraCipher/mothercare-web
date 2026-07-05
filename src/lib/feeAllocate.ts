@@ -5,6 +5,22 @@ export type AllocateItem =
   | { kind: 'head'; key: string; studentId: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean; studentName?: string }
   | { kind: 'extra'; key: string; studentId: string; studentFeeId: string; feeExtraItemId: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean; studentName?: string };
 
+export type StudentAllocateBlock = {
+  student: { id: string; name: string; studentFees?: unknown[] };
+  currentMonthItems: AllocateItem[];
+  previousItems: AllocateItem[];
+  currentMonthLabel: string;
+};
+
+export function isAllocateItemPaid(item: AllocateItem): boolean {
+  if (item.kind === 'previousMonth') return false;
+  return Boolean(item.isPaid) || item.duePaise <= 0;
+}
+
+export function isAllocateItemSelectable(item: AllocateItem): boolean {
+  return !isAllocateItemPaid(item) && item.duePaise > 0;
+}
+
 export function priorPaidMaps(fee: any) {
   const byHead = new Map<string, number>();
   const byExtra = new Map<string, number>();

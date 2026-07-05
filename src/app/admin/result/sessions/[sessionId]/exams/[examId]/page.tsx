@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
-import CollapsibleSection from '../../components/collapsible-section';
-import type { ExamType } from '../../components/exam-type-manager-modal';
+import CollapsibleSection from '../../../../components/collapsible-section';
+import type { ExamType } from '../../../../components/exam-type-manager-modal';
 import { ChevronLeft, FileText, Trash2 } from 'lucide-react';
 
 const inputClass =
