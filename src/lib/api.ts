@@ -615,7 +615,12 @@ export const api = {
   getCanteenSuppliers: () =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/suppliers${canteenQuery()}`),
 
-  createCanteenSupplier: (data: { name: string; contactNumber?: string }) =>
+  getCanteenSupplierDetail: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/canteen/suppliers/${id}${canteenQuery({ detail: 'true' })}`,
+    ),
+
+  createCanteenSupplier: (data: { name: string; contactNumber?: string; note?: string }) =>
     apiRequest(`/admin/canteen/suppliers${canteenQuery()}`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -667,6 +672,11 @@ export const api = {
 
   getCanteenAccount: (id: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/canteen/accounts/${id}${canteenQuery()}`),
+
+  getCanteenAccountDetail: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/canteen/accounts/${id}${canteenQuery({ detail: 'true' })}`,
+    ),
 
   getCanteenAccountSales: (id: string) =>
     apiRequest<{ success: boolean; data: any[] }>(

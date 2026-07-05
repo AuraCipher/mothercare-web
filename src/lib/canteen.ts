@@ -82,6 +82,16 @@ export function formatStockDisplay(
   return parts.join(' · ');
 }
 
+export function formatCanteenDateTime(value: string | Date) {
+  return new Date(value).toLocaleString('en-PK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export type CanteenAccount = {
   id: string;
   displayName: string;
