@@ -492,4 +492,21 @@ export const api = {
 
   getResultExamStructure: (examId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure${scopeQuery()}`),
+
+  generateResultExamStructure: (examId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure`, {
+      method: 'POST',
+    }),
+
+  updateResultStructureClass: (linkId: string, data: { isActive: boolean }) =>
+    apiRequest(`/admin/result/structure/classes/${linkId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  updateResultStructureSubject: (linkId: string, data: { isActive: boolean }) =>
+    apiRequest(`/admin/result/structure/subjects/${linkId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };
