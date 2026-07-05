@@ -426,4 +426,15 @@ export const api = {
 
   deleteAssignment: (id: string) =>
     apiRequest(`/admin/assignments/${id}`, { method: 'DELETE' }),
+
+  // ─── Exam Sessions (separate module — read-only from Result & Grade hub) ──
+  getExamSessions: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/exam-sessions${scopeQuery()}`),
+
+  getExamSession: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions/${sessionId}${scopeQuery()}`),
+
+  // ─── Result & Grade ─────────────────────────────────────
+  getResultSessionSummary: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
 };
