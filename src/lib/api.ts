@@ -434,6 +434,18 @@ export const api = {
   getExamSession: (sessionId: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions/${sessionId}${scopeQuery()}`),
 
+  createExamSession: (data: { name: string; startDate: string; endDate: string }) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateExamSession: (sessionId: string, data: { name?: string; startDate?: string; endDate?: string }) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   // ─── Result & Grade ─────────────────────────────────────
   getResultSessionSummary: (sessionId: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
@@ -493,9 +505,13 @@ export const api = {
   getResultExamStructure: (examId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure${scopeQuery()}`),
 
-  generateResultExamStructure: (examId: string) =>
+  generateResultExamStructure: (
+    examId: string,
+    options?: { selections?: { classId: string; subjectIds: string[] }[] },
+  ) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure`, {
       method: 'POST',
+      body: JSON.stringify(options?.selections ? { selections: options.selections } : {}),
     }),
 
   updateResultStructureClass: (linkId: string, data: { isActive: boolean }) =>
