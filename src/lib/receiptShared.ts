@@ -149,15 +149,18 @@ export function renderSchoolHeader(opts?: {
   schoolName?: string;
   schoolAddress?: string;
   schoolPhone?: string;
+  schoolEmail?: string;
 }): string {
-  const name = opts?.schoolName || 'Mother Care School';
-  const address = opts?.schoolAddress || 'Sohan, Islamabad';
-  const phone = opts?.schoolPhone ? `Phone: ${opts.schoolPhone}` : '';
-  const contact = [phone, 'Email: info@mothercareschool.edu.pk'].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  const name = (opts?.schoolName || '').trim();
+  const address = (opts?.schoolAddress || '').trim();
+  const phone = opts?.schoolPhone?.trim() ? `Phone: ${opts.schoolPhone.trim()}` : '';
+  const email = opts?.schoolEmail?.trim() ? `Email: ${opts.schoolEmail.trim()}` : '';
+  const contact = [phone, email].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  if (!name && !address && !contact) return '';
   return `<div class="header">
-    <h1>${name}</h1>
-    <div class="sub">${address}</div>
-    <div class="contact">${contact}</div>
+    ${name ? `<h1>${name}</h1>` : ''}
+    ${address ? `<div class="sub">${address}</div>` : ''}
+    ${contact ? `<div class="contact">${contact}</div>` : ''}
   </div>`;
 }
 

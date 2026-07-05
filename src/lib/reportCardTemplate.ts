@@ -2,6 +2,7 @@ import { downloadCsv } from '@/lib/feeAnalytics';
 
 export type SubjectMarkRow = {
   subjectName: string;
+  testName: string;
   marksObtained: number | null;
   totalMarks: number;
   passingMarks: number;
@@ -19,6 +20,8 @@ export type ExamReportCard = {
   className: string;
   classSection: string | null;
   subjects: SubjectMarkRow[];
+  totalMarksSum: number;
+  marksObtainedSum: number;
   overallPercentage: number;
   overallGrade: string;
   classRank: number;
@@ -97,168 +100,153 @@ export function computeCompetitionRanks(percentages: number[]): number[] {
 
 const REPORT_CARD_CONTENT_STYLES = `
   .rc-sheet {
-    border: 2px solid #c8a96e;
-    border-radius: 6px;
-    overflow: hidden;
-    page-break-inside: avoid;
-    margin-bottom: 0;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
-    font-family: 'Segoe UI', Georgia, 'Times New Roman', serif;
-    color: #1c1917;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    color: #000;
     background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 12mm 14mm 14mm;
+    page-break-inside: avoid;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
   }
   .rc-sheet * { box-sizing: border-box; }
 
   .rc-header {
     text-align: center;
-    padding: 22px 24px 18px;
-    background: linear-gradient(180deg, #faf8f5 0%, #f3efe8 100%);
-    border-bottom: 3px double #c8a96e;
+    margin-bottom: 14px;
+    line-height: 1.35;
   }
-  .rc-logo {
+  .rc-school-name {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: underline;
+    letter-spacing: 0.4px;
+    margin: 0 0 6px;
+  }
+  .rc-school-address {
+    font-size: 12px;
+    font-weight: 400;
+    margin: 0 0 8px;
+    min-height: 1.35em;
+  }
+  .rc-exam-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .rc-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rc-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 40px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .rc-info-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .rc-box {
+    border: 1px solid #000;
+    min-width: 200px;
+    min-height: 24px;
+    padding: 3px 10px;
+    font-weight: 400;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 2px solid #c8a96e;
-    font-size: 14px;
-    font-weight: 700;
-    color: #8b6914;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    background: #fff;
   }
-  .rc-header h1 {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #1a2744;
-  }
-  .rc-header .sub { font-size: 11px; color: #666; margin-top: 4px; }
-  .rc-header .contact { font-size: 10px; color: #888; margin-top: 2px; }
-
-  .rc-title-bar {
-    text-align: center;
-    padding: 12px 16px;
-    background: #1a2744;
-    color: #fff;
-  }
-  .rc-title-bar h2 {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-  }
-  .rc-title-bar .exam { font-size: 11px; color: #c8a96e; margin-top: 4px; font-weight: 500; }
-
-  .rc-meta {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 16px;
-    padding: 16px 20px;
-    background: #fafafa;
-    border-bottom: 1px solid #e8e4df;
-    font-size: 12px;
-  }
-  .rc-meta .field .label {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #999;
-    margin-bottom: 2px;
-  }
-  .rc-meta .field .value { font-weight: 600; color: #1c1917; }
-  .rc-meta .field.span-2 { grid-column: span 2; }
-
-  .rc-body { padding: 16px 20px 20px; }
+  .rc-box.sm { min-width: 80px; text-align: center; justify-content: center; }
+  .rc-box.md { min-width: 120px; text-align: center; justify-content: center; }
+  .rc-box.lg { min-width: 100%; min-height: 48px; align-items: flex-start; padding-top: 6px; }
+  .rc-box.tall { min-height: 36px; }
 
   table.rc-table {
     width: 100%;
     border-collapse: collapse;
+    margin: 0 0 12px;
     font-size: 11px;
-    margin-bottom: 16px;
   }
-  .rc-table thead th {
-    background: #c8a96e;
-    color: #fff;
-    padding: 8px 10px;
-    text-align: left;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .rc-table th,
+  .rc-table td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .rc-table th {
+    font-weight: 700;
+    background: #f5f5f5;
+  }
+  .rc-table td.subject { text-align: left; font-weight: 600; }
+  .rc-table td.num { font-variant-numeric: tabular-nums; }
+
+  .rc-summary-block { margin: 10px 0; }
+  .rc-summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+    margin-bottom: 8px;
     font-weight: 600;
   }
-  .rc-table th.num, .rc-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .rc-table th.center, .rc-table td.center { text-align: center; }
-  .rc-table tbody td {
-    padding: 7px 10px;
-    border-bottom: 1px solid #eee;
-  }
-  .rc-table tbody tr:nth-child(even) { background: #fafafa; }
-  .rc-table .pass { color: #16a34a; font-weight: 600; }
-  .rc-table .fail { color: #dc2626; font-weight: 600; }
-  .rc-table .absent { color: #888; font-style: italic; }
 
-  .rc-summary {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 18px;
+  .rc-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin: 10px 0;
+    font-weight: 600;
   }
-  .rc-summary .box {
-    text-align: center;
-    padding: 12px 8px;
-    border: 1px solid #e8e4df;
-    border-radius: 4px;
-    background: #faf8f5;
+  .rc-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .rc-summary .box.highlight {
-    border-color: #c8a96e;
-    background: linear-gradient(180deg, #fffdf9 0%, #f5efe6 100%);
-  }
-  .rc-summary .box .lbl {
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #999;
-    margin-bottom: 4px;
-  }
-  .rc-summary .box .val {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1a2744;
-  }
-  .rc-summary .box .val.grade { color: #8b6914; font-size: 22px; }
-  .rc-summary .box .val.pass { color: #16a34a; }
-  .rc-summary .box .val.fail { color: #dc2626; }
 
-  .rc-footer {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 24px;
-    padding-top: 8px;
-    border-top: 1px dashed #d4cfc6;
-    margin-top: 4px;
+  .rc-comments { margin: 12px 0; }
+  .rc-comments-label { font-weight: 600; margin-bottom: 4px; }
+
+  .rc-signatures {
+    display: flex;
+    gap: 16px;
+    margin-top: auto;
+    padding-top: 16px;
+    align-items: stretch;
   }
-  .rc-footer .sig .line {
-    border-top: 1px solid #333;
-    margin-top: 36px;
-    padding-top: 4px;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #666;
-    text-align: center;
+  .rc-sig-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 0;
+    min-width: 150px;
   }
-  .rc-print-note {
-    text-align: center;
-    font-size: 9px;
-    color: #aaa;
-    margin-top: 12px;
+  .rc-sig-labels > div { min-height: 36px; display: flex; align-items: center; }
+  .rc-sig-boxes {
+    flex: 1;
+    border: 1px solid #000;
+    display: flex;
+    flex-direction: column;
   }
+  .rc-sig-box {
+    flex: 1;
+    min-height: 36px;
+    border-bottom: 1px solid #000;
+  }
+  .rc-sig-box:last-child { border-bottom: none; }
 `;
 
 /** Scoped styles for in-app preview only — never targets body or * globally */
@@ -267,22 +255,36 @@ export const REPORT_CARD_PREVIEW_STYLES = REPORT_CARD_CONTENT_STYLES;
 /** Full document styles for print popup only */
 export const REPORT_CARD_PRINT_STYLES = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Segoe UI', Georgia, 'Times New Roman', serif;
-    color: #1c1917;
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  html, body {
+    width: 210mm;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #000;
     background: #fff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .rc-page { max-width: 780px; margin: 0 auto; padding: 28px 32px 36px; }
+  .rc-page { width: 210mm; margin: 0 auto; padding: 0; }
   ${REPORT_CARD_CONTENT_STYLES}
-  .rc-sheet { margin-bottom: 32px; }
-  .rc-sheet:last-child { margin-bottom: 0; }
+  .rc-sheet {
+    margin: 0;
+    box-shadow: none;
+  }
+  .rc-sheet + .rc-sheet { margin-top: 0; }
 
   @media print {
-    body { padding: 0; }
-    .rc-page { padding: 12px; max-width: 100%; }
-    .rc-sheet { margin-bottom: 0; box-shadow: none; page-break-after: always; }
+    html, body { width: auto; }
+    .rc-page { width: auto; padding: 0; }
+    .rc-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
     .rc-sheet:last-child { page-break-after: auto; }
   }
 `;
@@ -295,75 +297,123 @@ function esc(s: string) {
     .replace(/"/g, '&quot;');
 }
 
-function classLabel(name: string, section: string | null) {
-  return section ? `${name} — ${section}` : name;
+function classDisplay(name: string, section: string | null) {
+  const base = section ? `${name} — ${section}` : name;
+  return /^class\b/i.test(base.trim()) ? base : `Class ${base}`;
+}
+
+function examResultTitle(bundle: ReportCardBundle): string {
+  const sessionLabel = bundle.academicYear || bundle.sessionName;
+  return `${bundle.examName} Examination Result (Session-${sessionLabel})`;
+}
+
+function marksCell(value: number | null, isAbsent: boolean): string {
+  if (isAbsent) return '';
+  if (value == null) return '';
+  return String(value);
 }
 
 export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamReportCard): string {
-  const studentClass = classLabel(card.className, card.classSection);
+  const studentClass = classDisplay(card.className, card.classSection);
+  const pctDisplay = card.totalMarksSum > 0
+    ? Math.round(card.overallPercentage)
+    : '';
+
   const subjectRows = card.subjects.map((s) => {
-    const marksDisplay = s.isAbsent
-      ? '<span class="absent">Absent</span>'
-      : s.marksObtained != null
-        ? String(s.marksObtained)
-        : '—';
+    const obtained = marksCell(s.marksObtained, s.isAbsent);
     return `<tr>
-      <td>${esc(s.subjectName)}</td>
-      <td class="num">${marksDisplay}</td>
+      <td class="subject">${esc(s.subjectName)}</td>
+      <td>${esc(s.testName)}</td>
       <td class="num">${s.totalMarks}</td>
-      <td class="num">${s.passingMarks}</td>
-      <td class="num">${s.percentage.toFixed(1)}%</td>
-      <td class="center">${esc(s.grade)}</td>
-      <td class="center ${s.passed ? 'pass' : 'fail'}">${s.passed ? 'Pass' : 'Fail'}</td>
+      <td class="num">${obtained}</td>
+      <td>${esc(s.grade)}</td>
     </tr>`;
   }).join('');
 
+  const emptyRow = '<tr><td colspan="5" style="padding:12px;color:#666">No marks entered</td></tr>';
+
   return `
     <div class="rc-sheet">
-      <div class="rc-header">
-        <div class="rc-logo">MCS</div>
-        <h1>${esc(bundle.schoolName)}</h1>
-        ${bundle.schoolAddress ? `<p class="sub">${esc(bundle.schoolAddress)}</p>` : ''}
-        ${bundle.schoolPhone ? `<p class="contact">${esc(bundle.schoolPhone)}</p>` : ''}
-      </div>
-      <div class="rc-title-bar">
-        <h2>Report Card</h2>
-        <p class="exam">${esc(bundle.examName)} · ${esc(bundle.sessionName)}</p>
-      </div>
-      <div class="rc-meta">
-        <div class="field"><div class="label">Student Name</div><div class="value">${esc(card.name)}</div></div>
-        <div class="field"><div class="label">Roll Number</div><div class="value">${esc(card.rollNumber)}</div></div>
-        <div class="field"><div class="label">Class</div><div class="value">${esc(studentClass)}</div></div>
-        <div class="field"><div class="label">Academic Year</div><div class="value">${esc(bundle.academicYear || '—')}</div></div>
-        ${card.admissionNumber ? `<div class="field span-2"><div class="label">Admission No.</div><div class="value">${esc(card.admissionNumber)}</div></div>` : ''}
-      </div>
+      <header class="rc-header">
+        <div class="rc-school-name">${esc(bundle.schoolName)}</div>
+        <div class="rc-school-address">${bundle.schoolAddress ? esc(bundle.schoolAddress) : '&nbsp;'}</div>
+        <div class="rc-exam-title">${esc(examResultTitle(bundle))}</div>
+      </header>
+
       <div class="rc-body">
-        <table class="rc-table">
-          <thead>
-            <tr>
-              <th>Subject</th>
-              <th class="num">Obtained</th>
-              <th class="num">Total</th>
-              <th class="num">Pass</th>
-              <th class="num">%</th>
-              <th class="center">Grade</th>
-              <th class="center">Result</th>
-            </tr>
-          </thead>
-          <tbody>${subjectRows || '<tr><td colspan="7" style="text-align:center;color:#999;padding:16px">No marks entered</td></tr>'}</tbody>
-        </table>
-        <div class="rc-summary">
-          <div class="box highlight"><div class="lbl">Overall %</div><div class="val">${card.overallPercentage.toFixed(1)}%</div></div>
-          <div class="box highlight"><div class="lbl">Grade</div><div class="val grade">${esc(card.overallGrade)}</div></div>
-          <div class="box"><div class="lbl">Class Rank</div><div class="val">${card.classRank || '—'}</div></div>
-          <div class="box"><div class="lbl">Outcome</div><div class="val ${card.passed ? 'pass' : 'fail'}">${card.passed ? 'Pass' : 'Fail'}</div></div>
+      <div class="rc-info-row">
+        <div class="rc-info-field">
+          <span>Name:</span>
+          <span class="rc-box">${esc(card.name)}</span>
         </div>
-        <div class="rc-footer">
-          <div class="sig"><div class="line">Class Teacher</div></div>
-          <div class="sig"><div class="line">Exam Controller</div></div>
-          <div class="sig"><div class="line">Principal</div></div>
+        <div class="rc-info-field">
+          <span>Class:</span>
+          <span class="rc-box">${esc(studentClass)}</span>
         </div>
-        <p class="rc-print-note">Generated ${esc(bundle.generatedAt)} · ${esc(bundle.examName)}</p>
+      </div>
+
+      <table class="rc-table">
+        <thead>
+          <tr>
+            <th>Subjects</th>
+            <th>Test</th>
+            <th>Total Marks</th>
+            <th>Marks obtained</th>
+            <th>Grades</th>
+          </tr>
+        </thead>
+        <tbody>${subjectRows || emptyRow}</tbody>
+      </table>
+
+      <div class="rc-summary-block">
+        <div class="rc-summary-row">
+          <span>Total Marks:</span>
+          <span class="rc-box sm">${card.totalMarksSum || ''}</span>
+          <span>Marks Obtained:</span>
+          <span class="rc-box sm">${card.marksObtainedSum || ''}</span>
+        </div>
+        <div class="rc-summary-row">
+          <span>Percentage%:</span>
+          <span class="rc-box sm">${pctDisplay}</span>
+          <span>Position:</span>
+          <span class="rc-box sm">${card.classRank || ''}</span>
+          <span>Grades:</span>
+          <span class="rc-box sm">${esc(card.overallGrade)}</span>
+        </div>
+      </div>
+
+      <div class="rc-meta-row">
+        <div class="rc-meta-item">
+          <span>Behaviour:</span>
+          <span class="rc-box md"></span>
+        </div>
+        <div class="rc-meta-item">
+          <span>Regularity:</span>
+          <span class="rc-box md"></span>
+        </div>
+        <div class="rc-meta-item">
+          <span>Date:</span>
+          <span class="rc-box md"></span>
+        </div>
+      </div>
+
+      <div class="rc-comments">
+        <div class="rc-comments-label">Comments:</div>
+        <div class="rc-box lg"></div>
+      </div>
+
+      <div class="rc-signatures">
+        <div class="rc-sig-labels">
+          <div>Principal Signature:</div>
+          <div>Class Teacher Signature:</div>
+          <div>Parents Signature:</div>
+        </div>
+        <div class="rc-sig-boxes">
+          <div class="rc-sig-box"></div>
+          <div class="rc-sig-box"></div>
+          <div class="rc-sig-box"></div>
+        </div>
+      </div>
       </div>
     </div>`;
 }
@@ -388,9 +438,10 @@ export function printReportCards(bundle: ReportCardBundle) {
 export function downloadReportCardsCsv(bundle: ReportCardBundle) {
   const headers = [
     'Roll No', 'Student Name', 'Class', 'Session', 'Exam',
-    'Subject', 'Marks Obtained', 'Total Marks', 'Passing Marks',
+    'Subject', 'Test', 'Marks Obtained', 'Total Marks', 'Passing Marks',
     'Percentage', 'Grade', 'Subject Result',
-    'Overall %', 'Overall Grade', 'Class Rank', 'Overall Result',
+    'Total Marks (Sum)', 'Marks Obtained (Sum)', 'Overall %', 'Overall Grade',
+    'Position', 'Overall Result',
   ];
   const rows: (string | number)[][] = [];
   for (const card of bundle.cards) {
@@ -402,12 +453,15 @@ export function downloadReportCardsCsv(bundle: ReportCardBundle) {
         bundle.sessionName,
         bundle.examName,
         s.subjectName,
+        s.testName,
         s.isAbsent ? 'AB' : (s.marksObtained ?? ''),
         s.totalMarks,
         s.passingMarks,
         s.percentage,
         s.grade,
         s.passed ? 'Pass' : 'Fail',
+        card.totalMarksSum,
+        card.marksObtainedSum,
         card.overallPercentage,
         card.overallGrade,
         card.classRank,
@@ -417,7 +471,8 @@ export function downloadReportCardsCsv(bundle: ReportCardBundle) {
     if (card.subjects.length === 0) {
       rows.push([
         card.rollNumber, card.name, bundle.classLabel, bundle.sessionName, bundle.examName,
-        '', '', '', '', '', '', '',
+        '', '', '', '', '', '', '', '',
+        card.totalMarksSum, card.marksObtainedSum,
         card.overallPercentage, card.overallGrade, card.classRank,
         card.passed ? 'Pass' : 'Fail',
       ]);

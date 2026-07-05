@@ -56,6 +56,10 @@ export type FamilyReceiptData = {
   isFullyPaid: boolean;
   students: FamilyReceiptStudent[];
   printCount?: number;
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
 };
 
 function renderStudentBlock(data: FamilyReceiptData, s: FamilyReceiptStudent): string {
@@ -116,7 +120,12 @@ export function buildFamilyReceiptHtml(data: FamilyReceiptData): string {
 <head><meta charset="UTF-8"><title>${data.receiptNumber}</title><style>${RECEIPT_STYLES}</style></head>
 <body>
 <div class="receipt">
-  ${renderSchoolHeader()}
+  ${renderSchoolHeader({
+    schoolName: data.schoolName,
+    schoolAddress: data.schoolAddress,
+    schoolPhone: data.schoolPhone,
+    schoolEmail: data.schoolEmail,
+  })}
   <div class="receipt-title"><h2>${title}${templateBadge}${paidBadge}</h2></div>
   ${renderMetaRow(data.receiptNumber, dateStr)}
   <div class="info-grid cols-3">

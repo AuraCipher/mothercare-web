@@ -12,10 +12,24 @@ function classLabel(name: string, section?: string | null) {
   return section ? `${name} — ${section}` : name;
 }
 
+function sumMarks(subjects: SubjectMarkRow[]) {
+  const totalMarksSum = subjects.reduce((s, r) => s + r.totalMarks, 0);
+  const marksObtainedSum = subjects.reduce(
+    (s, r) => s + (r.isAbsent ? 0 : (r.marksObtained ?? 0)),
+    0,
+  );
+  const overallPercentage = totalMarksSum > 0
+    ? Math.round((marksObtainedSum / totalMarksSum) * 1000) / 10
+    : 0;
+  return { totalMarksSum, marksObtainedSum, overallPercentage };
+}
+
 export async function buildExamReportCards(
   sessionId: string,
   examId: string,
   classId: string,
+  studentId?: string,
+  examName = 'Exam',
 ): Promise<ExamReportCard[]> {
   const structureRes = await api.getResultExamStructure(examId);
   const classBlock = (structureRes.data || []).find(
@@ -65,6 +79,7 @@ export async function buildExamReportCards(
       if (hasEntry) {
         studentMap.get(st.id)!.subjects.push({
           subjectName,
+          testName: examName,
           marksObtained: st.marksObtained,
           totalMarks,
           passingMarks,
@@ -78,15 +93,15 @@ export async function buildExamReportCards(
   }
 
   const cards: ExamReportCard[] = Array.from(studentMap.values()).map((acc) => {
-    const withMarks = acc.subjects.filter((s) => s.marksObtained != null || s.isAbsent);
-    const overallPercentage = withMarks.length > 0
-      ? Math.round((withMarks.reduce((s, r) => s + r.percentage, 0) / withMarks.length) * 10) / 10
-      : 0;
-    const overallGrade = withMarks.length > 0 ? lookupGrade(overallPercentage) : '—';
-    const passed = withMarks.length > 0 && withMarks.every((s) => s.passed);
+    const subjects = acc.subjects.sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+    const { totalMarksSum, marksObtainedSum, overallPercentage } = sumMarks(subjects);
+    const overallGrade = subjects.length > 0 ? lookupGrade(overallPercentage) : '—';
+    const passed = subjects.length > 0 && subjects.every((s) => s.passed);
     return {
       ...acc,
-      subjects: acc.subjects.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
+      subjects,
+      totalMarksSum,
+      marksObtainedSum,
       overallPercentage,
       overallGrade,
       classRank: 0,
@@ -100,6 +115,9 @@ export async function buildExamReportCards(
   const ranks = computeCompetitionRanks(ranked.map((c) => c.overallPercentage));
   ranked.forEach((c, i) => { c.classRank = ranks[i]; });
 
+  if (studentId) {
+    return cards.filter((c) => c.studentId === studentId);
+  }
   return cards;
 }
 
