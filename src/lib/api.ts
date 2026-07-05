@@ -746,7 +746,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  updateStaffMember: (userId: string, data: { name?: string; email?: string; phone?: string }) =>
+  updateStaffMember: (userId: string, data: Record<string, unknown>) =>
     apiRequest(`/admin/staff/${userId}${scopeQuery()}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
