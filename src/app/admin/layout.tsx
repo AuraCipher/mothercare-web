@@ -8,6 +8,7 @@ import DocNav from '@/components/doc-nav';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
+  ClipboardList,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -41,6 +42,7 @@ const navItems = [
   { href: '/admin/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/admin/attendance', icon: CheckSquare, label: 'Attendance' },
   { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
+  { href: '/admin/result', icon: ClipboardList, label: 'Result & Grade' },
 ];
 
 /* ── Layout ── */
