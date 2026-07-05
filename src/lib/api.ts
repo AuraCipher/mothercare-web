@@ -450,6 +450,15 @@ export const api = {
   getResultSessionSummary: (sessionId: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
 
+  getResultAnalytics: (params?: { sessionId?: string; examId?: string; classId?: string; subjectId?: string }) => {
+    const q: Record<string, string> = {};
+    if (params?.sessionId && params.sessionId !== 'all') q.sessionId = params.sessionId;
+    if (params?.examId && params.examId !== 'all') q.examId = params.examId;
+    if (params?.classId) q.classId = params.classId;
+    if (params?.subjectId) q.subjectId = params.subjectId;
+    return apiRequest<{ success: boolean; data: any }>(`/admin/result/analytics${scopeQuery(q)}`);
+  },
+
   getResultExamTypes: (sessionId: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/result/sessions/${sessionId}/types${scopeQuery()}`),
 
