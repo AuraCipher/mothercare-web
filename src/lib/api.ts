@@ -1,4 +1,5 @@
 import config from '@/config';
+import { canteenQuery } from '@/lib/canteen';
 /**
  * Mother Care School — API Client
  *
@@ -588,5 +589,120 @@ export const api = {
   getStudentReportCard: (studentId: string, sessionId: string) =>
     apiRequest<{ success: boolean; data: any }>(
       `/admin/result/students/${studentId}/sessions/${sessionId}/report-card${scopeQuery()}`,
+    ),
+
+  // ─── Canteen (branch-scoped only — use canteenQuery, not scopeQuery) ───
+  getCanteenProducts: (activeOnly = true) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/canteen/products${canteenQuery({ activeOnly: activeOnly ? 'true' : 'false' })}`,
+    ),
+
+  getCanteenCategories: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/categories${canteenQuery()}`),
+
+  createCanteenCategory: (name: string) =>
+    apiRequest(`/admin/canteen/categories${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  patchCanteenCategory: (id: string, data: { name?: string; isActive?: boolean }) =>
+    apiRequest(`/admin/canteen/categories/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getCanteenSuppliers: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/suppliers${canteenQuery()}`),
+
+  createCanteenSupplier: (data: { name: string; contactNumber?: string }) =>
+    apiRequest(`/admin/canteen/suppliers${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  patchCanteenSupplier: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/canteen/suppliers/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getCanteenSupplierPayments: (supplierId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/canteen/suppliers/${supplierId}/payments${canteenQuery()}`,
+    ),
+
+  postCanteenSupplierPayment: (supplierId: string, data: { amount: number; direction: string; note?: string }) =>
+    apiRequest(`/admin/canteen/suppliers/${supplierId}/payments${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  createCanteenProduct: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/canteen/products${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  patchCanteenProduct: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/canteen/products/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateCanteenProduct: (id: string) =>
+    apiRequest(`/admin/canteen/products/${id}${canteenQuery()}`, { method: 'DELETE' }),
+
+  createCanteenRestock: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/canteen/restock-purchases${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getCanteenRestockPurchases: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/restock-purchases${canteenQuery()}`),
+
+  getCanteenAccounts: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/accounts${canteenQuery()}`),
+
+  getCanteenAccount: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/canteen/accounts/${id}${canteenQuery()}`),
+
+  getCanteenAccountSales: (id: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/canteen/accounts/${id}/sales${canteenQuery()}`,
+    ),
+
+  createCanteenAccount: (data: { personType: string; studentId?: string; userId?: string }) =>
+    apiRequest(`/admin/canteen/accounts${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  postCanteenAccountPayment: (accountId: string, data: { amountPaid: number; note?: string }) =>
+    apiRequest(`/admin/canteen/accounts/${accountId}/payments${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getCanteenCreditPersons: (type: string, q?: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/canteen/credit-persons${canteenQuery({ type, ...(q ? { q } : {}) })}`,
+    ),
+
+  postCanteenSale: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/canteen/sales${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getCanteenSales: (date?: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/canteen/sales${canteenQuery(date ? { date } : undefined)}`,
+    ),
+
+  getCanteenSummary: (date?: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/canteen/summary${canteenQuery({ date: date || new Date().toISOString().slice(0, 10) })}`,
     ),
 };

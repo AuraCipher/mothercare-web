@@ -9,6 +9,7 @@ import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
   ClipboardList,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -43,6 +44,7 @@ const navItems = [
   { href: '/admin/attendance', icon: CheckSquare, label: 'Attendance' },
   { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
   { href: '/admin/result', icon: ClipboardList, label: 'Result & Grade' },
+  { href: '/admin/canteen', icon: UtensilsCrossed, label: 'Canteen' },
 ];
 
 /* ── Layout ── */
