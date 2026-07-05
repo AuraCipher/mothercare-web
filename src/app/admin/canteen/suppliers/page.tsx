@@ -86,19 +86,27 @@ export default function CanteenSuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {suppliers.map((s) => (
+              {suppliers.map((s) => {
+                const weOwe = Number(s.balanceOwedToSupplier);
+                const theyOwe = Number(s.balanceSupplierOwesUs);
+                return (
                 <tr key={s.id} className="border-b border-warm-card-border/50">
                   <td className="p-3 text-warm-cream">{s.name}</td>
                   <td className="p-3 text-warm-muted">{s.contactNumber || '—'}</td>
-                  <td className="p-3 text-amber-400">{formatCanteenMoney(s.balanceOwedToSupplier)}</td>
-                  <td className="p-3 text-warm-muted">{formatCanteenMoney(s.balanceSupplierOwesUs)}</td>
+                  <td className={`p-3 ${weOwe > 0 ? 'text-amber-400 font-medium' : 'text-warm-muted'}`}>
+                    {formatCanteenMoney(s.balanceOwedToSupplier)}
+                  </td>
+                  <td className={`p-3 ${theyOwe > 0 ? 'text-amber-400 font-medium' : 'text-warm-muted'}`}>
+                    {formatCanteenMoney(s.balanceSupplierOwesUs)}
+                  </td>
                   <td className="p-3 text-right">
                     <button type="button" onClick={() => router.push(`/admin/canteen/suppliers/${s.id}`)} className="text-warm-accent hover:underline">
                       View details
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

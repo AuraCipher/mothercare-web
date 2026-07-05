@@ -342,7 +342,7 @@ export default function CanteenSupplierDetailPage() {
           { label: 'Total purchased', value: formatCanteenMoney(stats.totalPurchased), sub: `${stats.purchaseCount} orders` },
           { label: 'Total paid', value: formatCanteenMoney(stats.totalPaid), sub: `${stats.paymentCount} payments` },
           { label: 'We owe (remaining)', value: formatCanteenMoney(owed), warn: owed > 0 },
-          { label: 'They owe us', value: formatCanteenMoney(stats.theyOweUs) },
+          { label: 'They owe us', value: formatCanteenMoney(stats.theyOweUs), warn: stats.theyOweUs > 0 },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-warm-card-border bg-warm-card px-4 py-3">
             <p className="text-[10px] uppercase tracking-wide text-warm-muted/60">{s.label}</p>
