@@ -695,10 +695,17 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getCanteenCreditPersons: (type: string, q?: string) =>
+  getCanteenCreditPersons: (type: string, opts?: { q?: string; groupId?: string }) =>
     apiRequest<{ success: boolean; data: any[] }>(
-      `/admin/canteen/credit-persons${canteenQuery({ type, ...(q ? { q } : {}) })}`,
+      `/admin/canteen/credit-persons${canteenQuery({
+        type,
+        ...(opts?.q ? { q: opts.q } : {}),
+        ...(opts?.groupId ? { groupId: opts.groupId } : {}),
+      })}`,
     ),
+
+  getCanteenCreditClasses: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/credit-classes${canteenQuery()}`),
 
   postCanteenSale: (data: Record<string, unknown>) =>
     apiRequest(`/admin/canteen/sales${canteenQuery()}`, {
