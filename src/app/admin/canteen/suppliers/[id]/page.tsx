@@ -199,6 +199,19 @@ export default function CanteenSupplierDetailPage() {
         </div>
       </div>
 
+      {editProfile && (
+        <section className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-5 max-w-lg space-y-3">
+          <h2 className="text-sm font-medium text-warm-cream">Supplier details</h2>
+          <input value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} placeholder="Supplier name" className={fieldClass} />
+          <input value={profileForm.contactNumber} onChange={(e) => setProfileForm({ ...profileForm, contactNumber: e.target.value })} placeholder="Contact info" className={fieldClass} />
+          <textarea value={profileForm.note} onChange={(e) => setProfileForm({ ...profileForm, note: e.target.value })} placeholder="Note" rows={3} className={`${fieldClass} resize-none`} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setEditProfile(false)} disabled={submitting} className="flex-1 rounded-lg border py-2 text-xs text-warm-muted">Cancel</button>
+            <button type="button" onClick={saveProfile} disabled={submitting} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs text-[#1a1614]">{submitting ? 'Saving…' : 'Save'}</button>
+          </div>
+        </section>
+      )}
+
       <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total purchased', value: formatCanteenMoney(stats.totalPurchased), sub: `${stats.purchaseCount} orders` },
