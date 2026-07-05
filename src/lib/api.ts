@@ -509,4 +509,20 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  getResultMarksGrid: (subjectLinkId: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/result/structure/subjects/${subjectLinkId}/marks-grid${scopeQuery()}`),
+
+  saveResultMarks: (subjectLinkId: string, data: {
+    totalMarks?: number;
+    passingMarks?: number;
+    entries: { studentId: string; marksObtained?: number | null; isAbsent?: boolean }[];
+  }) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/result/structure/subjects/${subjectLinkId}/marks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteResultMarksEntry: (entryId: string) =>
+    apiRequest(`/admin/result/marks/${entryId}`, { method: 'DELETE' }),
 };
