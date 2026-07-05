@@ -11,6 +11,7 @@ interface ResultsSectionProps {
   readOnly?: boolean;
   resultCount?: number;
   reportCardCount?: number;
+  hideComputeActions?: boolean;
   onChanged?: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function ResultsSection({
   readOnly = false,
   resultCount = 0,
   reportCardCount = 0,
+  hideComputeActions = false,
   onChanged,
 }: ResultsSectionProps) {
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
@@ -206,7 +208,7 @@ export default function ResultsSection({
         Workflow: publish exams → enter marks → compute results → compute report cards → publish report cards.
       </p>
 
-      {!readOnly && (
+      {!readOnly && !hideComputeActions && (
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -256,7 +258,7 @@ export default function ResultsSection({
         </span>
       </div>
 
-      {!readOnly && selectedClassId && (
+      {!readOnly && !hideComputeActions && selectedClassId && (
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
