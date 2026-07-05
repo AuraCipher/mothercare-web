@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ChevronLeft, Calendar, Settings2, Plus } from 'lucide-react';
+import { ChevronLeft, Calendar, Settings2, Plus, Pencil } from 'lucide-react';
 import ExamTypeManagerModal from '../../components/exam-type-manager-modal';
 import CreateExamModal from '../../components/create-exam-modal';
+import ExamSessionModal from '../../components/exam-session-modal';
 import ExamListSection, { type ExamListItem } from '../../components/exam-list-section';
 import ResultsSection from '../../components/results-section';
 import CollapsibleSection, { MiniProgressBar } from '../../components/collapsible-section';
@@ -40,6 +41,7 @@ export default function ResultSessionPage() {
   const [error, setError] = useState('');
   const [typesModalOpen, setTypesModalOpen] = useState(false);
   const [createExamOpen, setCreateExamOpen] = useState(false);
+  const [editSessionOpen, setEditSessionOpen] = useState(false);
 
   const activeAYId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
@@ -133,17 +135,29 @@ export default function ResultSessionPage() {
                 {fmtDate(summary.session.startDate)} — {fmtDate(summary.session.endDate)}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setTypesModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:border-warm-accent/40"
-            >
-              <Settings2 size={13} className="text-warm-accent" />
-              Types
-              {summary.typeCount > 0 && (
-                <span className="text-[10px] text-warm-muted">({summary.typeCount})</span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => setEditSessionOpen(true)}
+                  className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1.5 text-xs text-warm-muted hover:text-warm-cream"
+                  title="Rename session"
+                >
+                  <Pencil size={13} /> Rename
+                </button>
               )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setTypesModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:border-warm-accent/40"
+              >
+                <Settings2 size={13} className="text-warm-accent" />
+                Types
+                {summary.typeCount > 0 && (
+                  <span className="text-[10px] text-warm-muted">({summary.typeCount})</span>
+                )}
+              </button>
+            </div>
           </div>
 
           <CollapsibleSection
@@ -226,6 +240,19 @@ export default function ResultSessionPage() {
               loadData(true);
               router.push(`/admin/result/sessions/${sessionId}/exams/${examId}`);
             }}
+          />
+
+          <ExamSessionModal
+            open={editSessionOpen}
+            mode="edit"
+            initial={summary ? {
+              id: summary.session.id,
+              name: summary.session.name,
+              startDate: summary.session.startDate,
+              endDate: summary.session.endDate,
+            } : null}
+            onClose={() => setEditSessionOpen(false)}
+            onSaved={() => loadData(true)}
           />
         </div>
       ) : null}

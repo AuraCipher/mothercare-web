@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ClipboardList, ChevronRight, Calendar } from 'lucide-react';
+import { ClipboardList, ChevronRight, Calendar, Plus } from 'lucide-react';
+import ExamSessionModal from './components/exam-session-modal';
 
 interface ExamSession {
   id: string;
@@ -22,18 +23,27 @@ export default function ResultGradeHubPage() {
   const [sessions, setSessions] = useState<ExamSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
 
   const activeAYId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
+  const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
+
+  const loadSessions = () => {
+    if (!activeAYId) return;
+    setLoading(true);
+    setError('');
+    api.getExamSessions()
+      .then((res) => setSessions(res.data || []))
+      .catch((e: any) => setError(e.message || 'Failed to load exam sessions'))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (!activeAYId) {
       setLoading(false);
       return;
     }
-    api.getExamSessions()
-      .then((res) => setSessions(res.data || []))
-      .catch((e: any) => setError(e.message || 'Failed to load exam sessions'))
-      .finally(() => setLoading(false));
+    loadSessions();
   }, [activeAYId]);
 
   if (!activeAYId) {
@@ -50,17 +60,28 @@ export default function ResultGradeHubPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mb-6">
-        <h1 className="text-xl font-light text-warm-cream">Result &amp; Grade</h1>
-        <p className="mt-1 text-xs text-warm-muted">
-          Select an exam session to manage types, exams, marks entry, and report cards.
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-light text-warm-cream">Result &amp; Grade</h1>
+          <p className="mt-1 text-xs text-warm-muted">
+            Select an exam session to manage types, exams, marks entry, and report cards.
+          </p>
+        </div>
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]"
+          >
+            <Plus size={14} /> Add session
+          </button>
+        )}
       </div>
 
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 rounded-xl bg-warm-card animate-pulse" />
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-warm-card" />
           ))}
         </div>
       ) : error ? (
@@ -71,9 +92,15 @@ export default function ResultGradeHubPage() {
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
           <ClipboardList size={28} className="mx-auto mb-3 text-warm-muted" />
           <p className="text-sm text-warm-muted">No exam sessions for this academic year.</p>
-          <p className="mt-2 text-xs text-warm-muted/60">
-            Exam sessions are created separately. Once a session exists, open it here to enter marks and publish results.
-          </p>
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="mt-4 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]"
+            >
+              Create first session
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -106,6 +133,16 @@ export default function ResultGradeHubPage() {
           ))}
         </div>
       )}
+
+      <ExamSessionModal
+        open={createOpen}
+        mode="create"
+        onClose={() => setCreateOpen(false)}
+        onSaved={(session) => {
+          loadSessions();
+          router.push(`/admin/result/sessions/${session.id}`);
+        }}
+      />
     </main>
   );
 }
