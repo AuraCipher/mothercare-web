@@ -42,6 +42,8 @@ export type CanteenProduct = {
   id: string;
   name: string;
   unitPrice: number | string;
+  boxPrice?: number | string | null;
+  unitsPerBox?: number | null;
   stockQuantity: number;
   lowStockThreshold: number;
   isActive: boolean;

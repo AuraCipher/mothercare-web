@@ -11,8 +11,17 @@ const fieldClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent';
 
 const emptyForm = {
-  name: '', categoryId: '', unitPrice: '', stockQuantity: '0', lowStockThreshold: '5',
+  name: '',
+  categoryId: '',
+  unitPrice: '',
+  boxPrice: '',
+  unitsPerBox: '',
 };
+
+function formatBoxPrice(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—';
+  return formatCanteenMoney(value);
+}
 
 export default function CanteenProductsPage() {
   const router = useRouter();
@@ -50,8 +59,8 @@ export default function CanteenProductsPage() {
       name: p.name,
       categoryId: p.category?.id ?? '',
       unitPrice: String(Number(p.unitPrice)),
-      stockQuantity: String(p.stockQuantity),
-      lowStockThreshold: String(p.lowStockThreshold),
+      boxPrice: p.boxPrice != null ? String(Number(p.boxPrice)) : '',
+      unitsPerBox: p.unitsPerBox != null ? String(p.unitsPerBox) : '',
     });
     setModal(true);
   };
@@ -63,28 +72,29 @@ export default function CanteenProductsPage() {
   };
 
   const saveProduct = async () => {
-    if (!form.name.trim() || !form.categoryId || !form.unitPrice) {
-      showToast('error', 'Name, category and price required');
+    if (!form.name.trim() || !form.categoryId || !form.unitPrice || !form.boxPrice || !form.unitsPerBox) {
+      showToast('error', 'Fill name, category, unit price, box price & units per box');
+      return;
+    }
+    const unitsPerBox = Number(form.unitsPerBox);
+    if (!Number.isInteger(unitsPerBox) || unitsPerBox < 1) {
+      showToast('error', 'Units per box must be a whole number ≥ 1');
       return;
     }
     setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      categoryId: form.categoryId,
+      unitPrice: Number(form.unitPrice),
+      boxPrice: Number(form.boxPrice),
+      unitsPerBox,
+    };
     try {
       if (editingId) {
-        await api.patchCanteenProduct(editingId, {
-          name: form.name.trim(),
-          categoryId: form.categoryId,
-          unitPrice: Number(form.unitPrice),
-          lowStockThreshold: Number(form.lowStockThreshold) || 5,
-        });
+        await api.patchCanteenProduct(editingId, payload);
         showToast('success', 'Product updated');
       } else {
-        await api.createCanteenProduct({
-          name: form.name.trim(),
-          categoryId: form.categoryId,
-          unitPrice: Number(form.unitPrice),
-          stockQuantity: Number(form.stockQuantity) || 0,
-          lowStockThreshold: Number(form.lowStockThreshold) || 5,
-        });
+        await api.createCanteenProduct(payload);
         showToast('success', 'Product added');
       }
       closeModal();
@@ -129,7 +139,7 @@ export default function CanteenProductsPage() {
           <h1 className="flex items-center gap-2 text-xl font-light text-warm-cream">
             <Tag size={22} className="text-violet-400" /> Products
           </h1>
-          <p className="mt-1 text-xs text-warm-muted">Catalog — names, categories & pricing</p>
+          <p className="mt-1 text-xs text-warm-muted">Catalog — unit & box pricing</p>
         </div>
         <button type="button" onClick={openCreate} className="inline-flex items-center gap-1 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">
           <Plus size={14} /> Add product
@@ -159,8 +169,9 @@ export default function CanteenProductsPage() {
               <tr className="border-b border-warm-card-border bg-warm-card/80 text-left text-warm-muted">
                 <th className="p-3">Product</th>
                 <th className="p-3">Category</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Low stock at</th>
+                <th className="p-3">Unit price</th>
+                <th className="p-3">Box price</th>
+                <th className="p-3">Units / box</th>
                 <th className="p-3">Status</th>
                 <th className="p-3" />
               </tr>
@@ -171,7 +182,8 @@ export default function CanteenProductsPage() {
                   <td className="p-3 text-warm-cream">{p.name}</td>
                   <td className="p-3 text-warm-muted">{p.category?.name}</td>
                   <td className="p-3">{formatCanteenMoney(p.unitPrice)}</td>
-                  <td className="p-3 text-warm-muted">{p.lowStockThreshold}</td>
+                  <td className="p-3">{formatBoxPrice(p.boxPrice)}</td>
+                  <td className="p-3 text-warm-muted">{p.unitsPerBox ?? '—'}</td>
                   <td className="p-3">{p.isActive ? 'Active' : 'Disabled'}</td>
                   <td className="p-3">
                     <div className="flex items-center justify-end gap-3">
@@ -209,16 +221,9 @@ export default function CanteenProductsPage() {
                 </option>
               ))}
             </select>
-            <input value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} placeholder="Unit price" type="number" min="0" step="0.01" className={fieldClass} />
-            <input value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} placeholder="Low stock alert at" type="number" min="0" className={fieldClass} />
-            {!editingId && (
-              <input value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: e.target.value })} placeholder="Opening stock (optional)" type="number" min="0" className={fieldClass} />
-            )}
-            {editingId && (
-              <p className="text-[11px] text-warm-muted">
-                Stock is managed on the Inventory page — restock via Suppliers or sales.
-              </p>
-            )}
+            <input value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} placeholder="Unit price (1 piece)" type="number" min="0" step="0.01" className={fieldClass} />
+            <input value={form.boxPrice} onChange={(e) => setForm({ ...form, boxPrice: e.target.value })} placeholder="Box price" type="number" min="0" step="0.01" className={fieldClass} />
+            <input value={form.unitsPerBox} onChange={(e) => setForm({ ...form, unitsPerBox: e.target.value })} placeholder="Units in one box" type="number" min="1" step="1" className={fieldClass} />
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={closeModal} disabled={saving} className="flex-1 rounded-lg border border-warm-card-border py-2 text-xs text-warm-muted disabled:opacity-50">Cancel</button>
               <button type="button" onClick={saveProduct} disabled={saving} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">
