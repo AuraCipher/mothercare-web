@@ -437,4 +437,22 @@ export const api = {
   // ─── Result & Grade ─────────────────────────────────────
   getResultSessionSummary: (sessionId: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
+
+  getResultExamTypes: (sessionId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/sessions/${sessionId}/types${scopeQuery()}`),
+
+  createResultExamType: (sessionId: string, data: { name: string; defaultWeight?: number }) =>
+    apiRequest(`/admin/result/sessions/${sessionId}/types`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateResultExamType: (sessionId: string, typeId: string, data: { name?: string; defaultWeight?: number | null }) =>
+    apiRequest(`/admin/result/sessions/${sessionId}/types/${typeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteResultExamType: (sessionId: string, typeId: string) =>
+    apiRequest(`/admin/result/sessions/${sessionId}/types/${typeId}`, { method: 'DELETE' }),
 };
