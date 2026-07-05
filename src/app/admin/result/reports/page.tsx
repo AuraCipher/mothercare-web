@@ -16,7 +16,7 @@ const PASSING_MIN = 40;
 const FAIL_GRADES = new Set(['D', 'E', 'F']);
 
 const REPORT_TYPE_LABELS: Record<ReportType, string> = {
-  standard: 'Class Result Sheet',
+  standard: 'Student Results',
   'fail-list': 'Fail List',
   'class-summary': 'Class Summary',
   'report-cards': 'Report Cards',
@@ -210,7 +210,8 @@ export default function ResultReportsPage() {
       const showSection = !classId;
       const sfLabel = outcomeFilter ? OUTCOME_LABELS[outcomeFilter] : '';
       const examLabel = examName ? ` · ${examName}` : '';
-      const title = `${className} · ${REPORT_TYPE_LABELS[reportType]}${sfLabel ? ` · ${sfLabel}` : ''} · ${sessionName}${examLabel}`;
+      const typeLabel = reportType === 'standard' && examId ? 'Exam Marks Sheet' : REPORT_TYPE_LABELS[reportType];
+      const title = `${className} · ${typeLabel}${sfLabel ? ` · ${sfLabel}` : ''} · ${sessionName}${examLabel}`;
 
       if (reportType === 'class-summary') {
         const res = await api.getResultAnalytics({
@@ -418,7 +419,6 @@ export default function ResultReportsPage() {
         : sections;
 
       const allRows: ReportRow[] = [];
-      const subjectHeaderSet = new Map<string, string>();
       const sheetsByClass: { cls: Section; sheet: any }[] = [];
       let totalResults = 0;
       let totalPassed = 0;
@@ -432,16 +432,9 @@ export default function ResultReportsPage() {
         const sheet = sheetRes.data;
         if (!sheet) continue;
         sheetsByClass.push({ cls, sheet });
-        for (const sub of sheet.subjects || []) {
-          if (!subjectHeaderSet.has(sub.id)) subjectHeaderSet.set(sub.id, sub.name);
-        }
       }
 
-      const subjectHeaders = Array.from(subjectHeaderSet.values());
-      const subjectIds = Array.from(subjectHeaderSet.keys());
-
       for (const { cls, sheet } of sheetsByClass) {
-        const subjects = sheet.subjects || [];
         const sectionLabel = classLabel(cls.name, cls.section);
         const students = sheet.students || [];
 
@@ -486,23 +479,11 @@ export default function ResultReportsPage() {
               status: rc.status || '—',
             });
           } else {
-            const bySubject = new Map(
-              (row.subjectResults || []).map((r: { subjectId: string; percentage: number; grade: string }) => [
-                r.subjectId,
-                r,
-              ]),
-            );
-            const classSubjectIds = new Map(subjects.map((s: { id: string; name: string }) => [s.id, s.name]));
-            const subjectCells = subjectIds.map((id) => {
-              if (!classSubjectIds.has(id)) return '—';
-              const sr = bySubject.get(id) as { percentage: number; grade: string } | undefined;
-              return sr ? `${pctStr(sr.percentage)} (${sr.grade})` : '—';
-            });
+            // Session-level: one row per student — no per-subject columns
             allRows.push({
               roll: row.student?.rollNumber || '—',
               name: row.student?.name || '',
               section: sectionLabel,
-              subjectCells,
               overall: row.reportCard ? pctStr(row.reportCard.overallPercentage) : '—',
               grade: row.reportCard?.overallGrade ?? '—',
               rank: row.reportCard?.classRank != null ? String(row.reportCard.classRank) : '—',
@@ -521,8 +502,8 @@ export default function ResultReportsPage() {
       let headers: string[] = [];
       if (reportType === 'standard') {
         headers = showSection
-          ? ['Roll', 'Class', 'Name', ...subjectHeaders, 'Overall', 'Grade', 'Rank']
-          : ['Roll', 'Name', ...subjectHeaders, 'Overall', 'Grade', 'Rank'];
+          ? ['Roll', 'Class', 'Name', 'Overall', 'Grade', 'Rank']
+          : ['Roll', 'Name', 'Overall', 'Grade', 'Rank'];
       } else if (reportType === 'report-cards') {
         headers = showSection
           ? ['Roll', 'Class', 'Name', 'Overall', 'Grade', 'Rank', 'Status']
@@ -539,7 +520,7 @@ export default function ResultReportsPage() {
         total: allRows.length,
         reportType,
         showSection,
-        subjectHeaders,
+        subjectHeaders: [],
         summary: {
           students: allRows.length,
           results: totalResults,
@@ -780,7 +761,8 @@ export default function ResultReportsPage() {
             >
               {(Object.keys(REPORT_TYPE_LABELS) as ReportType[]).map((t) => (
                 <option key={t} value={t} disabled={t === 'report-cards' && !!examId}>
-                  {REPORT_TYPE_LABELS[t]}{t === 'report-cards' && examId ? ' (session only)' : ''}
+                  {t === 'standard' && examId ? 'Exam Marks Sheet' : REPORT_TYPE_LABELS[t]}
+                  {t === 'report-cards' && examId ? ' (session only)' : ''}
                 </option>
               ))}
             </select>
@@ -832,7 +814,9 @@ export default function ResultReportsPage() {
 
         <p className="mb-4 text-[10px] text-warm-muted/50">
           Passing: {PASSING_MIN}% or above · Grades D/E/F count as fail
-          {examId ? ' · Exam filter uses raw marks per subject' : ' · All exams uses computed session results'}
+          {examId
+            ? ' · Subject columns shown for the selected exam only'
+            : ' · All exams shows overall results per student (no subject columns)'}
         </p>
 
         <button
