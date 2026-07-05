@@ -44,12 +44,43 @@ export type CanteenProduct = {
   unitPrice: number | string;
   boxPrice?: number | string | null;
   unitsPerBox?: number | null;
-  stockQuantity: number;
+  stockBoxes: number;
+  stockUnits: number;
   lowStockThreshold: number;
   isActive: boolean;
   category?: { id: string; name: string };
   supplier?: { id: string; name: string } | null;
 };
+
+export function unitsPerBoxOf(unitsPerBox?: number | null): number {
+  return unitsPerBox != null && unitsPerBox > 0 ? unitsPerBox : 1;
+}
+
+export function totalStockUnits(
+  product: Pick<CanteenProduct, 'stockBoxes' | 'stockUnits' | 'unitsPerBox'>,
+): number {
+  const upb = unitsPerBoxOf(product.unitsPerBox);
+  return product.stockBoxes * upb + product.stockUnits;
+}
+
+export function formatStockDisplay(
+  product: Pick<CanteenProduct, 'stockBoxes' | 'stockUnits' | 'unitsPerBox'>,
+): string {
+  const upb = unitsPerBoxOf(product.unitsPerBox);
+  if (upb <= 1) {
+    const u = product.stockUnits;
+    return `${u} unit${u === 1 ? '' : 's'}`;
+  }
+  const parts: string[] = [];
+  if (product.stockBoxes > 0) {
+    parts.push(`${product.stockBoxes} box${product.stockBoxes === 1 ? '' : 'es'}`);
+  }
+  if (product.stockUnits > 0) {
+    parts.push(`${product.stockUnits} unit${product.stockUnits === 1 ? '' : 's'}`);
+  }
+  if (parts.length === 0) return '0 units';
+  return parts.join(' · ');
+}
 
 export type CanteenAccount = {
   id: string;
