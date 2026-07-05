@@ -17,6 +17,12 @@ export default function LoginPage() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // Proxy only reads cookies — sync cookie from localStorage if missing
+    const hasCookie = document.cookie.split(';').some((c) => c.trim().startsWith('token='));
+    if (!hasCookie) {
+      document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+    }
+
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
@@ -26,10 +32,11 @@ export default function LoginPage() {
         } else {
           router.replace('/admin');
         }
-        return; // redirect issued — no need to verify
+        return;
       }
     } catch {
-      // Corrupt token — let them use the login form
+      localStorage.removeItem('token');
+      document.cookie = 'token=; path=/; max-age=0';
     }
   }, [router]);
 
@@ -64,8 +71,9 @@ export default function LoginPage() {
       } else {
         setError(data.message || 'Invalid credentials');
       }
-    } catch {
-      setError('Cannot reach the server. Please try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Cannot reach the server. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
