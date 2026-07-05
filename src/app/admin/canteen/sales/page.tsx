@@ -56,9 +56,15 @@ function CanteenSalesContent() {
       setCreditAmount('');
       return;
     }
-    setCashAmount(String(cart.reduce((s, l) => s + Number(l.product.unitPrice) * l.quantity, 0)));
-    setCreditAmount('0');
-  }, [cartSignature]);
+    const productsTotal = cart.reduce((s, l) => s + Number(l.product.unitPrice) * l.quantity, 0);
+    if (presetAccount) {
+      setCashAmount('0');
+      setCreditAmount(String(productsTotal));
+    } else {
+      setCashAmount(String(productsTotal));
+      setCreditAmount('0');
+    }
+  }, [cartSignature, presetAccount?.id]);
 
   const loadProducts = useCallback(() => {
     setLoading(true);
