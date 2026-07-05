@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Minus, Plus, ShoppingCart, X } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatCanteenMoney, type CanteenProduct } from '@/lib/canteen';
+import { formatCanteenMoney, formatStockDisplay, totalStockUnits, type CanteenProduct } from '@/lib/canteen';
 import { showToast } from '@/components/toast';
 
 type CartLine = { product: CanteenProduct; quantity: number };
@@ -45,14 +45,15 @@ export default function CanteenSalesPage() {
   );
 
   const addToCart = (product: CanteenProduct) => {
-    if (product.stockQuantity <= 0) {
+    const onHand = totalStockUnits(product);
+    if (onHand <= 0) {
       showToast('error', 'Out of stock');
       return;
     }
     setCart((prev) => {
       const existing = prev.find((l) => l.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stockQuantity) {
+        if (existing.quantity >= onHand) {
           showToast('error', 'Not enough stock');
           return prev;
         }
@@ -69,7 +70,7 @@ export default function CanteenSalesPage() {
       if (l.product.id !== productId) return [l];
       const next = l.quantity + delta;
       if (next <= 0) return [];
-      if (next > l.product.stockQuantity) {
+      if (next > totalStockUnits(l.product)) {
         showToast('error', 'Not enough stock');
         return [l];
       }
@@ -169,7 +170,8 @@ export default function CanteenSalesPage() {
                 <p className="mb-2 text-[10px] uppercase tracking-wide text-warm-muted/50">{cat}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {items.map((p) => {
-                    const low = p.stockQuantity <= p.lowStockThreshold;
+                    const onHand = totalStockUnits(p);
+                    const low = onHand > 0 && onHand <= p.lowStockThreshold;
                     return (
                       <button
                         key={p.id}
@@ -182,7 +184,7 @@ export default function CanteenSalesPage() {
                         <p className="text-sm font-medium text-warm-cream truncate">{p.name}</p>
                         <p className="text-xs text-warm-accent">{formatCanteenMoney(p.unitPrice)}</p>
                         <p className={`text-[10px] mt-1 ${low ? 'text-red-400' : 'text-warm-muted/60'}`}>
-                          Stock: {p.stockQuantity}
+                          Stock: {formatStockDisplay(p)}
                         </p>
                       </button>
                     );
