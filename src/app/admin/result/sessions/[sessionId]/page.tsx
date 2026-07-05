@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ClipboardList, ChevronLeft, Calendar, FileText, Layers, Settings2 } from 'lucide-react';
+import { ChevronLeft, Calendar, Settings2, Plus } from 'lucide-react';
 import ExamTypeManagerModal from '../../components/exam-type-manager-modal';
+import CreateExamModal from '../../components/create-exam-modal';
+import ExamListSection, { type ExamListItem } from '../../components/exam-list-section';
+import CollapsibleSection, { MiniProgressBar } from '../../components/collapsible-section';
 
 interface SessionSummary {
   session: { id: string; name: string; startDate: string; endDate: string };
@@ -25,33 +28,35 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function progressColor(pct: number) {
-  if (pct >= 80) return 'bg-green-500';
-  if (pct >= 40) return 'bg-yellow-500';
-  return 'bg-warm-accent';
-}
-
 export default function ResultSessionPage() {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const [exams, setExams] = useState<ExamListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [typesModalOpen, setTypesModalOpen] = useState(false);
+  const [createExamOpen, setCreateExamOpen] = useState(false);
 
   const activeAYId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
-  const loadSummary = useCallback((silent = false) => {
+  const loadData = useCallback((silent = false) => {
     if (!activeAYId || !sessionId) return;
     if (!silent) {
       setLoading(true);
       setError('');
     }
-    api.getResultSessionSummary(sessionId)
-      .then((res) => setSummary(res.data))
+    Promise.all([
+      api.getResultSessionSummary(sessionId),
+      api.getResultExams(sessionId),
+    ])
+      .then(([summaryRes, examsRes]) => {
+        setSummary(summaryRes.data);
+        setExams(examsRes.data || []);
+      })
       .catch((e: any) => {
         if (!silent) setError(e.message || 'Failed to load session');
       })
@@ -65,8 +70,12 @@ export default function ResultSessionPage() {
       setLoading(false);
       return;
     }
-    loadSummary();
-  }, [activeAYId, sessionId, loadSummary]);
+    loadData();
+  }, [activeAYId, sessionId, loadData]);
+
+  const progressByExamId = Object.fromEntries(
+    (summary?.exams ?? []).map((e) => [e.id, e.marksProgress]),
+  );
 
   if (!activeAYId) {
     return (
@@ -77,6 +86,16 @@ export default function ResultSessionPage() {
       </main>
     );
   }
+
+  const overviewSubtitle = summary
+    ? `${summary.marksProgress.percent}% marks · ${summary.examCount} exams · ${summary.subjectResultCount} results`
+    : undefined;
+
+  const examsSubtitle = summary
+    ? exams.length === 0
+      ? 'No exams yet'
+      : `${exams.length} exam${exams.length !== 1 ? 's' : ''} · ${summary.marksProgress.percent}% session progress`
+    : undefined;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -89,118 +108,107 @@ export default function ResultSessionPage() {
       </button>
 
       {loading ? (
-        <div className="space-y-3">
-          <div className="h-24 rounded-xl bg-warm-card animate-pulse" />
-          <div className="h-32 rounded-xl bg-warm-card animate-pulse" />
+        <div className="space-y-2">
+          <div className="h-14 animate-pulse rounded-xl bg-warm-card" />
+          <div className="h-12 animate-pulse rounded-xl bg-warm-card" />
+          <div className="h-12 animate-pulse rounded-xl bg-warm-card" />
         </div>
       ) : error ? (
         <div className="rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 text-xs text-[#b39a76]">
           {error}
         </div>
       ) : summary ? (
-        <>
-          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-light text-warm-cream">{summary.session.name}</h1>
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-warm-muted">
-                <Calendar size={12} />
+        <div className="space-y-2">
+          {/* Compact header */}
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-3 px-1">
+            <div className="min-w-0">
+              <h1 className="text-lg font-light text-warm-cream">{summary.session.name}</h1>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-warm-muted">
+                <Calendar size={11} />
                 {fmtDate(summary.session.startDate)} — {fmtDate(summary.session.endDate)}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setTypesModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-warm-card-border bg-warm-card px-3.5 py-2 text-xs font-medium text-warm-cream transition-colors hover:border-warm-accent/40 hover:bg-warm-card/80"
+              className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:border-warm-accent/40"
             >
-              <Settings2 size={14} className="text-warm-accent" />
-              Manage Types
+              <Settings2 size={13} className="text-warm-accent" />
+              Types
               {summary.typeCount > 0 && (
-                <span className="rounded bg-warm-accent/15 px-1.5 py-0.5 text-[10px] text-warm-accent">
-                  {summary.typeCount}
-                </span>
+                <span className="text-[10px] text-warm-muted">({summary.typeCount})</span>
               )}
             </button>
           </div>
 
-          {/* Overall marks progress */}
-          <div className="mb-4 rounded-xl border border-warm-card-border bg-warm-card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-medium text-warm-cream">Marks entry progress</p>
-              <span className="text-xs text-warm-muted">
-                {summary.marksProgress.filled} / {summary.marksProgress.total} subject slots
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[#1a1614]">
-              <div
-                className={`h-full rounded-full transition-all ${progressColor(summary.marksProgress.percent)}`}
-                style={{ width: `${summary.marksProgress.percent}%` }}
+          <CollapsibleSection
+            title="Overview"
+            subtitle={overviewSubtitle}
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              <MiniProgressBar
+                percent={summary.marksProgress.percent}
+                label={`Session marks ${summary.marksProgress.filled}/${summary.marksProgress.total} slots`}
               />
-            </div>
-            <p className="mt-2 text-[11px] text-warm-muted">{summary.marksProgress.percent}% complete</p>
-          </div>
-
-          {/* Stats grid */}
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: 'Types', value: summary.typeCount, icon: Layers },
-              { label: 'Exams', value: summary.examCount, icon: FileText },
-              { label: 'Results', value: summary.subjectResultCount, icon: ClipboardList },
-              { label: 'Report cards', value: summary.reportCardCount, icon: ClipboardList },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="rounded-xl border border-warm-card-border bg-warm-card p-4">
-                <Icon size={14} className="mb-2 text-warm-accent" />
-                <p className="text-lg font-light text-warm-cream">{value}</p>
-                <p className="text-[10px] uppercase tracking-wide text-warm-muted">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Per-exam progress */}
-          {summary.exams.length > 0 && (
-            <div className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-5">
-              <p className="mb-3 text-xs font-medium text-warm-cream">Exams in this session</p>
-              <div className="space-y-3">
-                {summary.exams.map((exam) => (
-                  <div key={exam.id} className="rounded-lg border border-warm-card-border/60 bg-[#1a1614]/40 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm text-warm-cream">{exam.name}</span>
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        exam.status === 'ACTIVE'
-                          ? 'bg-green-900/30 text-green-400'
-                          : 'bg-warm-card-border/50 text-warm-muted'
-                      }`}>
-                        {exam.status}
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[#1a1614]">
-                      <div
-                        className={`h-full rounded-full ${progressColor(exam.marksProgress.percent)}`}
-                        style={{ width: `${exam.marksProgress.percent}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-warm-muted">
-                      {exam.marksProgress.percent}% marks entered
-                    </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: 'Types', value: summary.typeCount },
+                  { label: 'Exams', value: summary.examCount },
+                  { label: 'Results', value: summary.subjectResultCount },
+                  { label: 'Report cards', value: summary.reportCardCount },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg border border-warm-card-border/50 bg-[#1a1614]/40 px-3 py-2">
+                    <p className="text-base font-light text-warm-cream">{value}</p>
+                    <p className="text-[9px] uppercase tracking-wide text-warm-muted">{label}</p>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          </CollapsibleSection>
 
-          {/* Phase 3 — exams (next) */}
-          <div className="rounded-xl border border-dashed border-warm-card-border bg-warm-card/50 p-6 text-center">
-            <p className="text-sm text-warm-muted">Exam creation &amp; structure</p>
-            <p className="mt-1 text-xs text-warm-muted/60">Phase 3 — after your review</p>
-          </div>
+          <CollapsibleSection
+            title="Exams"
+            subtitle={examsSubtitle}
+            badge={exams.length || undefined}
+            defaultOpen={false}
+            actions={
+              !isReadOnly ? (
+                <button
+                  type="button"
+                  onClick={() => setCreateExamOpen(true)}
+                  className="flex items-center gap-1 rounded-lg bg-warm-accent px-2.5 py-1 text-[10px] font-medium text-[#1a1614] hover:bg-[#b39a76]"
+                >
+                  <Plus size={12} /> Add
+                </button>
+              ) : undefined
+            }
+          >
+            <ExamListSection
+              sessionId={sessionId}
+              exams={exams}
+              progressByExamId={progressByExamId}
+            />
+          </CollapsibleSection>
 
           <ExamTypeManagerModal
             sessionId={sessionId}
             open={typesModalOpen}
             readOnly={isReadOnly}
             onClose={() => setTypesModalOpen(false)}
-            onChanged={() => loadSummary(true)}
+            onChanged={() => loadData(true)}
           />
-        </>
+
+          <CreateExamModal
+            sessionId={sessionId}
+            open={createExamOpen}
+            onClose={() => setCreateExamOpen(false)}
+            onCreated={(examId) => {
+              loadData(true);
+              router.push(`/admin/result/sessions/${sessionId}/exams/${examId}`);
+            }}
+          />
+        </div>
       ) : null}
     </main>
   );
