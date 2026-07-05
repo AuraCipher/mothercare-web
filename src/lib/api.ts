@@ -355,11 +355,12 @@ export const api = {
 
   // ─── Teachers ────────────────────────────────────────────
   getTeachers: (params?: { search?: string; qualification?: string; page?: number; limit?: number }) => {
-    const q = new URLSearchParams();
-    if (params?.search) q.set('search', params.search);
-    if (params?.qualification) q.set('qualification', params.qualification);
-    if (params?.page) q.set('page', String(params.page));
-    if (params?.limit) q.set('limit', String(params.limit));
+    const q = buildScopeParams({
+      search: params?.search,
+      qualification: params?.qualification,
+      page: params?.page ? String(params.page) : undefined,
+      limit: params?.limit ? String(params.limit) : undefined,
+    });
     const qs = q.toString();
     return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/teachers${qs ? `?${qs}` : ''}`);
   },
