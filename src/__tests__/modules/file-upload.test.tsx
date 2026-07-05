@@ -56,7 +56,7 @@ describe('FileUpload', () => {
 
     const file = new File(['dummy'], 'photo.jpg', { type: 'image/jpeg' });
     const input = document.querySelector('input[type="file"]')!;
-    await user.upload(input, file);
+    await user.upload(input as HTMLElement, file);
 
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('error', expect.any(String));

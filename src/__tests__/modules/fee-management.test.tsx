@@ -35,7 +35,8 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-const mockFetch = (data: any) => vi.fn(() => Promise.resolve({ json: () => Promise.resolve(data) }));
+const mockFetch = (data: any): typeof fetch =>
+  vi.fn(() => Promise.resolve({ json: () => Promise.resolve(data) } as Response)) as typeof fetch;
 
 const mockAnalytics = (summary: any, extra: any = {}) => ({
   success: true,
@@ -64,13 +65,14 @@ const mockSections = [
   { id: 'g3', name: 'Class 2', section: 'B', displayOrder: 2 },
 ];
 
-function mockGenerateFetch(extra?: { generateResult?: any; onGenerate?: (body: any) => void }) {
-  return vi.fn((url: string, opts?: RequestInit) => {
+function mockGenerateFetch(extra?: { generateResult?: any; onGenerate?: (body: any) => void }): typeof fetch {
+  return vi.fn((input: RequestInfo | URL, opts?: RequestInit) => {
+    const url = String(input);
     if (url.includes('fee-heads')) {
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) } as Response);
     }
     if (url.includes('/sections')) {
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) } as Response);
     }
     if (url.includes('student-fees/generate')) {
       let mode = 'generate';
@@ -84,14 +86,15 @@ function mockGenerateFetch(extra?: { generateResult?: any; onGenerate?: (body: a
           success: true,
           data: extra?.generateResult ?? { generated: 345, skipped: 0, updated: 0, total: 345, mode },
         }),
-      });
+      } as Response);
     }
-    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
-  });
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as Response);
+  }) as typeof fetch;
 }
 
-function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void, pagination?: any) {
-  return vi.fn((url: string) => {
+function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void, pagination?: any): typeof fetch {
+  return vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
     onFetch?.(url);
     if (url.includes('students-list')) {
       return Promise.resolve({
@@ -100,13 +103,13 @@ function mockCollectionsFetch(data: any[] = [], onFetch?: (url: string) => void,
           data,
           pagination: pagination ?? { page: 1, limit: 100, total: data.length, totalPages: 1 },
         }),
-      });
+      } as Response);
     }
     if (url.includes('/sections')) {
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) } as Response);
     }
-    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
-  });
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as Response);
+  }) as typeof fetch;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -195,7 +198,7 @@ describe('FeeStructuresPage', () => {
   });
 
   it('renders loading state', async () => {
-    global.fetch = () => new Promise(() => {}); // Never resolves
+    global.fetch = (() => new Promise(() => {})) as typeof fetch; // Never resolves
     const { default: FeeStructuresPage } = await import('@/app/admin/fees/structures/page');
     render(<FeeStructuresPage />);
     const skeletons = document.querySelectorAll('.animate-pulse');

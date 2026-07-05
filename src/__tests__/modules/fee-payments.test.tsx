@@ -37,7 +37,8 @@ function setupLS() {
   try { Object.defineProperty(window, 'localStorage', { value: { getItem: (k: string) => lsStore[k] || null, setItem: (k: string, v: string) => { lsStore[k] = v; }, removeItem: (k: string) => { delete lsStore[k]; }, clear: () => { lsStore = {}; } } }); } catch {}
 }
 
-const mockFetch = (d: any) => vi.fn(() => Promise.resolve({ json: () => Promise.resolve(d) } as any));
+const mockFetch = (d: any): typeof fetch =>
+  vi.fn(() => Promise.resolve({ json: () => Promise.resolve(d) } as Response)) as typeof fetch;
 
 // COLLECTIONS
 describe('Collections — Advanced', () => {
@@ -68,10 +69,10 @@ describe('Collections — Advanced', () => {
   });
   it('monthly request includes academicYearId', async () => {
     const urls: string[] = [];
-    global.fetch = vi.fn((url: string) => {
-      urls.push(url);
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as any);
-    });
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      urls.push(String(input));
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as Response);
+    }) as typeof fetch;
     render(<CollectionsPage />);
     await waitFor(() => expect(urls.some(u => u.includes('academicYearId=ay-1'))).toBe(true));
     expect(urls.some(u => u.includes('period=monthly'))).toBe(true);
@@ -118,10 +119,11 @@ const mockSections = [
   { id: 'g3', name: 'Class 2', section: 'B', displayOrder: 2 },
 ];
 
-function mockGenerateFetch(opts?: { onGenerate?: (body: any) => void }) {
-  return vi.fn((url: string, init?: RequestInit) => {
-    if (url.includes('fee-heads')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) });
-    if (url.includes('/sections')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) });
+function mockGenerateFetch(opts?: { onGenerate?: (body: any) => void }): typeof fetch {
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes('fee-heads')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockHeads }) } as Response);
+    if (url.includes('/sections')) return Promise.resolve({ json: () => Promise.resolve({ success: true, data: mockSections }) } as Response);
     if (url.includes('student-fees/generate')) {
       let mode = 'generate';
       if (init?.body) {
@@ -129,10 +131,10 @@ function mockGenerateFetch(opts?: { onGenerate?: (body: any) => void }) {
         mode = body.mode || 'generate';
         opts?.onGenerate?.(body);
       }
-      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345, mode } }) });
+      return Promise.resolve({ json: () => Promise.resolve({ success: true, data: { generated: 345, skipped: 0, total: 345, mode } }) } as Response);
     }
-    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) });
-  });
+    return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as Response);
+  }) as typeof fetch;
 }
 
 // GENERATE
@@ -210,14 +212,14 @@ describe('FeeReports', () => {
 // FEE HEADS ERRORS
 describe('FeeHeads — Errors', () => {
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('handles network error', async () => { global.fetch = vi.fn(() => Promise.reject(new Error('x'))); render(<FeeHeadsPage />); expect(await screen.findByText('Fee Heads')).toBeInTheDocument(); });
+  it('handles network error', async () => { global.fetch = vi.fn(() => Promise.reject(new Error('x'))) as typeof fetch; render(<FeeHeadsPage />); expect(await screen.findByText('Fee Heads')).toBeInTheDocument(); });
 });
 
 // STUDENT DETAIL (dynamic import due to [id] path)
 describe('StudentFeeDetail', () => {
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
   it('shows loading', async () => {
-    global.fetch = () => new Promise<any>(() => {}); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
+    global.fetch = (() => new Promise<any>(() => {})) as typeof fetch; const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
   it('shows Fee History', async () => {
