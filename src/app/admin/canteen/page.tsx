@@ -89,7 +89,7 @@ export default function CanteenHubPage() {
       {summary && (
         <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Today total', value: summary.totalSales },
+            { label: 'Total', value: summary.totalSales },
             { label: 'Cash', value: summary.cashTotal },
             { label: 'Credit', value: summary.creditTotal },
             { label: 'Sales', value: summary.saleCount },

@@ -144,9 +144,13 @@ export default function TeachersPage() {
 
     setCreating(true);
     try {
-      // Auto-generate a temporary random password
-      const tempPassword = 'tmp_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
       const branchId = localStorage.getItem('activeBranchId') || '';
+      if (!branchId) {
+        setCreateError('Select a branch first');
+        setCreating(false);
+        return;
+      }
+      const tempPassword = 'tmp_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
       await api.createTeacher({
         name: cf.name.trim(),
         email: cf.email.trim() || undefined,
