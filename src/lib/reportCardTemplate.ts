@@ -105,12 +105,9 @@ const REPORT_CARD_CONTENT_STYLES = `
     color: #000;
     background: #fff;
     width: 210mm;
-    min-height: 297mm;
     padding: 12mm 14mm 14mm;
     page-break-inside: avoid;
     margin: 0 auto;
-    display: flex;
-    flex-direction: column;
   }
   .rc-sheet * { box-sizing: border-box; }
 
@@ -139,12 +136,6 @@ const REPORT_CARD_CONTENT_STYLES = `
     margin: 0;
   }
 
-  .rc-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
   .rc-info-row {
     display: flex;
     flex-wrap: wrap;
@@ -156,10 +147,13 @@ const REPORT_CARD_CONTENT_STYLES = `
     display: flex;
     align-items: center;
     gap: 8px;
-    font-weight: 600;
+    font-weight: 400;
+  }
+  .rc-label {
+    font-weight: 700;
   }
   .rc-box {
-    border: 1px solid #000;
+    border: 2px solid #000;
     min-width: 200px;
     min-height: 24px;
     padding: 3px 10px;
@@ -177,19 +171,20 @@ const REPORT_CARD_CONTENT_STYLES = `
     border-collapse: collapse;
     margin: 0 0 12px;
     font-size: 11px;
+    border: 2px solid #000;
   }
   .rc-table th,
   .rc-table td {
-    border: 1px solid #000;
+    border: 2px solid #000;
     padding: 4px 6px;
     text-align: center;
     vertical-align: middle;
   }
   .rc-table th {
     font-weight: 700;
-    background: #f5f5f5;
+    background: #fff;
   }
-  .rc-table td.subject { text-align: left; font-weight: 600; }
+  .rc-table td.subject { text-align: left; font-weight: 700; }
   .rc-table td.num { font-variant-numeric: tabular-nums; }
 
   .rc-summary-block { margin: 10px 0; }
@@ -199,7 +194,7 @@ const REPORT_CARD_CONTENT_STYLES = `
     align-items: center;
     gap: 8px 24px;
     margin-bottom: 8px;
-    font-weight: 600;
+    font-weight: 400;
   }
 
   .rc-meta-row {
@@ -207,7 +202,7 @@ const REPORT_CARD_CONTENT_STYLES = `
     flex-wrap: wrap;
     gap: 8px 28px;
     margin: 10px 0;
-    font-weight: 600;
+    font-weight: 400;
   }
   .rc-meta-item {
     display: flex;
@@ -216,20 +211,19 @@ const REPORT_CARD_CONTENT_STYLES = `
   }
 
   .rc-comments { margin: 12px 0; }
-  .rc-comments-label { font-weight: 600; margin-bottom: 4px; }
+  .rc-comments-label { font-weight: 700; margin-bottom: 4px; }
 
   .rc-signatures {
     display: flex;
     gap: 16px;
-    margin-top: auto;
-    padding-top: 16px;
+    margin-top: 16px;
     align-items: stretch;
   }
   .rc-sig-labels {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 11px;
     padding: 4px 0;
     min-width: 150px;
@@ -237,14 +231,14 @@ const REPORT_CARD_CONTENT_STYLES = `
   .rc-sig-labels > div { min-height: 36px; display: flex; align-items: center; }
   .rc-sig-boxes {
     flex: 1;
-    border: 1px solid #000;
+    border: 2px solid #000;
     display: flex;
     flex-direction: column;
   }
   .rc-sig-box {
     flex: 1;
     min-height: 36px;
-    border-bottom: 1px solid #000;
+    border-bottom: 2px solid #000;
   }
   .rc-sig-box:last-child { border-bottom: none; }
 `;
@@ -280,7 +274,6 @@ export const REPORT_CARD_PRINT_STYLES = `
     .rc-page { width: auto; padding: 0; }
     .rc-sheet {
       width: 210mm;
-      min-height: 297mm;
       margin: 0;
       page-break-after: always;
       page-break-inside: avoid;
@@ -323,14 +316,13 @@ export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamR
     const obtained = marksCell(s.marksObtained, s.isAbsent);
     return `<tr>
       <td class="subject">${esc(s.subjectName)}</td>
-      <td>${esc(s.testName)}</td>
       <td class="num">${s.totalMarks}</td>
       <td class="num">${obtained}</td>
       <td>${esc(s.grade)}</td>
     </tr>`;
   }).join('');
 
-  const emptyRow = '<tr><td colspan="5" style="padding:12px;color:#666">No marks entered</td></tr>';
+  const emptyRow = '<tr><td colspan="4" style="padding:12px;color:#666">No marks entered</td></tr>';
 
   return `
     <div class="rc-sheet">
@@ -340,14 +332,13 @@ export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamR
         <div class="rc-exam-title">${esc(examResultTitle(bundle))}</div>
       </header>
 
-      <div class="rc-body">
       <div class="rc-info-row">
         <div class="rc-info-field">
-          <span>Name:</span>
+          <span class="rc-label">Name:</span>
           <span class="rc-box">${esc(card.name)}</span>
         </div>
         <div class="rc-info-field">
-          <span>Class:</span>
+          <span class="rc-label">Class:</span>
           <span class="rc-box">${esc(studentClass)}</span>
         </div>
       </div>
@@ -356,7 +347,6 @@ export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamR
         <thead>
           <tr>
             <th>Subjects</th>
-            <th>Test</th>
             <th>Total Marks</th>
             <th>Marks obtained</th>
             <th>Grades</th>
@@ -367,32 +357,32 @@ export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamR
 
       <div class="rc-summary-block">
         <div class="rc-summary-row">
-          <span>Total Marks:</span>
+          <span class="rc-label">Total Marks:</span>
           <span class="rc-box sm">${card.totalMarksSum || ''}</span>
-          <span>Marks Obtained:</span>
+          <span class="rc-label">Marks Obtained:</span>
           <span class="rc-box sm">${card.marksObtainedSum || ''}</span>
         </div>
         <div class="rc-summary-row">
-          <span>Percentage%:</span>
+          <span class="rc-label">Percentage%:</span>
           <span class="rc-box sm">${pctDisplay}</span>
-          <span>Position:</span>
+          <span class="rc-label">Position:</span>
           <span class="rc-box sm">${card.classRank || ''}</span>
-          <span>Grades:</span>
+          <span class="rc-label">Grades:</span>
           <span class="rc-box sm">${esc(card.overallGrade)}</span>
         </div>
       </div>
 
       <div class="rc-meta-row">
         <div class="rc-meta-item">
-          <span>Behaviour:</span>
+          <span class="rc-label">Behaviour:</span>
           <span class="rc-box md"></span>
         </div>
         <div class="rc-meta-item">
-          <span>Regularity:</span>
+          <span class="rc-label">Regularity:</span>
           <span class="rc-box md"></span>
         </div>
         <div class="rc-meta-item">
-          <span>Date:</span>
+          <span class="rc-label">Date:</span>
           <span class="rc-box md"></span>
         </div>
       </div>
@@ -413,7 +403,6 @@ export function renderSingleReportCardHtml(bundle: ReportCardBundle, card: ExamR
           <div class="rc-sig-box"></div>
           <div class="rc-sig-box"></div>
         </div>
-      </div>
       </div>
     </div>`;
 }
