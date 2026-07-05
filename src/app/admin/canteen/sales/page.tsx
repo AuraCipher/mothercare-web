@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Minus, Plus, ShoppingCart, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatCanteenMoney, formatStockDisplay, totalStockUnits, type CanteenProduct } from '@/lib/canteen';
@@ -17,7 +17,17 @@ type CreditPerson = {
 };
 
 export default function CanteenSalesPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-10"><div className="h-40 animate-pulse rounded-xl bg-warm-card" /></main>}>
+      <CanteenSalesContent />
+    </Suspense>
+  );
+}
+
+function CanteenSalesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetAccountId = searchParams.get('accountId');
   const [products, setProducts] = useState<CanteenProduct[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +38,7 @@ export default function CanteenSalesPage() {
   const [persons, setPersons] = useState<CreditPerson[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<CreditPerson | null>(null);
   const [personIdField, setPersonIdField] = useState<'studentId' | 'userId'>('studentId');
+  const [presetAccount, setPresetAccount] = useState<{ id: string; displayName: string } | null>(null);
 
   const loadProducts = useCallback(() => {
     setLoading(true);
@@ -38,6 +49,18 @@ export default function CanteenSalesPage() {
   }, []);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  useEffect(() => {
+    if (!presetAccountId) {
+      setPresetAccount(null);
+      return;
+    }
+    api.getCanteenAccount(presetAccountId)
+      .then((r) => {
+        if (r.data) setPresetAccount({ id: r.data.id, displayName: r.data.displayName });
+      })
+      .catch(() => setPresetAccount(null));
+  }, [presetAccountId]);
 
   const total = useMemo(
     () => cart.reduce((s, l) => s + Number(l.product.unitPrice) * l.quantity, 0),
@@ -88,6 +111,7 @@ export default function CanteenSalesPage() {
       await api.postCanteenSale({
         paymentType,
         items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        ...(paymentType === 'CREDIT' && presetAccount ? { accountId: presetAccount.id } : {}),
         ...creditPayload,
       });
       showToast('success', paymentType === 'CASH' ? 'Cash sale recorded' : 'Credit sale recorded');
@@ -105,6 +129,10 @@ export default function CanteenSalesPage() {
   const openCredit = () => {
     if (!cart.length) {
       showToast('error', 'Cart is empty');
+      return;
+    }
+    if (presetAccount) {
+      submitSale('CREDIT', { accountId: presetAccount.id });
       return;
     }
     setCreditOpen(true);
@@ -148,15 +176,22 @@ export default function CanteenSalesPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
-          onClick={() => router.push('/admin/canteen')}
+          onClick={() => router.push(presetAccount ? `/admin/canteen/accounts/${presetAccount.id}` : '/admin/canteen')}
           className="flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream"
         >
-          <ChevronLeft size={14} /> Canteen
+          <ChevronLeft size={14} /> {presetAccount ? 'Account' : 'Canteen'}
         </button>
         <h1 className="flex items-center gap-2 text-lg font-light text-warm-cream">
           <ShoppingCart size={20} className="text-green-400" /> Daily Sales
         </h1>
       </div>
+
+      {presetAccount && (
+        <div className="mb-4 rounded-lg border border-pink-500/30 bg-pink-500/10 px-4 py-3 text-xs text-warm-cream">
+          Credit order for <span className="font-medium text-pink-300">{presetAccount.displayName}</span>
+          {' '}— cart checkout will post to their account.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
@@ -239,7 +274,7 @@ export default function CanteenSalesPage() {
               onClick={openCredit}
               className="rounded-lg border border-warm-card-border py-2.5 text-sm text-warm-cream hover:bg-warm-card/80 disabled:opacity-50"
             >
-              Credit (Bakaya)
+              {presetAccount ? `Credit · ${presetAccount.displayName}` : 'Credit (Bakaya)'}
             </button>
           </div>
         </div>

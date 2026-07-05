@@ -57,7 +57,7 @@ export default function CanteenAccountsPage() {
                   <td className="p-3 font-medium text-amber-400">{formatCanteenMoney(a.runningBalance)}</td>
                   <td className="p-3 text-right">
                     <button type="button" onClick={() => router.push(`/admin/canteen/accounts/${a.id}`)} className="text-warm-accent hover:underline">
-                      View
+                      View details
                     </button>
                   </td>
                 </tr>
