@@ -31,8 +31,8 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function classLabel(c: { name: string; section: string | null }) {
-  return c.section ? `${c.name} — ${c.section}` : c.name;
+function classLabel(c: { className: string; section: string | null }) {
+  return c.section ? `${c.className} — ${c.section}` : c.className;
 }
 
 interface ExamListSectionProps {
