@@ -589,45 +589,38 @@ describe('FeeReportsPage', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it('renders page title', async () => {
-    global.fetch = mockFetch({ success: true, data: {} });
+    global.fetch = mockFetch({ success: true, data: { summary: { totalDue: 0, totalCollected: 0, outstanding: 0, collectionRate: 0, pendingCount: 0, paymentCount: 0 }, statusBreakdown: { paid: 0, partial: 0, unpaid: 0 }, classBreakdown: [], paymentMethods: [], monthlyTrend: [], topDefaulters: [] } });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
     expect(await screen.findByText('Fee Reports')).toBeInTheDocument();
   });
 
-  it('shows Summary tab', async () => {
-    global.fetch = mockFetch({ success: true, data: {} });
+  it('shows Standard report type option', async () => {
+    global.fetch = mockFetch({ success: true, data: { summary: { totalDue: 0, totalCollected: 0, outstanding: 0, collectionRate: 0, pendingCount: 0, paymentCount: 0 }, statusBreakdown: { paid: 0, partial: 0, unpaid: 0 }, classBreakdown: [], paymentMethods: [], monthlyTrend: [], topDefaulters: [] } });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Summary')).toBeInTheDocument();
+    expect(await screen.findByText('Standard')).toBeInTheDocument();
   });
 
-  it('shows Defaulters tab', async () => {
-    global.fetch = mockFetch({ success: true, data: {} });
+  it('shows Defaulter List option', async () => {
+    global.fetch = mockFetch({ success: true, data: { summary: { totalDue: 0, totalCollected: 0, outstanding: 0, collectionRate: 0, pendingCount: 0, paymentCount: 0 }, statusBreakdown: { paid: 0, partial: 0, unpaid: 0 }, classBreakdown: [], paymentMethods: [], monthlyTrend: [], topDefaulters: [] } });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Defaulters')).toBeInTheDocument();
+    expect(await screen.findByText('Defaulter List')).toBeInTheDocument();
   });
 
-  it('shows By Class tab', async () => {
-    global.fetch = mockFetch({ success: true, data: {} });
+  it('shows Class Summary option', async () => {
+    global.fetch = mockFetch({ success: true, data: { summary: { totalDue: 0, totalCollected: 0, outstanding: 0, collectionRate: 0, pendingCount: 0, paymentCount: 0 }, statusBreakdown: { paid: 0, partial: 0, unpaid: 0 }, classBreakdown: [], paymentMethods: [], monthlyTrend: [], topDefaulters: [] } });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('By Class')).toBeInTheDocument();
+    expect(await screen.findByText('Collection Summary')).toBeInTheDocument();
   });
 
-  it('shows Payment Methods tab', async () => {
-    global.fetch = mockFetch(mockAnalytics({ totalDue: 0, totalCollected: 0, outstanding: 0, pendingCount: 0, totalStudents: 0, collectionRate: 0 }));
+  it('renders report controls', async () => {
+    global.fetch = mockFetch({ success: true, data: { summary: { totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, collectionRate: 60, pendingCount: 45, paymentCount: 10 }, statusBreakdown: { paid: 5, partial: 3, unpaid: 2 }, classBreakdown: [], paymentMethods: [], monthlyTrend: [], topDefaulters: [] } });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Payment Methods')).toBeInTheDocument();
-  });
-
-  it('renders summary stats cards', async () => {
-    global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
-    const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
-    render(<FeeReportsPage />);
-    expect(await screen.findByText('500,000')).toBeInTheDocument();
+    expect(await screen.findByText('Full AY')).toBeInTheDocument();
   });
 });
 

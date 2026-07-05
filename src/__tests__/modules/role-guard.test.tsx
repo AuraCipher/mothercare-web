@@ -26,17 +26,29 @@ function fakeToken(payload: Record<string, any>): string {
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/admin',
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/lib/api', () => mockApi);
 
-// Mock framer-motion-like components / lucide
 vi.mock('lucide-react', () => ({
   LogOut: 'div', BookOpen: 'div', LayoutDashboard: 'div', Building2: 'div',
   Menu: 'div', X: 'div', DollarSign: 'div', ChevronDown: 'div', Check: 'div',
   MapPin: 'div', Users: 'div', Key: 'div', GraduationCap: 'div', UserPlus: 'div',
   Settings: 'div', Calendar: 'div', CalendarDays: 'div', Send: 'div', CheckSquare: 'div',
+  ArrowLeft: 'div', ArrowRight: 'div', ChevronRight: 'div', ChevronLeft: 'div',
+  Plus: 'div', Trash2: 'div', Edit: 'div', Search: 'div', Filter: 'div',
+  MoreHorizontal: 'div', ClipboardList: 'div', Crown: 'div', Shield: 'div',
+  UserCog: 'div', UserCheck: 'div', UserX: 'div', RefreshCw: 'div', Loader2: 'div',
+  AlertCircle: 'div', CheckCircle: 'div', XCircle: 'div', Info: 'div',
+  FileText: 'div', Download: 'div', Printer: 'div', Eye: 'div', EyeOff: 'div',
 }));
+
+vi.mock('@/components/toast', () => ({ default: () => null, showToast: vi.fn() }));
+vi.mock('@/components/doc-nav', () => ({ default: () => null }));
+vi.mock('@/components/doc-action-menu', () => ({ default: () => null }));
+vi.mock('@/config', () => ({ default: { apiUrl: 'http://test' } }));
 
 import AdminLayout from '@/app/admin/layout';
 

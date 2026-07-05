@@ -193,17 +193,17 @@ describe('FeeReports', () => {
     data: { summary, topDefaulters: [], classBreakdown: [], paymentMethods: [], monthlyTrend: [], statusBreakdown: {} },
   });
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('shows tabs', async () => {
+  it('shows report type options', async () => {
     global.fetch = mockFetch(mockAnalytics({ totalDue: 0, totalCollected: 0, outstanding: 0, pendingCount: 0, totalStudents: 0, collectionRate: 0 }));
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Summary')).toBeInTheDocument();
-    expect(await screen.findByText('Defaulters')).toBeInTheDocument();
-    expect(await screen.findByText('By Class')).toBeInTheDocument();
+    expect(await screen.findByText('Standard')).toBeInTheDocument();
+    expect(await screen.findByText('Defaulter List')).toBeInTheDocument();
+    expect(await screen.findByText('Class Summary')).toBeInTheDocument();
   });
-  it('shows stats', async () => {
+  it('shows period filter', async () => {
     global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
     render(<FeeReportsPage />);
-    expect(await screen.findByText('500,000')).toBeInTheDocument();
+    expect(await screen.findByText('Full AY')).toBeInTheDocument();
   });
 });
 
