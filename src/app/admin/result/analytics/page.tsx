@@ -9,32 +9,7 @@ import {
   ResultLineChart, ResultBarChart, ResultGradeBarChart, ResultHorizontalBars,
   ResultPassFailChart, ResultPassFailTrendChart, ResultStackedPassFailChart, gradeColor,
 } from '@/components/result/ResultCharts';
-
-type Section = { id: string; name: string; section: string | null };
-type Subject = { id: string; name: string; code?: string | null };
-
-type AnalyticsData = {
-  filters: { sessionId: string | null; examId: string | null; classId: string | null; subjectId: string | null };
-  summary: {
-    marksTotal: number;
-    marksFilled: number;
-    marksPercent: number;
-    resultCount: number;
-    reportCardCount: number;
-    passed: number;
-    failed: number;
-    passFailTotal: number;
-    passRate: number;
-    avgPercentage: number | null;
-    passingMinPercent: number;
-  };
-  passFail: { passed: number; failed: number; pending: number };
-  gradeBreakdown: { grade: string; count: number }[];
-  subjectAvgs: { id: string; label: string; avg: number; passRate: number; count: number }[];
-  sessionTrend: { id: string; label: string; marksPercent: number; passRate: number; avgPercent: number; passed: number; failed: number; total: number }[];
-  examTrend: { id: string; label: string; marksPercent: number; passRate: number; avgPercent: number; passed: number; failed: number; total: number }[];
-  classTrend: { id: string; label: string; marksPercent: number; passRate: number; avgPercent: number; passed: number; failed: number; total: number }[];
-};
+import type { AnalyticsData, Section, Subject } from './types';
 
 const ALL = 'all';
 type TrendView = 'session' | 'exam' | 'class';
@@ -169,6 +144,14 @@ export default function ResultAnalyticsPage() {
   const summary = data?.summary;
   const showExamFilter = sessionFilter !== ALL && examsInSession.length > 0;
 
+  const subjectOptions = useMemo(() => {
+    if (classFilter && classSubjects.length > 0) return classSubjects;
+    if (data?.subjectAvgs?.length) {
+      return data.subjectAvgs.map((s) => ({ id: s.id, name: s.label }));
+    }
+    return [];
+  }, [classFilter, classSubjects, data]);
+
   const activeTrend = useMemo(() => {
     if (!data) return [];
     if (trendView === 'session') return data.sessionTrend;
@@ -285,11 +268,11 @@ export default function ResultAnalyticsPage() {
           <select
             value={subjectFilter}
             onChange={(e) => setSubjectFilter(e.target.value)}
-            disabled={classFilter ? classSubjects.length === 0 : false}
+            disabled={subjectOptions.length === 0}
             className={`${selectClass} disabled:opacity-50`}
           >
             <option value="">All subjects</option>
-            {(classFilter ? classSubjects : []).map((s) => (
+            {subjectOptions.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
@@ -369,7 +352,7 @@ export default function ResultAnalyticsPage() {
                 failed={data!.passFail.failed}
                 pending={data!.passFail.pending}
                 title="Pass / Fail breakdown"
-                subtitle={subjectFilter ? 'Subject-level results' : classFilter ? 'Class students' : 'All filtered results'}
+                subtitle={subjectFilter ? 'Filtered subject results' : 'Subject-level results (all filters)'}
               />
             </div>
             {data!.gradeBreakdown.length > 0 && (
@@ -470,7 +453,10 @@ export default function ResultAnalyticsPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
-          <p className="text-sm text-warm-muted">No analytics data available. Create sessions and compute results.</p>
+          <p className="text-sm text-warm-muted">No analytics data available.</p>
+          <p className="mt-2 text-xs text-warm-muted/60">
+            Run <code className="rounded bg-[#1a1614] px-1 py-0.5">npm run prisma:seed:result</code> in the backend, or create sessions and compute results.
+          </p>
         </div>
       )}
     </main>

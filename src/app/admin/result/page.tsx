@@ -38,7 +38,7 @@ export default function ResultGradeHubPage() {
   const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
   const cards = [
-    { icon: BarChart3, label: 'Analytics', desc: 'Progress, KPIs, charts & trends', href: '/admin/result/analytics', color: 'text-cyan-400' },
+    { icon: BarChart3, label: 'Analytics', desc: 'Pass/fail, grades, charts & trends', href: '/admin/result/analytics', color: 'text-cyan-400' },
     { icon: Calculator, label: 'Compute', desc: 'Generate results & report cards', href: '/admin/result/compute', color: 'text-green-400' },
     { icon: TrendingUp, label: 'Reports', desc: 'Class result sheets & report cards', href: '/admin/result/reports', color: 'text-orange-400' },
   ];

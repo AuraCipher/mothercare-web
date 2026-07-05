@@ -1,141 +1,676 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { FileText, Download, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, ChevronLeft, Calculator, ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
-import ResultsSection from '../components/results-section';
+import { api } from '@/lib/api';
+import { classLabel, downloadCsv } from '@/lib/feeAnalytics';
+
+type ReportType = 'standard' | 'fail-list' | 'class-summary' | 'report-cards';
+type OutcomeFilter = '' | 'passed' | 'failed';
+
+const PASSING_MIN = 40;
+const FAIL_GRADES = new Set(['D', 'E', 'F']);
+
+const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  standard: 'Class Result Sheet',
+  'fail-list': 'Fail List',
+  'class-summary': 'Class Summary',
+  'report-cards': 'Report Cards',
+};
+
+const OUTCOME_LABELS: Record<OutcomeFilter, string> = {
+  '': 'All',
+  passed: 'Passed',
+  failed: 'Failed',
+};
+
+type Section = { id: string; name: string; section?: string | null };
+
+type ReportRow = {
+  roll: string;
+  name: string;
+  section: string;
+  subjectCells?: string[];
+  overall?: string;
+  grade?: string;
+  rank?: string;
+  status?: string;
+  failCount?: number;
+  studentCount?: number;
+  passRate?: number;
+  avgPercent?: number;
+  passed?: number;
+  failed?: number;
+};
+
+type ReportData = {
+  title: string;
+  generatedAt: string;
+  total: number;
+  reportType: ReportType;
+  showSection: boolean;
+  subjectHeaders: string[];
+  summary: {
+    students: number;
+    results: number;
+    passed: number;
+    failed: number;
+    passRate: number;
+    avgPercent: number | null;
+    reportCards: number;
+  };
+  rows: ReportRow[];
+  headers: string[];
+};
+
+function isPassing(pct: number, grade: string) {
+  if (FAIL_GRADES.has(grade)) return false;
+  return pct >= PASSING_MIN;
+}
+
+function pctStr(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return '—';
+  return `${n.toFixed(1)}%`;
+}
+
+function studentPasses(row: {
+  subjectResults?: { percentage: number; grade: string }[];
+  reportCard?: { overallPercentage: number; overallGrade: string } | null;
+}) {
+  const srs = row.subjectResults || [];
+  if (srs.length === 0) return null;
+  if (srs.some((r) => !isPassing(r.percentage, r.grade))) return false;
+  return true;
+}
+
+function studentFailCount(row: { subjectResults?: { percentage: number; grade: string }[] }) {
+  return (row.subjectResults || []).filter((r) => !isPassing(r.percentage, r.grade)).length;
+}
 
 export default function ResultReportsPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [sessionId, setSessionId] = useState('');
-  const [resultCount, setResultCount] = useState(0);
-  const [reportCardCount, setReportCardCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [classId, setClassId] = useState('');
+  const [reportType, setReportType] = useState<ReportType>('standard');
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('');
+  const [failThreshold, setFailThreshold] = useState(40);
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
-  const isReadOnly = typeof window !== 'undefined' && localStorage.getItem('activeAYStatus') === 'ARCHIVED';
 
-  const loadSessions = useCallback(async () => {
+  useEffect(() => {
     if (!ayId) return;
+    api.getExamSessions()
+      .then((res) => setSessions(res.data || []))
+      .catch(() => showToast('error', 'Failed to load exam sessions'));
+  }, [ayId]);
+
+  useEffect(() => {
+    if (!branchId || !ayId) return;
+    api.getSections(branchId, ayId)
+      .then((res) => setSections((res.data || []).filter((s: Section & { isActive?: boolean }) => s.isActive !== false)))
+      .catch(() => {});
+  }, [branchId, ayId]);
+
+  const sessionName = sessions.find((s) => s.id === sessionId)?.name || 'Session';
+  const className = classId
+    ? (() => {
+        const g = sections.find((s) => s.id === classId);
+        return g ? classLabel(g.name, g.section) : 'Selected Class';
+      })()
+    : 'All Classes';
+
+  const generateReport = async () => {
+    if (!ayId) {
+      showToast('error', 'Select an academic year');
+      return;
+    }
+    if (!sessionId) {
+      showToast('error', 'Select an exam session');
+      return;
+    }
+
     setLoading(true);
+    setReport(null);
+
     try {
-      const res = await api.getExamSessions();
-      const list = res.data || [];
-      setSessions(list);
-      if (list.length > 0) {
-        setSessionId((prev) => prev || list[0].id);
+      const showSection = !classId;
+      const sfLabel = outcomeFilter ? OUTCOME_LABELS[outcomeFilter] : '';
+      const title = `${className} · ${REPORT_TYPE_LABELS[reportType]}${sfLabel ? ` · ${sfLabel}` : ''} · ${sessionName}`;
+
+      if (reportType === 'class-summary') {
+        const res = await api.getResultAnalytics({ sessionId });
+        const data = res.data;
+        const trend = data?.classTrend || [];
+        let rows: ReportRow[] = trend.map((t: {
+          label: string;
+          passRate: number;
+          avgPercent: number;
+          passed: number;
+          failed: number;
+          total: number;
+        }) => ({
+          roll: '—',
+          name: t.label,
+          section: t.label,
+          studentCount: t.total,
+          passRate: t.passRate,
+          avgPercent: t.avgPercent,
+          passed: t.passed,
+          failed: t.failed,
+        }));
+
+        if (outcomeFilter === 'passed') {
+          rows = rows.filter((r) => (r.passRate ?? 0) >= failThreshold);
+        } else if (outcomeFilter === 'failed') {
+          rows = rows.filter((r) => (r.passRate ?? 0) < failThreshold);
+        }
+
+        const summary = data?.summary || {};
+        setReport({
+          title,
+          generatedAt: new Date().toLocaleString(),
+          total: rows.length,
+          reportType,
+          showSection: false,
+          subjectHeaders: [],
+          summary: {
+            students: summary.passFailTotal ?? 0,
+            results: summary.resultCount ?? 0,
+            passed: summary.passed ?? 0,
+            failed: summary.failed ?? 0,
+            passRate: summary.passRate ?? 0,
+            avgPercent: summary.avgPercentage ?? null,
+            reportCards: summary.reportCardCount ?? 0,
+          },
+          rows,
+          headers: ['Class', 'Results', 'Passed', 'Failed', 'Pass Rate', 'Avg %'],
+        });
+        setLoading(false);
+        return;
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to load sessions');
+
+      const targetClasses = classId
+        ? sections.filter((s) => s.id === classId)
+        : sections;
+
+      const allRows: ReportRow[] = [];
+      const subjectHeaderSet = new Map<string, string>();
+      const sheetsByClass: { cls: Section; sheet: any }[] = [];
+      let totalResults = 0;
+      let totalPassed = 0;
+      let totalFailed = 0;
+      let totalReportCards = 0;
+      let pctSum = 0;
+      let pctCount = 0;
+
+      for (const cls of targetClasses) {
+        const sheetRes = await api.getClassResults(sessionId, cls.id);
+        const sheet = sheetRes.data;
+        if (!sheet) continue;
+        sheetsByClass.push({ cls, sheet });
+        for (const sub of sheet.subjects || []) {
+          if (!subjectHeaderSet.has(sub.id)) subjectHeaderSet.set(sub.id, sub.name);
+        }
+      }
+
+      const subjectHeaders = Array.from(subjectHeaderSet.values());
+      const subjectIds = Array.from(subjectHeaderSet.keys());
+
+      for (const { cls, sheet } of sheetsByClass) {
+        const subjects = sheet.subjects || [];
+        const sectionLabel = classLabel(cls.name, cls.section);
+        const students = sheet.students || [];
+
+        for (const row of students) {
+          const pass = studentPasses(row);
+          const fails = studentFailCount(row);
+          totalResults += (row.subjectResults || []).length;
+          for (const sr of row.subjectResults || []) {
+            if (isPassing(sr.percentage, sr.grade)) totalPassed += 1;
+            else totalFailed += 1;
+            pctSum += sr.percentage;
+            pctCount += 1;
+          }
+          if (row.reportCard) totalReportCards += 1;
+
+          if (outcomeFilter === 'passed' && pass !== true) continue;
+          if (outcomeFilter === 'failed' && pass !== false) continue;
+
+          if (reportType === 'fail-list') {
+            if (fails === 0) continue;
+            allRows.push({
+              roll: row.student?.rollNumber || '—',
+              name: row.student?.name || '',
+              section: sectionLabel,
+              failCount: fails,
+              overall: row.reportCard ? pctStr(row.reportCard.overallPercentage) : '—',
+              grade: row.reportCard?.overallGrade ?? '—',
+            });
+          } else if (reportType === 'report-cards') {
+            if (!row.reportCard) continue;
+            const rc = row.reportCard;
+            const rcPass = isPassing(rc.overallPercentage, rc.overallGrade);
+            if (outcomeFilter === 'passed' && !rcPass) continue;
+            if (outcomeFilter === 'failed' && rcPass) continue;
+            allRows.push({
+              roll: row.student?.rollNumber || '—',
+              name: row.student?.name || '',
+              section: sectionLabel,
+              overall: pctStr(rc.overallPercentage),
+              grade: rc.overallGrade,
+              rank: rc.classRank != null ? String(rc.classRank) : '—',
+              status: rc.status || '—',
+            });
+          } else {
+            const bySubject = new Map(
+              (row.subjectResults || []).map((r: { subjectId: string; percentage: number; grade: string }) => [
+                r.subjectId,
+                r,
+              ]),
+            );
+            const classSubjectIds = new Map(subjects.map((s: { id: string; name: string }) => [s.id, s.name]));
+            const subjectCells = subjectIds.map((id) => {
+              if (!classSubjectIds.has(id)) return '—';
+              const sr = bySubject.get(id) as { percentage: number; grade: string } | undefined;
+              return sr ? `${pctStr(sr.percentage)} (${sr.grade})` : '—';
+            });
+            allRows.push({
+              roll: row.student?.rollNumber || '—',
+              name: row.student?.name || '',
+              section: sectionLabel,
+              subjectCells,
+              overall: row.reportCard ? pctStr(row.reportCard.overallPercentage) : '—',
+              grade: row.reportCard?.overallGrade ?? '—',
+              rank: row.reportCard?.classRank != null ? String(row.reportCard.classRank) : '—',
+            });
+          }
+        }
+      }
+
+      if (reportType === 'fail-list') {
+        allRows.sort((a, b) => (b.failCount ?? 0) - (a.failCount ?? 0));
+      }
+
+      const passRate = totalResults > 0 ? Math.round((totalPassed / totalResults) * 1000) / 10 : 0;
+      const avgPercent = pctCount > 0 ? Math.round((pctSum / pctCount) * 10) / 10 : null;
+
+      let headers: string[] = [];
+      if (reportType === 'standard') {
+        headers = showSection
+          ? ['Roll', 'Class', 'Name', ...subjectHeaders, 'Overall', 'Grade', 'Rank']
+          : ['Roll', 'Name', ...subjectHeaders, 'Overall', 'Grade', 'Rank'];
+      } else if (reportType === 'report-cards') {
+        headers = showSection
+          ? ['Roll', 'Class', 'Name', 'Overall', 'Grade', 'Rank', 'Status']
+          : ['Roll', 'Name', 'Overall', 'Grade', 'Rank', 'Status'];
+      } else {
+        headers = showSection
+          ? ['Roll', 'Class', 'Name', 'Failed Subjects', 'Overall', 'Grade']
+          : ['Roll', 'Name', 'Failed Subjects', 'Overall', 'Grade'];
+      }
+
+      setReport({
+        title,
+        generatedAt: new Date().toLocaleString(),
+        total: allRows.length,
+        reportType,
+        showSection,
+        subjectHeaders,
+        summary: {
+          students: allRows.length,
+          results: totalResults,
+          passed: totalPassed,
+          failed: totalFailed,
+          passRate,
+          avgPercent,
+          reportCards: totalReportCards,
+        },
+        rows: allRows,
+        headers,
+      });
+    } catch {
+      showToast('error', 'Failed to generate report');
     } finally {
       setLoading(false);
     }
-  }, [ayId]);
+  };
 
-  const loadSummary = useCallback(async (id: string) => {
-    if (!id) return;
-    try {
-      const res = await api.getResultSessionSummary(id);
-      setResultCount(res.data.subjectResultCount ?? 0);
-      setReportCardCount(res.data.reportCardCount ?? 0);
-    } catch {
-      setResultCount(0);
-      setReportCardCount(0);
+  const downloadCSV = () => {
+    if (!report) return;
+    const csvRows = report.rows.map((r) => {
+      if (report.reportType === 'class-summary') {
+        return [
+          r.name,
+          r.studentCount ?? 0,
+          r.passed ?? 0,
+          r.failed ?? 0,
+          `${r.passRate ?? 0}%`,
+          r.avgPercent != null ? `${r.avgPercent}%` : '—',
+        ];
+      }
+      if (report.reportType === 'fail-list') {
+        const base = report.showSection
+          ? [r.roll, r.section, r.name, r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—']
+          : [r.roll, r.name, r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—'];
+        return base;
+      }
+      if (report.reportType === 'report-cards') {
+        return report.showSection
+          ? [r.roll, r.section, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—']
+          : [r.roll, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—'];
+      }
+      const base = report.showSection
+        ? [r.roll, r.section, r.name, ...(r.subjectCells || []), r.overall ?? '—', r.grade ?? '—', r.rank ?? '—']
+        : [r.roll, r.name, ...(r.subjectCells || []), r.overall ?? '—', r.grade ?? '—', r.rank ?? '—'];
+      return base;
+    });
+    downloadCsv(
+      (report.title || 'result-report').replace(/[^a-z0-9]/gi, '_') + '.csv',
+      report.headers,
+      csvRows,
+    );
+  };
+
+  const downloadPDF = () => {
+    if (!report) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    const th = report.headers.map((h) => `<th>${h}</th>`).join('');
+    const tr = report.rows.map((r) => {
+      if (report.reportType === 'class-summary') {
+        return `<tr><td>${r.name}</td><td>${r.studentCount ?? 0}</td><td>${r.passed ?? 0}</td><td>${r.failed ?? 0}</td><td class="pct">${r.passRate ?? 0}%</td><td>${r.avgPercent != null ? r.avgPercent + '%' : '—'}</td></tr>`;
+      }
+      if (report.reportType === 'fail-list') {
+        const cells = report.showSection
+          ? `<td>${r.roll}</td><td>${r.section}</td><td>${r.name}</td><td>${r.failCount ?? 0}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td>`
+          : `<td>${r.roll}</td><td>${r.name}</td><td>${r.failCount ?? 0}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td>`;
+        return `<tr>${cells}</tr>`;
+      }
+      if (report.reportType === 'report-cards') {
+        const cells = report.showSection
+          ? `<td>${r.roll}</td><td>${r.section}</td><td>${r.name}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td><td>${r.status ?? '—'}</td>`
+          : `<td>${r.roll}</td><td>${r.name}</td><td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td><td>${r.status ?? '—'}</td>`;
+        return `<tr>${cells}</tr>`;
+      }
+      const cells = report.showSection
+        ? `<td>${r.roll}</td><td>${r.section}</td><td>${r.name}</td>${(r.subjectCells || []).map((c) => `<td>${c}</td>`).join('')}<td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td>`
+        : `<td>${r.roll}</td><td>${r.name}</td>${(r.subjectCells || []).map((c) => `<td>${c}</td>`).join('')}<td>${r.overall ?? '—'}</td><td>${r.grade ?? '—'}</td><td>${r.rank ?? '—'}</td>`;
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    win.document.write(`
+      <html><head><title>${report.title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #222; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #f0f0f0; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
+        td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+        .pct { font-weight: bold; }
+        .summary { margin-bottom: 20px; font-size: 13px; }
+        .summary span { margin-right: 16px; }
+        .green { color: #16a34a; } .red { color: #dc2626; }
+        @media print { body { padding: 20px; } }
+      </style></head><body>
+      <h1>${report.title}</h1>
+      <div class="meta">Generated: ${report.generatedAt} · ${report.total} records</div>
+      <div class="summary">
+        <span>Pass rate: <strong>${report.summary.passRate}%</strong></span>
+        <span class="green">Passed: ${report.summary.passed}</span>
+        <span class="red">Failed: ${report.summary.failed}</span>
+        ${report.summary.avgPercent != null ? `<span>Avg: <strong>${report.summary.avgPercent}%</strong></span>` : ''}
+        <span>Report cards: ${report.summary.reportCards}</span>
+      </div>
+      <table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>
+      </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  };
+
+  const renderCell = (r: ReportRow, header: string) => {
+    if (report?.reportType === 'class-summary') {
+      if (header === 'Class') return r.name;
+      if (header === 'Results') return r.studentCount ?? 0;
+      if (header === 'Passed') return <span className="text-green-400">{r.passed ?? 0}</span>;
+      if (header === 'Failed') return <span className="text-red-400">{r.failed ?? 0}</span>;
+      if (header === 'Pass Rate') return `${r.passRate ?? 0}%`;
+      if (header === 'Avg %') return r.avgPercent != null ? `${r.avgPercent}%` : '—';
     }
-  }, []);
-
-  useEffect(() => {
-    if (!ayId) {
-      setLoading(false);
-      return;
+    if (report?.reportType === 'fail-list') {
+      if (header === 'Roll') return r.roll;
+      if (header === 'Class') return r.section;
+      if (header === 'Name') return r.name;
+      if (header === 'Failed Subjects') return <span className="text-red-400">{r.failCount ?? 0}</span>;
+      if (header === 'Overall') return r.overall;
+      if (header === 'Grade') return r.grade;
     }
-    loadSessions();
-  }, [ayId, loadSessions]);
-
-  useEffect(() => {
-    if (sessionId) loadSummary(sessionId);
-  }, [sessionId, loadSummary]);
+    if (report?.reportType === 'report-cards') {
+      if (header === 'Roll') return r.roll;
+      if (header === 'Class') return r.section;
+      if (header === 'Name') return r.name;
+      if (header === 'Overall') return r.overall;
+      if (header === 'Grade') return r.grade;
+      if (header === 'Rank') return r.rank;
+      if (header === 'Status') return r.status;
+    }
+    if (header === 'Roll') return r.roll;
+    if (header === 'Class') return r.section;
+    if (header === 'Name') return r.name;
+    if (header === 'Overall') return r.overall;
+    if (header === 'Grade') return r.grade;
+    if (header === 'Rank') return r.rank;
+    const idx = report?.subjectHeaders.indexOf(header) ?? -1;
+    if (idx >= 0) return r.subjectCells?.[idx] ?? '—';
+    return '';
+  };
 
   if (!ayId) {
     return (
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         <p className="text-sm text-warm-muted">Select an academic year from the sidebar to generate result reports.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        type="button"
-        onClick={() => router.push('/admin/result')}
-        className="mb-4 flex items-center gap-1 text-xs text-warm-muted transition-colors hover:text-warm-cream"
-      >
-        <ChevronLeft size={14} /> Result &amp; Grade
-      </button>
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-6 flex items-center gap-3">
+        <FileText size={22} className="text-warm-accent" />
+        <div>
+          <h1 className="text-xl font-light text-warm-cream">Result Reports</h1>
+          <p className="text-xs text-warm-muted/60">
+            Generate printable reports ·{' '}
+            <button type="button" onClick={() => router.push('/admin/result/analytics')} className="text-warm-accent hover:underline">
+              View Analytics
+            </button>
+          </p>
+        </div>
+      </div>
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <TrendingUp size={22} className="text-orange-400" />
+      {/* Filters */}
+      <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
-            <h1 className="text-xl font-light text-warm-cream">Result Reports</h1>
-            <p className="mt-0.5 text-xs text-warm-muted">
-              Class result sheets &amp; report cards ·{' '}
-              <button
-                type="button"
-                onClick={() => router.push('/admin/result/analytics')}
-                className="text-warm-accent hover:underline"
-              >
-                Analytics
-              </button>
-            </p>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Exam Session</label>
+            <select
+              value={sessionId}
+              onChange={(e) => setSessionId(e.target.value)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
+            >
+              <option value="">Select session…</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={reportType === 'class-summary' ? 'opacity-30 pointer-events-none' : ''}>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Class</label>
+            <select
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
+            >
+              <option value="">All Classes</option>
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>{classLabel(s.name, s.section)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Report Type</label>
+            <select
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value as ReportType)}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
+            >
+              {(Object.keys(REPORT_TYPE_LABELS) as ReportType[]).map((t) => (
+                <option key={t} value={t}>{REPORT_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
           </div>
         </div>
+
+        <div className={'mb-4' + (reportType === 'fail-list' ? ' opacity-30 pointer-events-none' : '')}>
+          <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Filter by Outcome</label>
+          <div className="flex flex-wrap gap-1">
+            {(['', 'passed', 'failed'] as OutcomeFilter[]).map((opt) => (
+              <button
+                key={opt || 'all'}
+                type="button"
+                onClick={() => setOutcomeFilter(opt)}
+                className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                  outcomeFilter === opt
+                    ? 'bg-warm-accent text-[#1a1614] font-medium'
+                    : 'border border-warm-card-border text-warm-muted hover:text-warm-cream'
+                }`}
+              >
+                {OUTCOME_LABELS[opt]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {reportType === 'fail-list' && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider">Students with failed subjects</span>
+          </div>
+        )}
+
+        {reportType === 'class-summary' && outcomeFilter && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] text-warm-muted/60 uppercase tracking-wider">
+              {outcomeFilter === 'passed' ? 'At or above' : 'Below'}
+            </span>
+            <input
+              type="number"
+              value={failThreshold}
+              onChange={(e) => setFailThreshold(Number(e.target.value))}
+              min={0}
+              max={100}
+              className="w-16 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream text-center outline-none focus:border-warm-accent"
+            />
+            <span className="text-[10px] text-warm-muted/60">% threshold</span>
+          </div>
+        )}
+
+        <p className="mb-4 text-[10px] text-warm-muted/50">
+          Passing: {PASSING_MIN}% or above · Grades D/E/F count as fail
+        </p>
+
         <button
           type="button"
-          onClick={() => router.push('/admin/result/compute')}
-          className="inline-flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1.5 text-[10px] text-warm-muted hover:text-warm-cream"
+          onClick={generateReport}
+          disabled={loading || !sessionId}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-6 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors"
         >
-          <Calculator size={11} /> Compute results <ArrowRight size={10} />
+          {loading ? <RefreshCw size={15} className="animate-spin" /> : <FileText size={15} />}
+          {loading ? 'Generating…' : 'Generate Report'}
         </button>
       </div>
 
-      {loading ? (
-        <div className="h-32 animate-pulse rounded-xl bg-warm-card" />
-      ) : sessions.length === 0 ? (
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
-          <p className="text-sm text-warm-muted">No exam sessions yet. Create a session from the hub.</p>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-[11px] text-warm-muted">
-              Exam session
-              <select
-                value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-                className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream outline-none focus:border-warm-accent"
+      {/* Report output — only after generate */}
+      {report && (
+        <div className="rounded-xl border border-warm-card-border overflow-hidden">
+          <div className="bg-warm-card/70 px-5 py-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium text-warm-cream">{report.title}</h2>
+              <p className="text-[10px] text-warm-muted/50 mt-0.5">{report.generatedAt} · {report.total} records</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={downloadCSV}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:bg-warm-card transition-colors"
               >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </label>
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={downloadPDF}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-cream hover:bg-warm-card transition-colors"
+              >
+                <Download size={13} /> Download / Print
+              </button>
+              <button
+                type="button"
+                onClick={generateReport}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors"
+              >
+                <RefreshCw size={13} /> Regenerate
+              </button>
+            </div>
           </div>
 
-          {sessionId && (
-            <ResultsSection
-              sessionId={sessionId}
-              readOnly={isReadOnly}
-              resultCount={resultCount}
-              reportCardCount={reportCardCount}
-              hideComputeActions
-              onChanged={() => loadSummary(sessionId)}
-            />
-          )}
+          <div className="px-5 py-3 border-t border-warm-card-border/30 flex flex-wrap gap-4 text-xs text-warm-muted/70">
+            <span>Pass rate: <span className="text-warm-accent font-medium">{report.summary.passRate}%</span></span>
+            <span>Passed: <span className="text-green-400">{report.summary.passed}</span></span>
+            <span>Failed: <span className="text-red-400">{report.summary.failed}</span></span>
+            {report.summary.avgPercent != null && (
+              <span>Avg: <span className="text-warm-cream font-medium">{report.summary.avgPercent}%</span></span>
+            )}
+            <span>Report cards: <span className="text-warm-cream">{report.summary.reportCards}</span></span>
+          </div>
+
+          <div className="overflow-x-auto border-t border-warm-card-border/30 max-h-[32rem] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-warm-card/90 backdrop-blur-sm">
+                <tr>
+                  {report.headers.map((h) => (
+                    <th key={h} className="text-left px-4 py-2.5 text-[10px] text-warm-muted font-medium whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((r, i) => (
+                  <tr key={i} className="border-t border-warm-card-border/20 hover:bg-warm-card/20 transition-colors">
+                    {report.headers.map((h) => (
+                      <td key={h} className="px-4 py-2 text-xs text-warm-cream whitespace-nowrap">
+                        {renderCell(r, h)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {report.rows.length === 0 && (
+              <div className="p-8 text-center text-xs text-warm-muted/40">No records match this report criteria</div>
+            )}
+          </div>
         </div>
       )}
     </main>
