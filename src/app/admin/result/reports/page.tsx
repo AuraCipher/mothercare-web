@@ -8,6 +8,8 @@ import { api } from '@/lib/api';
 import { classLabel, downloadCsv } from '@/lib/feeAnalytics';
 
 type ReportType = 'standard' | 'fail-list' | 'class-summary' | 'report-cards';
+
+const ALL_EXAMS = '';
 type OutcomeFilter = '' | 'passed' | 'failed';
 
 const PASSING_MIN = 40;
@@ -89,11 +91,45 @@ function studentFailCount(row: { subjectResults?: { percentage: number; grade: s
   return (row.subjectResults || []).filter((r) => !isPassing(r.percentage, r.grade)).length;
 }
 
+function marksEntryPass(
+  obtained: number | null,
+  isAbsent: boolean,
+  totalMarks: number | null,
+  passingMarks: number | null,
+) {
+  const total = totalMarks ?? 100;
+  const passing = passingMarks ?? Math.round(total * 0.4);
+  const score = isAbsent ? 0 : (obtained ?? 0);
+  return score >= passing;
+}
+
+function marksEntryPct(obtained: number | null, isAbsent: boolean, totalMarks: number | null) {
+  const total = totalMarks ?? 100;
+  const score = isAbsent ? 0 : (obtained ?? 0);
+  return total > 0 ? Math.round((score / total) * 1000) / 10 : 0;
+}
+
+function formatMarksCell(
+  obtained: number | null,
+  isAbsent: boolean,
+  totalMarks: number | null,
+  passingMarks: number | null,
+) {
+  if (obtained == null && !isAbsent) return '—';
+  const total = totalMarks ?? 100;
+  const score = isAbsent ? 0 : (obtained ?? 0);
+  const pass = marksEntryPass(obtained, isAbsent, totalMarks, passingMarks);
+  const label = isAbsent ? 'AB' : `${score}/${total}`;
+  return `${label} (${pass ? 'P' : 'F'})`;
+}
+
 export default function ResultReportsPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
+  const [examsInSession, setExamsInSession] = useState<{ id: string; name: string }[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [sessionId, setSessionId] = useState('');
+  const [examId, setExamId] = useState(ALL_EXAMS);
   const [classId, setClassId] = useState('');
   const [reportType, setReportType] = useState<ReportType>('standard');
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('');
@@ -118,7 +154,34 @@ export default function ResultReportsPage() {
       .catch(() => {});
   }, [branchId, ayId]);
 
+  useEffect(() => {
+    if (!sessionId) {
+      setExamsInSession([]);
+      setExamId(ALL_EXAMS);
+      return;
+    }
+    api.getResultExams(sessionId)
+      .then((res) => {
+        setExamsInSession((res.data || []).map((e: { id: string; name: string }) => ({ id: e.id, name: e.name })));
+      })
+      .catch(() => setExamsInSession([]));
+    setExamId(ALL_EXAMS);
+  }, [sessionId]);
+
+  const handleSessionChange = (value: string) => {
+    setSessionId(value);
+    setExamId(ALL_EXAMS);
+    setReport(null);
+  };
+
+  useEffect(() => {
+    if (examId && reportType === 'report-cards') {
+      setReportType('standard');
+    }
+  }, [examId, reportType]);
+
   const sessionName = sessions.find((s) => s.id === sessionId)?.name || 'Session';
+  const examName = examId ? (examsInSession.find((e) => e.id === examId)?.name || 'Exam') : null;
   const className = classId
     ? (() => {
         const g = sections.find((s) => s.id === classId);
@@ -135,6 +198,10 @@ export default function ResultReportsPage() {
       showToast('error', 'Select an exam session');
       return;
     }
+    if (reportType === 'report-cards' && examId) {
+      showToast('error', 'Report cards are session-level — clear exam filter or choose another report type');
+      return;
+    }
 
     setLoading(true);
     setReport(null);
@@ -142,10 +209,15 @@ export default function ResultReportsPage() {
     try {
       const showSection = !classId;
       const sfLabel = outcomeFilter ? OUTCOME_LABELS[outcomeFilter] : '';
-      const title = `${className} · ${REPORT_TYPE_LABELS[reportType]}${sfLabel ? ` · ${sfLabel}` : ''} · ${sessionName}`;
+      const examLabel = examName ? ` · ${examName}` : '';
+      const title = `${className} · ${REPORT_TYPE_LABELS[reportType]}${sfLabel ? ` · ${sfLabel}` : ''} · ${sessionName}${examLabel}`;
 
       if (reportType === 'class-summary') {
-        const res = await api.getResultAnalytics({ sessionId });
+        const res = await api.getResultAnalytics({
+          sessionId,
+          examId: examId || undefined,
+          classId: classId || undefined,
+        });
         const data = res.data;
         const trend = data?.classTrend || [];
         let rows: ReportRow[] = trend.map((t: {
@@ -191,6 +263,151 @@ export default function ResultReportsPage() {
           },
           rows,
           headers: ['Class', 'Results', 'Passed', 'Failed', 'Pass Rate', 'Avg %'],
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (examId) {
+        const structureRes = await api.getResultExamStructure(examId);
+        const structure = (structureRes.data || []).filter((ec: { isActive: boolean; classId: string }) => {
+          if (!ec.isActive) return false;
+          if (classId) return ec.classId === classId;
+          return true;
+        });
+
+        const subjectHeaderSet = new Map<string, string>();
+        const subjectIds: string[] = [];
+        type StudentAcc = {
+          roll: string;
+          name: string;
+          section: string;
+          subjectCells: Map<string, string>;
+          failCount: number;
+          entryCount: number;
+          pctSum: number;
+        };
+        const studentMap = new Map<string, StudentAcc>();
+
+        for (const ec of structure) {
+          const sectionLabel = classLabel(ec.class.name, ec.class.section);
+          for (const sub of ec.subjects) {
+            if (!sub.isActive) continue;
+            if (!subjectHeaderSet.has(sub.subject.id)) {
+              subjectHeaderSet.set(sub.subject.id, sub.subject.name);
+              subjectIds.push(sub.subject.id);
+            }
+            const gridRes = await api.getResultMarksGrid(sub.id);
+            const grid = gridRes.data;
+            if (!grid?.students) continue;
+            for (const st of grid.students) {
+              const key = showSection ? `${ec.classId}:${st.id}` : st.id;
+              if (!studentMap.has(key)) {
+                studentMap.set(key, {
+                  roll: st.rollNumber || '—',
+                  name: st.name || '',
+                  section: sectionLabel,
+                  subjectCells: new Map(),
+                  failCount: 0,
+                  entryCount: 0,
+                  pctSum: 0,
+                });
+              }
+              const acc = studentMap.get(key)!;
+              const pass = marksEntryPass(st.marksObtained, st.isAbsent, grid.totalMarks, grid.passingMarks);
+              const pct = marksEntryPct(st.marksObtained, st.isAbsent, grid.totalMarks);
+              if (st.marksObtained != null || st.isAbsent) {
+                acc.entryCount += 1;
+                acc.pctSum += pct;
+                if (!pass) acc.failCount += 1;
+              }
+              acc.subjectCells.set(
+                sub.subject.id,
+                formatMarksCell(st.marksObtained, st.isAbsent, grid.totalMarks, grid.passingMarks),
+              );
+            }
+          }
+        }
+
+        const subjectHeaders = subjectIds.map((id) => subjectHeaderSet.get(id)!);
+        const allRows: ReportRow[] = [];
+        let totalPassed = 0;
+        let totalFailed = 0;
+        let totalEntries = 0;
+        let pctSum = 0;
+
+        for (const acc of studentMap.values()) {
+          const studentPass = acc.entryCount > 0 && acc.failCount === 0;
+          if (outcomeFilter === 'passed' && !studentPass) continue;
+          if (outcomeFilter === 'failed' && studentPass) continue;
+          if (reportType === 'fail-list' && acc.failCount === 0) continue;
+
+          totalEntries += acc.entryCount;
+          totalFailed += acc.failCount;
+          totalPassed += acc.entryCount - acc.failCount;
+          pctSum += acc.pctSum;
+
+          const subjectCells = subjectIds.map((id) => acc.subjectCells.get(id) ?? '—');
+          const avgPct = acc.entryCount > 0 ? Math.round((acc.pctSum / acc.entryCount) * 10) / 10 : null;
+
+          if (reportType === 'fail-list') {
+            allRows.push({
+              roll: acc.roll,
+              name: acc.name,
+              section: acc.section,
+              failCount: acc.failCount,
+              overall: avgPct != null ? `${avgPct}%` : '—',
+              grade: acc.failCount > 0 ? 'Fail' : 'Pass',
+            });
+          } else {
+            allRows.push({
+              roll: acc.roll,
+              name: acc.name,
+              section: acc.section,
+              subjectCells,
+              overall: avgPct != null ? `${avgPct}%` : '—',
+              grade: studentPass ? 'Pass' : acc.entryCount > 0 ? 'Fail' : '—',
+              rank: '—',
+            });
+          }
+        }
+
+        if (reportType === 'fail-list') {
+          allRows.sort((a, b) => (b.failCount ?? 0) - (a.failCount ?? 0));
+        }
+
+        const passRate = totalEntries > 0 ? Math.round((totalPassed / totalEntries) * 1000) / 10 : 0;
+        const avgPercent = totalEntries > 0 ? Math.round((pctSum / totalEntries) * 10) / 10 : null;
+
+        let headers: string[] = [];
+        if (reportType === 'standard') {
+          headers = showSection
+            ? ['Roll', 'Class', 'Name', ...subjectHeaders, 'Avg %', 'Outcome']
+            : ['Roll', 'Name', ...subjectHeaders, 'Avg %', 'Outcome'];
+        } else {
+          headers = showSection
+            ? ['Roll', 'Class', 'Name', 'Failed Subjects', 'Avg %', 'Outcome']
+            : ['Roll', 'Name', 'Failed Subjects', 'Avg %', 'Outcome'];
+        }
+
+        setReport({
+          title,
+          generatedAt: new Date().toLocaleString(),
+          total: allRows.length,
+          reportType,
+          showSection,
+          subjectHeaders,
+          summary: {
+            students: allRows.length,
+            results: totalEntries,
+            passed: totalPassed,
+            failed: totalFailed,
+            passRate,
+            avgPercent,
+            reportCards: 0,
+          },
+          rows: allRows,
+          headers,
         });
         setLoading(false);
         return;
@@ -356,20 +573,29 @@ export default function ResultReportsPage() {
         ];
       }
       if (report.reportType === 'fail-list') {
-        const base = report.showSection
-          ? [r.roll, r.section, r.name, r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—']
-          : [r.roll, r.name, r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—'];
-        return base;
+        const tail = report.headers.includes('Avg %')
+          ? [r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—']
+          : [r.failCount ?? 0, r.overall ?? '—', r.grade ?? '—'];
+        return report.showSection
+          ? [r.roll, r.section, r.name, ...tail]
+          : [r.roll, r.name, ...tail];
       }
       if (report.reportType === 'report-cards') {
         return report.showSection
           ? [r.roll, r.section, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—']
           : [r.roll, r.name, r.overall ?? '—', r.grade ?? '—', r.rank ?? '—', r.status ?? '—'];
       }
-      const base = report.showSection
-        ? [r.roll, r.section, r.name, ...(r.subjectCells || []), r.overall ?? '—', r.grade ?? '—', r.rank ?? '—']
-        : [r.roll, r.name, ...(r.subjectCells || []), r.overall ?? '—', r.grade ?? '—', r.rank ?? '—'];
-      return base;
+      const tail = report.headers.slice(report.headers.length - (report.headers.includes('Rank') ? 3 : 2));
+      const tailValues = tail.map((h) => {
+        if (h === 'Overall' || h === 'Avg %') return r.overall ?? '—';
+        if (h === 'Grade' || h === 'Outcome') return r.grade ?? '—';
+        if (h === 'Rank') return r.rank ?? '—';
+        return '';
+      });
+      const prefix = report.showSection
+        ? [r.roll, r.section, r.name]
+        : [r.roll, r.name];
+      return [...prefix, ...(r.subjectCells || []), ...tailValues];
     });
     downloadCsv(
       (report.title || 'result-report').replace(/[^a-z0-9]/gi, '_') + '.csv',
@@ -452,8 +678,8 @@ export default function ResultReportsPage() {
       if (header === 'Class') return r.section;
       if (header === 'Name') return r.name;
       if (header === 'Failed Subjects') return <span className="text-red-400">{r.failCount ?? 0}</span>;
-      if (header === 'Overall') return r.overall;
-      if (header === 'Grade') return r.grade;
+      if (header === 'Overall' || header === 'Avg %') return r.overall;
+      if (header === 'Grade' || header === 'Outcome') return r.grade;
     }
     if (report?.reportType === 'report-cards') {
       if (header === 'Roll') return r.roll;
@@ -469,6 +695,8 @@ export default function ResultReportsPage() {
     if (header === 'Name') return r.name;
     if (header === 'Overall') return r.overall;
     if (header === 'Grade') return r.grade;
+    if (header === 'Outcome') return r.grade;
+    if (header === 'Avg %') return r.overall;
     if (header === 'Rank') return r.rank;
     const idx = report?.subjectHeaders.indexOf(header) ?? -1;
     if (idx >= 0) return r.subjectCells?.[idx] ?? '—';
@@ -500,17 +728,31 @@ export default function ResultReportsPage() {
 
       {/* Filters */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Exam Session</label>
             <select
               value={sessionId}
-              onChange={(e) => setSessionId(e.target.value)}
+              onChange={(e) => handleSessionChange(e.target.value)}
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
             >
               <option value="">Select session…</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={!sessionId ? 'opacity-30 pointer-events-none' : ''}>
+            <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1.5">Exam</label>
+            <select
+              value={examId}
+              onChange={(e) => { setExamId(e.target.value); setReport(null); }}
+              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
+            >
+              <option value="">All exams (session results)</option>
+              {examsInSession.map((e) => (
+                <option key={e.id} value={e.id}>{e.name}</option>
               ))}
             </select>
           </div>
@@ -537,7 +779,9 @@ export default function ResultReportsPage() {
               className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream outline-none focus:border-warm-accent"
             >
               {(Object.keys(REPORT_TYPE_LABELS) as ReportType[]).map((t) => (
-                <option key={t} value={t}>{REPORT_TYPE_LABELS[t]}</option>
+                <option key={t} value={t} disabled={t === 'report-cards' && !!examId}>
+                  {REPORT_TYPE_LABELS[t]}{t === 'report-cards' && examId ? ' (session only)' : ''}
+                </option>
               ))}
             </select>
           </div>
@@ -588,6 +832,7 @@ export default function ResultReportsPage() {
 
         <p className="mb-4 text-[10px] text-warm-muted/50">
           Passing: {PASSING_MIN}% or above · Grades D/E/F count as fail
+          {examId ? ' · Exam filter uses raw marks per subject' : ' · All exams uses computed session results'}
         </p>
 
         <button
