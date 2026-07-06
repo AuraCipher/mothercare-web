@@ -12,8 +12,9 @@
  */
 
 import dotenv from 'dotenv';
-import config from '../src/config';
 dotenv.config({ path: '.env.local' });
+
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || 'development';
 const PUB_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY;
 const SEC_KEY = process.env.SECRET_KEY;
@@ -85,20 +86,20 @@ async function main() {
   }
 
   // ─── 3. Other env vars ────────────────────────────────────
-  if (process.env.NEXT_PUBLIC_API_URL) ok(`Backend API URL: ${config.apiUrl}`);
+  if (process.env.NEXT_PUBLIC_API_URL) ok(`Backend API URL: ${API_URL}`);
   if (APP_MODE) ok(`App Mode: ${APP_MODE}`);
 
   // ─── 4. Backend health check ─────────────────────────────
-  log(`Checking backend at ${config.apiUrl}/health...`);
+  log(`Checking backend at ${API_URL}/health...`);
   try {
-    const res = await fetch(`${config.apiUrl}/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
-      ok(`Backend API is reachable (${config.apiUrl})`);
+      ok(`Backend API is reachable (${API_URL})`);
     } else {
       fail(`Backend returned HTTP ${res.status}`);
     }
   } catch (e: any) {
-    fail(`Backend API unreachable (${config.apiUrl}) — ${e.message}`);
+    fail(`Backend API unreachable (${API_URL}) — ${e.message}`);
   }
 
   // ─── 5. Verify keys against backend ──────────────────────
@@ -106,7 +107,7 @@ async function main() {
   if (PUB_KEY && !hasError) {
     log('Verifying publishable key against backend...');
     try {
-      const res = await fetch(`${config.apiUrl}/health`, {
+      const res = await fetch(`${API_URL}/health`, {
         headers: { 'x-publishable-api-key': PUB_KEY },
         signal: AbortSignal.timeout(5000),
       });
@@ -126,7 +127,7 @@ async function main() {
   if (SEC_KEY && !hasError) {
     log('Verifying secret key against backend...');
     try {
-      const res = await fetch(`${config.apiUrl}/health`, {
+      const res = await fetch(`${API_URL}/health`, {
         headers: { 'x-api-key': SEC_KEY },
         signal: AbortSignal.timeout(5000),
       });
