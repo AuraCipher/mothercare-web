@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Calendar } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
-import { scopeQuery } from '@/lib/api';
+import { scopeQuery, scopeBody } from '@/lib/api';
 
 type AttRecord = { date: string; status: string; note?: string };
 
@@ -122,11 +122,11 @@ export default function StudentAttendanceDetail() {
         const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: rec.date, groupId: student?.groupId || 'temp',
-            academicYearId: ayId,
+          body: JSON.stringify(scopeBody({
+            date: rec.date,
+            groupId: student?.groupId || 'temp',
             records: [{ studentId: id, status: rec.status, note: rec.note || '' }],
-          }),
+          })),
         });
         const json = await res.json();
         if (json.success) saved++;

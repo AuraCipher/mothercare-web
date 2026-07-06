@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
-import { scopeQuery } from '@/lib/api';
+import { scopeQuery, scopeBody } from '@/lib/api';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EDIT_LOCK_DAYS = 7; // Can't edit attendance older than this many days
 
@@ -206,7 +206,7 @@ export default function AttendancePage() {
       const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: dateStr, groupId, academicYearId: ayId, records }),
+        body: JSON.stringify(scopeBody({ date: dateStr, groupId, records })),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `Holiday set for ${json.data.saved} students`); loadAttendance(); }
@@ -224,7 +224,7 @@ export default function AttendancePage() {
       const res = await fetch(`${config.apiUrl}/admin/attendance/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, groupId, academicYearId: ayId, records }),
+        body: JSON.stringify(scopeBody({ date, groupId, records })),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `${json.data.saved} saved`); loadAttendance(); }

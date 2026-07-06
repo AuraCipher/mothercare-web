@@ -34,6 +34,18 @@ export function scopeQuery(extra?: Record<string, string | undefined>): string {
   return s ? `?${s}` : '';
 }
 
+/** Merge branch + academic year from localStorage into a POST/PATCH body. */
+export function scopeBody<T extends Record<string, unknown>>(body: T): T & { academicYearId?: string; branchId?: string } {
+  if (typeof window === 'undefined') return body;
+  const academicYearId = localStorage.getItem('activeAYId');
+  const branchId = localStorage.getItem('activeBranchId');
+  return {
+    ...body,
+    ...(academicYearId ? { academicYearId } : {}),
+    ...(branchId ? { branchId } : {}),
+  };
+}
+
 export async function apiRequest<T = any>(
   path: string,
   options: RequestInit = {},

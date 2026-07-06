@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
-import { scopeQuery } from '@/lib/api';
+import { scopeQuery, scopeBody } from '@/lib/api';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function localDateStr(d: Date): string {
@@ -33,7 +33,6 @@ export default function TeacherAttendancePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const EDIT_LOCK_DAYS = 7;
@@ -175,7 +174,7 @@ export default function TeacherAttendancePage() {
       const res = await fetch(`${config.apiUrl}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: dateStr, academicYearId: ayId, records }),
+        body: JSON.stringify(scopeBody({ date: dateStr, records })),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `Holiday set for ${json.data.saved} teachers`); loadAttendance(); }
@@ -193,7 +192,7 @@ export default function TeacherAttendancePage() {
       const res = await fetch(`${config.apiUrl}/admin/attendance/teachers/batch`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, academicYearId: ayId, records }),
+        body: JSON.stringify(scopeBody({ date, records })),
       });
       const json = await res.json();
       if (json.success) { showToast('success', `${json.data.saved} saved`); loadAttendance(); }
