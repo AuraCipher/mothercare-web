@@ -188,6 +188,11 @@ export function StaffModuleShell({ access, userName, children }: Props) {
           Viewing archived academic year — edits require archived-year permissions.
         </div>
       )}
+      {activeAYStatus === 'BUILD_STAGE' && (
+        <div className="border-b border-blue-500/20 bg-blue-500/10 px-4 py-2 text-center text-[11px] text-blue-200">
+          BUILD_STAGE selected — this year is in setup mode and not published yet.
+        </div>
+      )}
       <div className="mx-auto max-w-6xl">{children}</div>
     </div>
   );

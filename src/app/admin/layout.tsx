@@ -412,6 +412,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
 
       {children}
+      {activeAY?.status === 'BUILD_STAGE' && (
+        <div className="fixed bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">
+          BUILD_STAGE year active in selector (preview/setup mode)
+        </div>
+      )}
       <ToastContainer />
     </div>
   );

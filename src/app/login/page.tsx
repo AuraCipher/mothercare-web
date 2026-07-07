@@ -91,7 +91,13 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Cannot reach the server. Please try again.';
-      setError(msg);
+      if (msg.includes('disabled after graduation')) {
+        setError('Your account is closed after graduation. Contact school admin for archive access.');
+      } else if (msg.includes('not enrolled in any active academic year')) {
+        setError('No active academic-year enrollment found for this account. Contact school admin.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

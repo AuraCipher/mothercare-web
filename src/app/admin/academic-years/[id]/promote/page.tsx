@@ -61,8 +61,21 @@ export default function BatchPromotionPage() {
   }, [sourceAyId, router]);
 
   const allAcked = Object.values(ack).every(Boolean);
+  const selectedCarryCount = Object.entries(carryOptions).filter(([k, v]) => k !== 'datesheets' && !!v).length;
+  const invalidCarryConfig =
+    (!!carryOptions.students && !carryOptions.classes)
+    || (!!carryOptions.teacherAssignments && (!carryOptions.classes || !carryOptions.subjects))
+    || (!!carryOptions.timetableGrid && (!carryOptions.classes || !carryOptions.subjects));
 
   const startRun = async () => {
+    if (selectedCarryCount === 0) {
+      showToast('error', 'Select at least one carry option');
+      return;
+    }
+    if (invalidCarryConfig) {
+      showToast('error', 'Carry dependencies are invalid. Enable required base options.');
+      return;
+    }
     setBusy(true);
     try {
       const res = await api.startBatchPromotion(branchId, sourceAyId, {
@@ -85,6 +98,10 @@ export default function BatchPromotionPage() {
   const createBuildStageAy = async () => {
     if (!newAyLabel.trim() || !newAyStartDate || !newAyEndDate) {
       showToast('error', 'Label, start date and end date are required');
+      return;
+    }
+    if (new Date(newAyStartDate) >= new Date(newAyEndDate)) {
+      showToast('error', 'End date must be after start date');
       return;
     }
     setCreatingAy(true);
@@ -179,6 +196,9 @@ export default function BatchPromotionPage() {
       <p className="mt-1 text-xs text-warm-muted">
         From <strong>{pre?.source?.calendar?.label}</strong> — current year stays ACTIVE until publish.
       </p>
+      <div className="mt-3 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[11px] text-blue-200">
+        Target year remains <strong>BUILD_STAGE</strong> for preview and data checks. Nothing goes live until you click Publish.
+      </div>
 
       {step === 1 && (
         <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
@@ -318,6 +338,18 @@ export default function BatchPromotionPage() {
                 {key === 'datesheets' && 'Datesheets (always disabled for carry)'}
               </label>
             ))}
+            {selectedCarryCount === 0 && (
+              <p className="text-[11px] text-yellow-300">At least one carry option should be selected.</p>
+            )}
+            {!!carryOptions.students && !carryOptions.classes && (
+              <p className="text-[11px] text-red-300">Students carry requires classes.</p>
+            )}
+            {!!carryOptions.teacherAssignments && (!carryOptions.classes || !carryOptions.subjects) && (
+              <p className="text-[11px] text-red-300">Teacher assignments require classes + subjects.</p>
+            )}
+            {!!carryOptions.timetableGrid && (!carryOptions.classes || !carryOptions.subjects) && (
+              <p className="text-[11px] text-red-300">Timetable requires classes + subjects.</p>
+            )}
           </div>
           <ul className="rounded-lg border border-warm-card-border/50 bg-warm-card/30 p-3 text-[11px] text-warm-muted">
             {(pre?.fixedStudentRules || []).map((r: string) => <li key={r}>• {r}</li>)}
@@ -325,7 +357,7 @@ export default function BatchPromotionPage() {
           <div className="flex gap-2">
             <button onClick={() => setStep(1)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Back</button>
             <button
-              disabled={busy || (useExistingTarget ? !targetAyId : !calendarId)}
+              disabled={busy || invalidCarryConfig || selectedCarryCount === 0 || (useExistingTarget ? !targetAyId : !calendarId)}
               onClick={startRun}
               className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-40"
             >
@@ -338,6 +370,9 @@ export default function BatchPromotionPage() {
       {step >= 3 && run && (
         <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
           <h2 className="text-sm font-medium text-warm-cream">Step 3 — Build stage</h2>
+          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-200">
+            BUILD_STAGE preview mode: operations continue in old ACTIVE year until publish.
+          </div>
           <p className="text-xs text-warm-muted">Phase: <strong>{run.phase}</strong></p>
           <div className="flex flex-wrap gap-2">
             <button disabled={busy || run.phase !== 'DRAFT'} onClick={doSnapshot} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-cream disabled:opacity-40">
