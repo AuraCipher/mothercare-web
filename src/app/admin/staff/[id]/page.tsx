@@ -14,6 +14,7 @@ import ConfirmModal from '@/components/confirm-modal';
 import AvatarImage from '@/components/avatar-image';
 import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
 import Lightbox from '@/components/lightbox';
+import PayrollHistoryPanel from '@/components/payroll-history-panel';
 import {
   PermissionMatrix,
   ModulePermissionsRead,
@@ -553,6 +554,11 @@ export default function StaffDetailPage() {
             <DetailCard icon={FileText} label="Bio" value={data.bio || '—'} />
           </div>
         )}
+      </section>
+
+      <section className="mb-8 rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Payments</h2>
+        <PayrollHistoryPanel userId={data.userId} payeeName={data.name} />
       </section>
 
       <section className="mb-8 rounded-xl border border-warm-card-border bg-warm-card/30 p-5">

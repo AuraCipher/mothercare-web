@@ -964,6 +964,18 @@ export const api = {
   getPayrollList: (month?: string) =>
     apiRequest<{ success: boolean; data: any[]; month: string }>(`/admin/expenses/payroll${scopeQuery(month ? { month } : {})}`),
 
+  getPayrollBulkPreview: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: any[]; month: string }>(`/admin/expenses/payroll/preview${scopeQuery(params)}`),
+
+  recordPayrollBulk: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/payroll/bulk${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getPayrollPayeeProfile: (userId: string, limit?: number) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/payroll/profile/${userId}${scopeQuery(limit ? { limit: String(limit) } : {})}`),
+
   getPayrollPayeeDetail: (userId: string, month?: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/expenses/payroll/payee/${userId}${scopeQuery(month ? { month } : {})}`),
 

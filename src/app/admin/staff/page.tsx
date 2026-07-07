@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, UserPlus, Search, X, Edit3, Trash2, ExternalLink, Shield,
+  Plus, UserPlus, Search, X, Edit3, Trash2, ExternalLink, Shield, HardHat,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import config from '@/config';
@@ -67,14 +67,23 @@ function Input({ value, onChange, placeholder, type = 'text', step }: {
 const selectClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors';
 
+const emptyWorkerForm = () => ({
+  name: '', phone: '', employeeId: '', joiningDate: '', salary: '', address: '',
+});
+
 export default function StaffPage() {
   const router = useRouter();
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showWorker, setShowWorker] = useState(false);
+  const [creatingWorker, setCreatingWorker] = useState(false);
+  const [workerError, setWorkerError] = useState('');
+  const [wf, setWf] = useState(emptyWorkerForm);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [cf, setCf] = useState(emptyCreateForm);
@@ -95,10 +104,15 @@ export default function StaffPage() {
       search: search.trim() || undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
     })
-      .then((r) => setStaff(r.data || []))
+      .then((r) => {
+        let list = r.data || [];
+        if (roleFilter === 'worker') list = list.filter((s: StaffRow) => s.branchRole === 'worker');
+        else if (roleFilter === 'staff') list = list.filter((s: StaffRow) => s.branchRole !== 'worker');
+        setStaff(list);
+      })
       .catch((e) => showToast('error', e.message))
       .finally(() => setLoading(false));
-  }, [search, statusFilter]);
+  }, [search, statusFilter, roleFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -179,6 +193,40 @@ export default function StaffPage() {
     }
   };
 
+  const resetWorker = () => {
+    setWf(emptyWorkerForm());
+    setWorkerError('');
+  };
+
+  const handleCreateWorker = async () => {
+    setWorkerError('');
+    if (!wf.name.trim()) {
+      setWorkerError('Name is required');
+      return;
+    }
+    setCreatingWorker(true);
+    try {
+      await api.createWorker({
+        name: wf.name.trim(),
+        phone: wf.phone.trim() || undefined,
+        employeeId: wf.employeeId.trim() || undefined,
+        joiningDate: wf.joiningDate || undefined,
+        salary: wf.salary.trim() ? Number(wf.salary) : undefined,
+        address: wf.address.trim() || undefined,
+      });
+      setShowWorker(false);
+      resetWorker();
+      showToast('success', 'Worker added (payroll only, no module login)');
+      load();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to create worker';
+      setWorkerError(msg);
+      showToast('error', msg);
+    } finally {
+      setCreatingWorker(false);
+    }
+  };
+
   const promptDeactivate = (s: StaffRow) => {
     setConfirm({
       open: true,
@@ -216,13 +264,22 @@ export default function StaffPage() {
           <h1 className="mb-1 text-xl font-light text-warm-cream">Staff</h1>
           <p className="text-sm text-warm-muted">Manage staff accounts and module access.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { resetCreate(); setShowCreate(true); }}
-          className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-sm font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76]"
-        >
-          <Plus size={15} /> Add Staff
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { resetWorker(); setShowWorker(true); }}
+            className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-sm text-warm-muted transition-colors hover:text-warm-cream"
+          >
+            <HardHat size={15} /> Add Worker
+          </button>
+          <button
+            type="button"
+            onClick={() => { resetCreate(); setShowCreate(true); }}
+            className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-sm font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76]"
+          >
+            <Plus size={15} /> Add Staff
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
@@ -236,6 +293,15 @@ export default function StaffPage() {
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2 pl-9 pr-3 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
           />
         </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-muted outline-none focus:border-warm-accent transition-colors"
+        >
+          <option value="all">All roles</option>
+          <option value="staff">Staff (with access)</option>
+          <option value="worker">Workers only</option>
+        </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -295,6 +361,10 @@ export default function StaffPage() {
                       className="h-10 w-10 rounded-lg border border-warm-card-border object-cover"
                       fallback={s.name?.charAt(0)}
                     />
+                  ) : s.branchRole === 'worker' ? (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                      <HardHat size={18} className="text-amber-400" />
+                    </div>
                   ) : (
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
                       <Shield size={18} className="text-violet-400" />
@@ -304,6 +374,9 @@ export default function StaffPage() {
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-warm-cream">
                     {s.name}
+                    {s.branchRole === 'worker' && (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-normal text-amber-400">Worker</span>
+                    )}
                     {s.employeeId && (
                       <span className="text-[10px] font-normal text-warm-muted/60">({s.employeeId})</span>
                     )}
@@ -528,6 +601,59 @@ export default function StaffPage() {
                 className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76] disabled:opacity-50"
               >
                 {creating ? 'Creating…' : 'Create Staff'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWorker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => { setShowWorker(false); resetWorker(); }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-warm-cream">Add Worker</h2>
+                <p className="mt-0.5 text-[11px] text-warm-muted">Payroll & attendance only — no module login</p>
+              </div>
+              <button type="button" onClick={() => { setShowWorker(false); resetWorker(); }} className="text-warm-muted hover:text-warm-cream">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <Field label="Full Name" required>
+                <Input value={wf.name} onChange={(v) => setWf((p) => ({ ...p, name: v }))} placeholder="e.g. Ali Khan" />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Employee ID">
+                  <Input value={wf.employeeId} onChange={(v) => setWf((p) => ({ ...p, employeeId: v }))} />
+                </Field>
+                <Field label="Joining Date">
+                  <Input type="date" value={wf.joiningDate} onChange={(v) => setWf((p) => ({ ...p, joiningDate: v }))} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Phone">
+                  <Input value={wf.phone} onChange={(v) => setWf((p) => ({ ...p, phone: v }))} />
+                </Field>
+                <Field label="Monthly Salary">
+                  <Input type="number" step="0.01" value={wf.salary} onChange={(v) => setWf((p) => ({ ...p, salary: v }))} />
+                </Field>
+              </div>
+              <Field label="Address">
+                <Input value={wf.address} onChange={(v) => setWf((p) => ({ ...p, address: v }))} />
+              </Field>
+              {workerError && <p className="text-xs text-red-400">{workerError}</p>}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => { setShowWorker(false); resetWorker(); }} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted">Cancel</button>
+              <button type="button" disabled={creatingWorker} onClick={handleCreateWorker} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">
+                {creatingWorker ? 'Adding…' : 'Add Worker'}
               </button>
             </div>
           </div>

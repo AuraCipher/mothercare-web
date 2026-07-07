@@ -14,6 +14,7 @@ import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/pr
 import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
+import PayrollHistoryPanel from '@/components/payroll-history-panel';
 import config from '@/config';
 
 interface TeacherDetail {
@@ -515,7 +516,12 @@ export default function TeacherDetailPage() {
         </div>
       </section>
 
-
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Payments</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
+          <PayrollHistoryPanel userId={data.userId} payeeName={user.name} />
+        </div>
+      </section>
 
       <section className="mb-10">
         <h2 className="mb-4 text-sm font-medium text-warm-cream">Join / Leave History</h2>
