@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { mergeFeeHeadBreakdown } from '@/lib/feeAllocate';
 import { showToast } from '@/components/toast';
 import { api } from '@/lib/api';
 import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2, Users } from 'lucide-react';
@@ -198,9 +199,12 @@ export default function StudentFeeDetailPage() {
       const cmTotal = currentMonthFee.netAmount + getExtraTotal(currentMonthFee);
       currentMonthSection = {
         label: MONTHS[(currentMonthFee.month || 1) - 1] + ' ' + (currentMonthFee.year || ''),
-        breakdown: (currentMonthFee.feeHeadBreakdown || []).map((fh: any) => ({
+        breakdown: mergeFeeHeadBreakdown(currentMonthFee.feeHeadBreakdown).map((fh) => ({
           name: fh.name,
           amountPaise: fh.amount || 0,
+          dueBeforePaise: fh.amount || 0,
+          paidPaise: 0,
+          remainingPaise: fh.amount || 0,
         })),
         extraItems: (currentMonthFee.extraItems || []).map((ei: any) => ({
           name: ei.name,
@@ -424,7 +428,7 @@ export default function StudentFeeDetailPage() {
                   {isExpanded && (
                     <>
                       {/* Fee head breakdown rows */}
-                      {(sf.feeHeadBreakdown && Array.isArray(sf.feeHeadBreakdown) ? sf.feeHeadBreakdown : []).map((fh: any, fhi: number) => (
+                      {mergeFeeHeadBreakdown(sf.feeHeadBreakdown).map((fh: any, fhi: number) => (
                         <tr key={`fh-${fhi}`} className="bg-warm-card/30 border-t border-warm-card-border/10">
                           <td className="px-2 py-2"></td>
                           <td className="px-2 py-2 text-[10px] text-warm-muted/40"></td>
