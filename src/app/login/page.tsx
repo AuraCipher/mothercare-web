@@ -21,6 +21,17 @@ async function resolveAdminLanding(token: string): Promise<string> {
   return '/admin';
 }
 
+export function mapLoginErrorMessage(msg: string): string {
+  const lower = msg.toLowerCase();
+  if (lower.includes('disabled after graduation')) {
+    return 'Your account is closed after graduation. Contact school admin for archive access.';
+  }
+  if (lower.includes('not enrolled in any active academic year')) {
+    return 'No active academic-year enrollment found for this account. Contact school admin.';
+  }
+  return msg;
+}
+
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -91,13 +102,7 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Cannot reach the server. Please try again.';
-      if (msg.includes('disabled after graduation')) {
-        setError('Your account is closed after graduation. Contact school admin for archive access.');
-      } else if (msg.includes('not enrolled in any active academic year')) {
-        setError('No active academic-year enrollment found for this account. Contact school admin.');
-      } else {
-        setError(msg);
-      }
+      setError(mapLoginErrorMessage(msg));
     } finally {
       setLoading(false);
     }

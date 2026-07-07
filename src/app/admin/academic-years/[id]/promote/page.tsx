@@ -8,6 +8,15 @@ import { showToast } from '@/components/toast';
 
 type Step = 1 | 2 | 3 | 4;
 
+export function getPromotionCarryValidation(carryOptions: Record<string, boolean>) {
+  const selectedCarryCount = Object.entries(carryOptions).filter(([k, v]) => k !== 'datesheets' && !!v).length;
+  const invalidCarryConfig =
+    (!!carryOptions.students && !carryOptions.classes)
+    || (!!carryOptions.teacherAssignments && (!carryOptions.classes || !carryOptions.subjects))
+    || (!!carryOptions.timetableGrid && (!carryOptions.classes || !carryOptions.subjects));
+  return { selectedCarryCount, invalidCarryConfig };
+}
+
 export default function BatchPromotionPage() {
   const router = useRouter();
   const params = useParams();
@@ -61,11 +70,7 @@ export default function BatchPromotionPage() {
   }, [sourceAyId, router]);
 
   const allAcked = Object.values(ack).every(Boolean);
-  const selectedCarryCount = Object.entries(carryOptions).filter(([k, v]) => k !== 'datesheets' && !!v).length;
-  const invalidCarryConfig =
-    (!!carryOptions.students && !carryOptions.classes)
-    || (!!carryOptions.teacherAssignments && (!carryOptions.classes || !carryOptions.subjects))
-    || (!!carryOptions.timetableGrid && (!carryOptions.classes || !carryOptions.subjects));
+  const { selectedCarryCount, invalidCarryConfig } = getPromotionCarryValidation(carryOptions);
 
   const startRun = async () => {
     if (selectedCarryCount === 0) {
