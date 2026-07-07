@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Calendar, BookOpen, ArrowLeft } from 'lucide-react';
+import { Calendar, BookOpen, ArrowLeft, Archive } from 'lucide-react';
 
 const settingItems = [
   { href: '/admin/settings/academic-years', icon: Calendar, label: 'Academic Years' },
+  { href: '/admin/settings/archived-years', icon: Archive, label: 'Archive bucket' },
   { href: '/admin/settings/subjects', icon: BookOpen, label: 'Subjects' },
 ];
 
@@ -32,7 +33,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           <div className="space-y-0.5">
             {settingItems.map(item => {
               const Icon = item.icon;
-              const active = pathname === item.href;
+              const active = pathname === item.href || (item.href !== '/admin/settings/academic-years' && pathname.startsWith(item.href));
               return (
                 <a key={item.label} href={item.href}
                   className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${

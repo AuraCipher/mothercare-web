@@ -149,6 +149,12 @@ export const api = {
   archiveAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}/archive`, { method: 'PATCH' }),
 
+  unarchiveAcademicYear: (branchId: string, id: string, target: 'BUILD_STAGE' | 'ON_HOLD' = 'BUILD_STAGE') =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}/unarchive`, {
+      method: 'PATCH',
+      body: JSON.stringify({ target }),
+    }),
+
   pauseAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}/pause`, { method: 'PATCH' }),
 

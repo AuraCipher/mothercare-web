@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
-  Calendar, Plus, X, Check, Archive, Trash2, ChevronRight,
+  Calendar, Plus, X, Check, Archive, ChevronRight, ArchiveRestore,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -178,25 +178,6 @@ export default function AcademicYearsPage() {
     });
   };
 
-  const handleDelete = (ay: AcademicYear) => {
-    setConfirm({
-      open: true,
-      title: 'Delete Academic Year?',
-      message: `"${ay.calendar.label}" will be permanently deleted. Only years in BUILD_STAGE can be deleted.`,
-      variant: 'danger',
-      confirmLabel: 'Delete',
-      action: async () => {
-        try {
-          await api.deleteAcademicYear(branchId, ay.id);
-          showToast('success', 'Academic year deleted');
-          loadYears(branchId);
-        } catch (e: any) {
-          showToast('error', e.message || 'Failed to delete');
-        }
-      },
-    });
-  };
-
   const statusBadge = (status: string) => {
     const colors: Record<string, string> = {
       BUILD_STAGE: 'border-gray-500/30 bg-gray-500/10 text-gray-400',
@@ -228,11 +209,20 @@ export default function AcademicYearsPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-warm-cream">Academic Years</h2>
-          <p className="text-xs text-warm-muted mt-0.5">Create and manage school years. Each year has its own classes, sections, subjects, and enrollments.</p>
+          <p className="text-xs text-warm-muted mt-0.5">Active, setup, and paused years. Archived years are managed in the archive bucket.</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3.5 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-          <Plus size={14} /> New Year
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/admin/settings/archived-years')}
+            className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-400 hover:bg-yellow-500/10"
+          >
+            <ArchiveRestore size={14} /> Archive bucket
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3.5 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+            <Plus size={14} /> New Year
+          </button>
+        </div>
       </div>
 
       {years.length === 0 ? (
@@ -243,8 +233,7 @@ export default function AcademicYearsPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {years.map(ay => {
-            const isBuild = ay.status === 'BUILD_STAGE';
+          {years.filter((ay) => ay.status !== 'ARCHIVED').map(ay => {
             const isActive = ay.status === 'ACTIVE';
             const isOnHold = ay.status === ('ON_HOLD' as string);
             return (
@@ -272,10 +261,10 @@ export default function AcademicYearsPage() {
                     className="rounded-lg p-1.5 text-warm-muted hover:text-warm-cream hover:bg-warm-card-border/30 transition-colors">
                     <span className="text-[11px]">👁</span>
                   </button>
-                  {isBuild && (
+                  {ay.status === 'BUILD_STAGE' && (
                     <>
                       <button onClick={() => handlePublish(ay)} title="Publish" className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-green-900/20 transition-colors"><Check size={15} /></button>
-                      <button onClick={() => handleDelete(ay)} title="Delete" className="rounded-lg p-1.5 text-warm-muted hover:text-red/80 hover:bg-red-900/20 transition-colors"><Trash2 size={15} /></button>
+                      <button onClick={() => handleArchive(ay)} title="Move to archive bucket" className="rounded-lg p-1.5 text-warm-muted hover:text-yellow-400 hover:bg-yellow-900/20 transition-colors"><Archive size={15} /></button>
                     </>
                   )}
                   {isActive && (
@@ -292,9 +281,11 @@ export default function AcademicYearsPage() {
                     </>
                   )}
                   {isOnHold && (
-                    <button onClick={() => handleResume(ay)} title="Resume" className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-green-900/20 transition-colors"><span className="text-[11px] font-bold">▶</span></button>
+                    <>
+                      <button onClick={() => handleResume(ay)} title="Resume" className="rounded-lg p-1.5 text-warm-muted hover:text-green-400 hover:bg-green-900/20 transition-colors"><span className="text-[11px] font-bold">▶</span></button>
+                      <button onClick={() => handleArchive(ay)} title="Move to archive bucket" className="rounded-lg p-1.5 text-warm-muted hover:text-yellow-400 hover:bg-yellow-900/20 transition-colors"><Archive size={15} /></button>
+                    </>
                   )}
-                  {ay.status === 'ARCHIVED' && <span className="text-[10px] text-warm-muted/50 italic">Read only</span>}
                 </div>
               </div>
             );
