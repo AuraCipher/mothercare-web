@@ -195,17 +195,18 @@ describe('FeeReports', () => {
     data: { summary, topDefaulters: [], classBreakdown: [], paymentMethods: [], monthlyTrend: [], statusBreakdown: {} },
   });
   beforeEach(() => { vi.clearAllMocks(); setupLS(); });
-  it('shows tabs', async () => {
+  it('shows report controls', async () => {
     global.fetch = mockFetch(mockAnalytics({ totalDue: 0, totalCollected: 0, outstanding: 0, pendingCount: 0, totalStudents: 0, collectionRate: 0 }));
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Summary')).toBeInTheDocument();
-    expect(await screen.findByText('Defaulters')).toBeInTheDocument();
-    expect(await screen.findByText('By Class')).toBeInTheDocument();
+    expect(await screen.findByText('Fee Reports')).toBeInTheDocument();
+    expect(await screen.findByText('Generate Report')).toBeInTheDocument();
+    expect(await screen.findByText('View Analytics')).toBeInTheDocument();
   });
-  it('shows stats', async () => {
+  it('shows period and status filters', async () => {
     global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
     render(<FeeReportsPage />);
-    expect(await screen.findByText('500,000')).toBeInTheDocument();
+    expect(await screen.findByText('Monthly')).toBeInTheDocument();
+    expect(await screen.findByText('All Statuses')).toBeInTheDocument();
   });
 });
 
@@ -226,9 +227,9 @@ describe('StudentFeeDetail', () => {
     global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [{ id: 'sf1', netAmount: 500000, paidAmount: 0, month: 6, year: 2026, status: 'UNPAID', payments: [], extraItems: [] }] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
     expect(await screen.findByText('Fee History')).toBeInTheDocument();
   });
-  it('shows Add Extra Due', async () => {
+  it('shows Add Item', async () => {
     global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
-    expect(await screen.findByText('Add Extra Due')).toBeInTheDocument();
+    expect(await screen.findByText('Add Item')).toBeInTheDocument();
   });
   it('shows Pay Now', async () => {
     global.fetch = mockFetch({ success: true, data: { id: 's1', name: 'Ahmed', group: { name: 'Class 5' }, parents: [], studentFees: [{ id: 'sf1', netAmount: 500000, paidAmount: 0, month: 6, year: 2026, status: 'UNPAID', payments: [], extraItems: [] }] } }); const { default: Pg } = await import('@/app/admin/fees/student/[id]/page'); render(<Pg />);
