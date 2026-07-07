@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Copy, Bell } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import { useAyPermissions } from '@/hooks/use-ay-permissions';
@@ -12,28 +12,32 @@ const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
 
 export default function UtilitiesPage() {
   const router = useRouter();
-  const { canCreate } = useAyPermissions('EXPENSES');
+  const { canCreate, readOnly } = useAyPermissions('EXPENSES');
   const [bills, setBills] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     categoryId: '', providerName: '', providerId: '', amount: 0,
     paymentMethod: 'CASH', paymentKind: 'REGULAR' as 'REGULAR' | 'EXTRA',
     consumerNumber: '', billReference: '', periodStart: '', periodEnd: '', note: '',
+    saveProvider: false, reminderDayOfMonth: '',
   });
   const [newCat, setNewCat] = useState('');
 
   const load = useCallback(async () => {
-    const [b, c, p] = await Promise.all([
+    const [b, c, p, r] = await Promise.all([
       api.getUtilityBills(),
       api.getUtilityCategories(),
       api.getUtilityProviders(),
+      api.getUtilityReminders(),
     ]);
     if (b.success) setBills(b.data || []);
     if (c.success) setCategories(c.data || []);
     if (p.success) setProviders(p.data || []);
+    if (r.success) setReminders(r.data || []);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -48,6 +52,8 @@ export default function UtilitiesPage() {
       const res = await api.recordUtilityBill({
         ...form,
         providerId: form.providerId || undefined,
+        saveProvider: form.saveProvider,
+        reminderDayOfMonth: form.reminderDayOfMonth ? parseInt(form.reminderDayOfMonth, 10) : undefined,
       });
       if (res.success) {
         showToast('success', 'Utility bill recorded');
@@ -58,6 +64,18 @@ export default function UtilitiesPage() {
       showToast('error', e.message || 'Failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const duplicateBill = async (providerId: string) => {
+    try {
+      const res = await api.duplicateUtilityBill(providerId);
+      if (res.success) {
+        showToast('success', 'Bill duplicated from last payment');
+        load();
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'No previous bill to duplicate');
     }
   };
 
@@ -84,6 +102,39 @@ export default function UtilitiesPage() {
         </button>
         )}
       </div>
+
+      {readOnly && (
+        <p className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-300">
+          Archived year — read-only. Recording utility bills requires archived create permission.
+        </p>
+      )}
+
+      {reminders.length > 0 && (
+        <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+          <p className="mb-2 flex items-center gap-1 text-xs font-medium text-blue-300"><Bell size={13} /> Bill reminders</p>
+          <div className="flex flex-wrap gap-2">
+            {reminders.map((p) => (
+              <span key={p.id} className={`rounded-full border px-2 py-0.5 text-[10px] ${p.isDueSoon ? 'border-amber-500/40 text-amber-300' : 'border-warm-card-border text-warm-muted'}`}>
+                {p.name} — day {p.reminderDayOfMonth}
+                {p.typicalAmount != null && ` · ~${Number(p.typicalAmount).toLocaleString()}`}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {providers.length > 0 && (
+        <div className="mb-4 rounded-xl border border-warm-card-border bg-warm-card/40 p-4">
+          <p className="mb-2 text-xs text-warm-muted">Saved providers — duplicate last bill</p>
+          <div className="flex flex-wrap gap-2">
+            {providers.map((p) => (
+              <button key={p.id} type="button" disabled={!canCreate} onClick={() => duplicateBill(p.id)} className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2 py-1 text-[10px] text-warm-muted hover:text-warm-cream disabled:opacity-40">
+                <Copy size={11} /> {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-4">
         <p className="mb-2 text-xs text-warm-muted">Categories</p>
@@ -118,7 +169,11 @@ export default function UtilitiesPage() {
                 <td className="px-3 py-2 text-warm-cream">{b.utilityDetail?.providerName}</td>
                 <td className="px-3 py-2">{b.utilityDetail?.paymentKind}</td>
                 <td className="px-3 py-2">{Number(b.amount).toLocaleString()}</td>
-                <td className="px-3 py-2 text-warm-muted">{b.voucherNumber}</td>
+                <td className="px-3 py-2">
+                  <button type="button" onClick={() => router.push(`/admin/expenses/vouchers/${b.id}`)} className="text-warm-accent hover:underline">
+                    {b.voucherNumber}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -136,12 +191,25 @@ export default function UtilitiesPage() {
               </select>
               <select value={form.providerId} onChange={(e) => {
                 const p = providers.find((x) => x.id === e.target.value);
-                setForm({ ...form, providerId: e.target.value, providerName: p?.name || form.providerName, consumerNumber: p?.consumerNumber || form.consumerNumber });
+                setForm({
+                  ...form,
+                  providerId: e.target.value,
+                  providerName: p?.name || form.providerName,
+                  consumerNumber: p?.consumerNumber || form.consumerNumber,
+                  amount: p?.typicalAmount ? Number(p.typicalAmount) : form.amount,
+                });
               }} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
                 <option value="">Saved provider (optional)</option>
                 {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input value={form.providerName} onChange={(e) => setForm({ ...form, providerName: e.target.value })} placeholder="Provider name *" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream" />
+              <label className="flex items-center gap-2 text-xs text-warm-muted">
+                <input type="checkbox" checked={form.saveProvider} onChange={(e) => setForm({ ...form, saveProvider: e.target.checked })} />
+                Save as new provider for future bills
+              </label>
+              {form.saveProvider && (
+                <input type="number" min={1} max={31} value={form.reminderDayOfMonth} onChange={(e) => setForm({ ...form, reminderDayOfMonth: e.target.value })} placeholder="Reminder day of month (1–31)" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream" />
+              )}
               <NumberStepper value={form.amount} onChange={(v: number) => setForm({ ...form, amount: v })} min={0} step={100} />
               <select value={form.paymentKind} onChange={(e) => setForm({ ...form, paymentKind: e.target.value as 'REGULAR' | 'EXTRA' })} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
                 <option value="REGULAR">Regular bill</option>

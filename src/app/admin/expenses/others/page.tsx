@@ -12,7 +12,7 @@ const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
 
 export default function OthersPage() {
   const router = useRouter();
-  const { canCreate } = useAyPermissions('EXPENSES');
+  const { canCreate, readOnly } = useAyPermissions('EXPENSES');
   const [payments, setPayments] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -68,12 +68,23 @@ export default function OthersPage() {
           <h1 className="text-xl font-light text-warm-cream">Other Payments</h1>
           <p className="text-xs text-warm-muted">Maintenance, repairs, transport, and miscellaneous</p>
         </div>
-        {canCreate && (
-        <button type="button" onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-2 text-xs text-black">
-          <Plus size={14} /> Record payment
-        </button>
-        )}
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => router.push('/admin/expenses/reports')} className="rounded-lg border border-warm-card-border px-2 py-2 text-[10px] text-warm-muted hover:text-warm-cream">
+            Reports
+          </button>
+          {canCreate && (
+          <button type="button" onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-2 text-xs text-black">
+            <Plus size={14} /> Record payment
+          </button>
+          )}
+        </div>
       </div>
+
+      {readOnly && (
+        <p className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-300">
+          Archived year — read-only. Recording other payments requires archived create permission.
+        </p>
+      )}
 
       <div className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-4">
         <p className="mb-2 text-xs text-warm-muted">Categories</p>
@@ -108,7 +119,11 @@ export default function OthersPage() {
                 <td className="px-3 py-2 text-warm-cream">{p.otherDetail?.payeeName}</td>
                 <td className="px-3 py-2">{p.otherDetail?.paymentKind}</td>
                 <td className="px-3 py-2">{Number(p.amount).toLocaleString()}</td>
-                <td className="px-3 py-2 text-warm-muted">{p.voucherNumber}</td>
+                <td className="px-3 py-2">
+                  <button type="button" onClick={() => router.push(`/admin/expenses/vouchers/${p.id}`)} className="text-warm-accent hover:underline">
+                    {p.voucherNumber}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

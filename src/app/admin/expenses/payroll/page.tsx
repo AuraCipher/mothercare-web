@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Plus, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Plus, RefreshCw, Download, AlertTriangle } from 'lucide-react';
+import { downloadCsvText } from '@/lib/expenses-export';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import { useAyPermissions } from '@/hooks/use-ay-permissions';
@@ -95,6 +96,17 @@ export default function PayrollPage() {
             </button>
           )}
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream" />
+          <button type="button" onClick={async () => {
+            try {
+              const res = await api.exportPayrollCsv(month);
+              if (res.success) downloadCsvText(res.data.filename, res.data.csv);
+            } catch { showToast('error', 'Export failed'); }
+          }} className="rounded-lg border border-warm-card-border p-2 text-warm-muted hover:text-warm-cream" title="Export CSV">
+            <Download size={16} />
+          </button>
+          <button type="button" onClick={() => router.push('/admin/expenses/reports')} className="rounded-lg border border-warm-card-border px-2 py-2 text-[10px] text-warm-muted hover:text-warm-cream">
+            Reports
+          </button>
           <button type="button" onClick={load} className="rounded-lg border border-warm-card-border p-2 text-warm-muted hover:text-warm-cream">
             <RefreshCw size={16} />
           </button>
@@ -127,8 +139,11 @@ export default function PayrollPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.userId} className="border-b border-warm-card-border/50">
-                  <td className="px-3 py-2 text-warm-cream">{r.name}</td>
+                <tr key={r.userId} className={`border-b border-warm-card-border/50 ${Number(r.unmarkedDays) > 0 ? 'bg-amber-500/5' : ''}`}>
+                  <td className="px-3 py-2">
+                    <p className="text-warm-cream">{r.name}</p>
+                    {r.workRole && <p className="text-[10px] text-warm-muted">{r.workRole}</p>}
+                  </td>
                   <td className="px-3 py-2 text-warm-muted">{r.payeeType} · {r.branchRole}</td>
                   <td className="px-3 py-2">{Number(r.profileSalary).toLocaleString()}</td>
                   <td className="px-3 py-2">{Number(r.attendanceEarned ?? 0).toLocaleString()}</td>
@@ -137,7 +152,21 @@ export default function PayrollPage() {
                   <td className={`px-3 py-2 font-medium ${Number(r.closingBalance) < 0 ? 'text-red-400' : Number(r.closingBalance) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
                     {Number(r.closingBalance ?? 0).toLocaleString()}
                   </td>
-                  <td className="px-3 py-2 text-warm-muted">{r.unmarkedDays ?? 0} unmarked</td>
+                  <td className="px-3 py-2">
+                    {Number(r.unmarkedDays ?? 0) > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => router.push(r.attendancePath || '/admin/attendance')}
+                        className="flex items-center gap-1 text-amber-400 hover:underline"
+                        title={`${r.unmarkedDays} days without attendance`}
+                      >
+                        <AlertTriangle size={12} />
+                        {r.unmarkedDays} unmarked
+                      </button>
+                    ) : (
+                      <span className="text-warm-muted">0</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     {canCreate ? (
                     <div className="flex gap-1">

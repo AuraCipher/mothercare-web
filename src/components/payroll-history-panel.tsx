@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function PayrollHistoryPanel({ userId, payeeName }: Props) {
+  const router = useRouter();
   const { canCreate } = useAyPermissions('EXPENSES');
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any | null>(null);
@@ -136,7 +138,12 @@ export default function PayrollHistoryPanel({ userId, payeeName }: Props) {
           <div className="space-y-1">
             {profile.payments.map((p: any) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-warm-card-border/40 px-2 py-1.5 text-[11px]">
-                <span className="text-warm-cream">{p.salaryMonth} · {p.voucherNumber}</span>
+                <span className="text-warm-cream">
+                  {p.salaryMonth} ·{' '}
+                  <button type="button" onClick={() => router.push(`/admin/expenses/vouchers/${p.id}`)} className="text-warm-accent hover:underline">
+                    {p.voucherNumber}
+                  </button>
+                </span>
                 <span className="text-warm-muted">{p.paymentKind} · {p.paymentMethod?.replace('_', ' ')}</span>
                 <span className="font-medium text-warm-cream">{Number(p.amount).toLocaleString()}</span>
                 <span className="text-warm-muted">{new Date(p.paidAt).toLocaleDateString()}</span>

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Wallet, Users, Zap, Receipt } from 'lucide-react';
+import { ChevronLeft, Wallet, Users, Zap, Receipt, FileText, ScrollText } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const cards = [
   { href: '/admin/expenses/payroll', icon: Users, title: 'Pays', desc: 'Teacher & staff salary with attendance-based calculation' },
   { href: '/admin/expenses/utilities', icon: Zap, title: 'Utility Bills', desc: 'Electricity, water, gas, internet and more' },
   { href: '/admin/expenses/others', icon: Receipt, title: 'Others', desc: 'Maintenance, repairs, and miscellaneous expenses' },
+  { href: '/admin/expenses/reports', icon: FileText, title: 'Reports & Export', desc: 'CSV export for payroll, utilities, and others' },
 ];
 
 export default function ExpensesHubPage() {

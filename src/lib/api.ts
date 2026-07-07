@@ -1045,4 +1045,40 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
+
+  getExpenseVoucher: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/vouchers/${id}${scopeQuery()}`),
+
+  getExpenseVouchers: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/vouchers${scopeQuery(params)}`),
+
+  exportPayrollCsv: (month?: string) =>
+    apiRequest<{ success: boolean; data: { filename: string; csv: string } }>(
+      `/admin/expenses/export/payroll${scopeQuery(month ? { month } : {})}`,
+    ),
+
+  exportUtilitiesCsv: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: { filename: string; csv: string } }>(
+      `/admin/expenses/export/utilities${scopeQuery(params)}`,
+    ),
+
+  exportOthersCsv: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: { filename: string; csv: string } }>(
+      `/admin/expenses/export/others${scopeQuery(params)}`,
+    ),
+
+  duplicateUtilityBill: (providerId: string, data?: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/utilities/duplicate-last${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId, ...data }),
+    }),
+
+  getUtilityReminders: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/reminders${scopeQuery()}`),
+
+  updateUtilityProvider: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/utilities/providers/${id}${scopeQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };

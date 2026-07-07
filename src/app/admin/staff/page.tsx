@@ -730,7 +730,15 @@ export default function StaffPage() {
                 </Field>
                 <Field label="Experience"><Input value={wf.experience} onChange={(v) => setWf((p) => ({ ...p, experience: v }))} /></Field>
               </div>
-              <Field label="Bio"><Input value={wf.bio} onChange={(v) => setWf((p) => ({ ...p, bio: v }))} /></Field>
+              <Field label="Bio">
+                <textarea
+                  value={wf.bio}
+                  onChange={(e) => setWf((p) => ({ ...p, bio: e.target.value }))}
+                  rows={3}
+                  className={`${selectClass} resize-none placeholder:text-warm-muted/40`}
+                  placeholder="Short summary"
+                />
+              </Field>
               {workerError && <p className="text-xs text-red-400">{workerError}</p>}
             </div>
             <div className="mt-5 flex justify-end gap-2">
