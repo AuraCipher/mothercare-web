@@ -1,5 +1,32 @@
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+export type FeeHeadBreakdownRow = {
+  feeHeadId?: string;
+  name: string;
+  amount: number;
+  category?: string;
+};
+
+/** Collapse duplicate feeHeadId / name rows (bad legacy data) into one line per head. */
+export function mergeFeeHeadBreakdown(breakdown: unknown): FeeHeadBreakdownRow[] {
+  const merged = new Map<string, FeeHeadBreakdownRow>();
+  for (const h of (Array.isArray(breakdown) ? breakdown : []) as FeeHeadBreakdownRow[]) {
+    if (!h?.name) continue;
+    const key = h.feeHeadId || `name:${h.name}`;
+    const prev = merged.get(key);
+    if (prev) {
+      prev.amount += h.amount || 0;
+    } else {
+      merged.set(key, { feeHeadId: h.feeHeadId, name: h.name, amount: h.amount || 0, category: h.category });
+    }
+  }
+  return [...merged.values()];
+}
+
+export function itemStickerPaise(item: AllocateItem): number {
+  return item.kind === 'previousMonth' ? 0 : item.stickerPaise;
+}
+
 export type AllocateItem =
   | { kind: 'previousMonth'; key: string; studentId: string; studentFeeId: string; label: string; duePaise: number; studentName?: string; monthLabel?: string }
   | { kind: 'head'; key: string; studentId: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean; studentName?: string }
@@ -40,7 +67,7 @@ export function headRemainingPaise(fee: any, head: { feeHeadId?: string; name: s
   if (allocSum > 0 && head.feeHeadId) {
     return Math.max(0, head.amount - (byHead.get(head.feeHeadId) || 0));
   }
-  const heads = ((fee.feeHeadBreakdown as any[]) || []).filter((h: any) => (h.amount || 0) > 0);
+  const heads = mergeFeeHeadBreakdown(fee.feeHeadBreakdown).filter((h) => (h.amount || 0) > 0);
   let paidLeft = fee.paidAmount || 0;
   for (const h of heads) {
     const applied = Math.min(paidLeft, h.amount || 0);
@@ -57,7 +84,7 @@ export function extraRemainingPaise(fee: any, extra: { id: string; amount: numbe
   if (byExtra.has(extra.id)) {
     return Math.max(0, extra.amount - (byExtra.get(extra.id) || 0));
   }
-  const headTotal = ((fee.feeHeadBreakdown as any[]) || []).reduce((s: number, h: any) => s + (h.amount || 0), 0);
+  const headTotal = mergeFeeHeadBreakdown(fee.feeHeadBreakdown).reduce((s, h) => s + (h.amount || 0), 0);
   const allocExtraSum = [...byExtra.values()].reduce((s, v) => s + v, 0);
   const paidOnHeads = Math.min(fee.paidAmount || 0, headTotal);
   const paidOnExtras = Math.max(0, (fee.paidAmount || 0) - paidOnHeads - allocExtraSum);
@@ -112,9 +139,9 @@ export function buildAllocateItemsForStudent(studentId: string, studentName: str
   }));
 
   const currentMonthItems: AllocateItem[] = [
-    ...((currentFee.feeHeadBreakdown as any[]) || [])
-      .filter((h: any) => (h.amount || 0) > 0)
-      .map((h: any) => {
+    ...mergeFeeHeadBreakdown(currentFee.feeHeadBreakdown)
+      .filter((h) => (h.amount || 0) > 0)
+      .map((h) => {
         const remaining = headRemainingPaise(currentFee, { feeHeadId: h.feeHeadId, name: h.name, amount: h.amount || 0 });
         return {
           kind: 'head' as const,
@@ -179,18 +206,30 @@ export function buildStudentAllocatePayloads(
     const curFeeId = headItems[0]?.studentFeeId || extraItems[0]?.studentFeeId;
 
     let amountPaidPaise = previousMonths.reduce((s, p) => s + p.amountPaise, 0);
+    const headAmounts = new Map<string, number>();
+    for (const h of headItems) {
+      const hk = (h as Extract<AllocateItem, { kind: 'head' }>).feeHeadId
+        || `name:${(h as Extract<AllocateItem, { kind: 'head' }>).headName}`;
+      headAmounts.set(hk, (headAmounts.get(hk) || 0) + (fundedByKey.get(h.key) || 0));
+    }
     const currentMonth = curFeeId
       ? {
           studentFeeId: curFeeId,
-          heads: headItems.map(h => ({
-            feeHeadId: (h as Extract<AllocateItem, { kind: 'head' }>).feeHeadId,
-            headName: (h as Extract<AllocateItem, { kind: 'head' }>).headName,
-            amountPaise: fundedByKey.get(h.key) || 0,
-          })),
+          heads: [...headAmounts.entries()].map(([hk, amountPaise]) => {
+            const sample = headItems.find((h) => {
+              const head = h as Extract<AllocateItem, { kind: 'head' }>;
+              return (head.feeHeadId || `name:${head.headName}`) === hk;
+            }) as Extract<AllocateItem, { kind: 'head' }> | undefined;
+            return {
+              feeHeadId: sample?.feeHeadId,
+              headName: sample?.headName,
+              amountPaise,
+            };
+          }).filter((h) => h.amountPaise > 0),
           extras: extraItems.map(e => ({
             feeExtraItemId: (e as Extract<AllocateItem, { kind: 'extra' }>).feeExtraItemId,
             amountPaise: fundedByKey.get(e.key) || 0,
-          })),
+          })).filter((e) => e.amountPaise > 0),
         }
       : undefined;
 

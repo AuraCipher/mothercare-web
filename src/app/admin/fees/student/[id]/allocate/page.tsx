@@ -6,78 +6,15 @@ import { showToast } from '@/components/toast';
 import { ArrowLeft, Save, Printer, Download, ChevronDown } from 'lucide-react';
 import config from '@/config';
 import { printReceipt as upgradedPrintReceipt, downloadReceipt, receiptDataFromSnapshot } from '@/lib/receipt';
+import {
+  buildAllocateItemsForStudent,
+  isAllocateItemPaid,
+  isAllocateItemSelectable,
+  itemStickerPaise,
+  type AllocateItem,
+} from '@/lib/feeAllocate';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-type Item =
-  | { kind: 'previousMonth'; key: string; studentFeeId: string; label: string; duePaise: number }
-  | { kind: 'head'; key: string; studentFeeId: string; feeHeadId?: string; headName: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean }
-  | { kind: 'extra'; key: string; studentFeeId: string; feeExtraItemId: string; label: string; duePaise: number; stickerPaise: number; monthLabel: string; isPaid?: boolean };
-
-function isItemPaid(item: Item): boolean {
-  if (item.kind === 'previousMonth') return false;
-  return Boolean(item.isPaid) || item.duePaise <= 0;
-}
-
-function isItemSelectable(item: Item): boolean {
-  return !isItemPaid(item) && item.duePaise > 0;
-}
-
-function itemStickerPaise(item: Item): number {
-  return item.kind === 'previousMonth' ? 0 : item.stickerPaise;
-}
-
-function priorPaidMaps(fee: any) {
-  const byHead = new Map<string, number>();
-  const byExtra = new Map<string, number>();
-  for (const a of fee.headAllocations || []) {
-    if (a.feeHeadId) byHead.set(a.feeHeadId, (byHead.get(a.feeHeadId) || 0) + a.amount);
-    if (a.feeExtraItemId) byExtra.set(a.feeExtraItemId, (byExtra.get(a.feeExtraItemId) || 0) + a.amount);
-  }
-  return { byHead, byExtra };
-}
-
-/** Remaining due on a fee head — uses headAllocations when present, else waterfall order from paidAmount. */
-function headRemainingPaise(fee: any, head: { feeHeadId?: string; name: string; amount: number }): number {
-  const { byHead } = priorPaidMaps(fee);
-  const allocSum = [...byHead.values()].reduce((s, v) => s + v, 0);
-  if (head.feeHeadId && byHead.has(head.feeHeadId)) {
-    return Math.max(0, head.amount - (byHead.get(head.feeHeadId) || 0));
-  }
-  if (allocSum > 0 && head.feeHeadId) {
-    return Math.max(0, head.amount - (byHead.get(head.feeHeadId) || 0));
-  }
-  // Waterfall / legacy: no per-head rows — infer from paidAmount in breakdown order
-  const heads = ((fee.feeHeadBreakdown as any[]) || []).filter((h: any) => (h.amount || 0) > 0);
-  let paidLeft = fee.paidAmount || 0;
-  for (const h of heads) {
-    const applied = Math.min(paidLeft, h.amount || 0);
-    if (h.feeHeadId === head.feeHeadId || h.name === head.name) {
-      return Math.max(0, (head.amount || 0) - applied);
-    }
-    paidLeft = Math.max(0, paidLeft - (h.amount || 0));
-  }
-  return head.amount || 0;
-}
-
-function extraRemainingPaise(fee: any, extra: { id: string; amount: number }): number {
-  const { byExtra } = priorPaidMaps(fee);
-  if (byExtra.has(extra.id)) {
-    return Math.max(0, extra.amount - (byExtra.get(extra.id) || 0));
-  }
-  const headTotal = ((fee.feeHeadBreakdown as any[]) || []).reduce((s: number, h: any) => s + (h.amount || 0), 0);
-  const allocExtraSum = [...byExtra.values()].reduce((s, v) => s + v, 0);
-  const paidOnHeads = Math.min(fee.paidAmount || 0, headTotal);
-  const paidOnExtras = Math.max(0, (fee.paidAmount || 0) - paidOnHeads - allocExtraSum);
-  if (paidOnExtras <= 0) return extra.amount;
-  let extraLeft = paidOnExtras;
-  for (const e of fee.extraItems || []) {
-    const applied = Math.min(extraLeft, e.amount || 0);
-    if (e.id === extra.id) return Math.max(0, extra.amount - applied);
-    extraLeft = Math.max(0, extraLeft - (e.amount || 0));
-  }
-  return extra.amount;
-}
+type Item = AllocateItem;
 
 export default function AllocatePaymentPage() {
   const params = useParams();
@@ -114,67 +51,13 @@ export default function AllocatePaymentPage() {
       .finally(() => setLoading(false));
   }, [studentId, token, ayId]);
 
-  // ─── Build grouped items: current month (collapsible) + previous months ──
   const { currentMonthItems, previousItems, currentMonthLabel } = useMemo(() => {
     if (!data) return { currentMonthItems: [] as Item[], previousItems: [] as Item[], currentMonthLabel: '' };
-    const fees = (data.studentFees || []) as any[];
-    const getExtra = (f: any) => (f.extraItems || []).reduce((s: number, e: any) => s + e.amount, 0);
-    const getDue = (f: any) => f.netAmount + getExtra(f) - f.paidAmount;
+    return buildAllocateItemsForStudent(studentId, data.name || 'Student', data.studentFees || []);
+  }, [data, studentId]);
 
-    const withDue = fees.filter(f => getDue(f) > 0);
-    if (withDue.length === 0) return { currentMonthItems: [] as Item[], previousItems: [] as Item[], currentMonthLabel: '' };
-
-    // Current month = most recent open month
-    const sorted = [...withDue].sort((a, b) => (a.year - b.year) || (a.month - b.month));
-    const currentFee = sorted[sorted.length - 1];
-    const currentLabel = `${MONTHS[(currentFee.month || 1) - 1]} ${currentFee.year}`;
-    const previousFees = sorted.slice(0, -1);
-
-    const prev: Item[] = previousFees.map(f => ({
-      kind: 'previousMonth',
-      key: `prev:${f.id}`,
-      studentFeeId: f.id,
-      label: `${MONTHS[(f.month || 1) - 1]} ${f.year}`,
-      duePaise: getDue(f),
-    }));
-
-    const heads: Item[] = ((currentFee.feeHeadBreakdown as any[]) || [])
-      .filter((h: any) => (h.amount || 0) > 0)
-      .map((h: any) => {
-        const remaining = headRemainingPaise(currentFee, { feeHeadId: h.feeHeadId, name: h.name, amount: h.amount || 0 });
-        return {
-          kind: 'head' as const,
-          key: `head:${currentFee.id}:${h.feeHeadId || h.name}`,
-          studentFeeId: currentFee.id,
-          feeHeadId: h.feeHeadId,
-          headName: h.name,
-          label: h.name,
-          duePaise: remaining,
-          stickerPaise: h.amount || 0,
-          monthLabel: currentLabel,
-          isPaid: remaining <= 0,
-        };
-      });
-
-    const extras: Item[] = [...(currentFee.extraItems || [])]
-      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .map((e: any) => {
-        const remaining = extraRemainingPaise(currentFee, { id: e.id, amount: e.amount || 0 });
-        return {
-          kind: 'extra' as const,
-          key: `extra:${currentFee.id}:${e.id}`,
-          studentFeeId: currentFee.id,
-          feeExtraItemId: e.id,
-          label: e.name,
-          duePaise: remaining,
-          stickerPaise: e.amount || 0,
-          monthLabel: currentLabel,
-          isPaid: remaining <= 0,
-        };
-      });
-
-    return { currentMonthItems: [...heads, ...extras], previousItems: prev, currentMonthLabel: currentLabel };
-  }, [data]);
+  const isItemPaid = isAllocateItemPaid;
+  const isItemSelectable = isAllocateItemSelectable;
 
   // All selectable items (exclude already-paid heads/extras)
   const selectableItems: Item[] = useMemo(
@@ -244,6 +127,16 @@ export default function AllocatePaymentPage() {
       const extraItems = currentMonthItems.filter(i => i.kind === 'extra' && checked.has(i.key));
       const currentStudentFeeId = headItems[0]?.studentFeeId || extraItems[0]?.studentFeeId;
 
+      const headAmounts = new Map<string, { feeHeadId?: string; headName: string; amountPaise: number }>();
+      for (const h of headItems) {
+        if (h.kind !== 'head') continue;
+        const hk = h.feeHeadId || `name:${h.headName}`;
+        const prev = headAmounts.get(hk);
+        const add = fundedByKey.get(h.key) || 0;
+        if (prev) prev.amountPaise += add;
+        else headAmounts.set(hk, { feeHeadId: h.feeHeadId, headName: h.headName, amountPaise: add });
+      }
+
       const payload: any = {
         studentId,
         amountPaidPaise: amountToPay,
@@ -254,8 +147,11 @@ export default function AllocatePaymentPage() {
       if (currentStudentFeeId) {
         payload.currentMonth = {
           studentFeeId: currentStudentFeeId,
-          heads: headItems.map(h => ({ feeHeadId: (h as any).feeHeadId, headName: (h as any).headName, amountPaise: fundedByKey.get(h.key) || 0 })),
-          extras: extraItems.map(e => ({ feeExtraItemId: (e as any).feeExtraItemId, amountPaise: fundedByKey.get(e.key) || 0 })),
+          heads: [...headAmounts.values()].filter((h) => h.amountPaise > 0),
+          extras: extraItems
+            .filter((e) => e.kind === 'extra')
+            .map((e) => ({ feeExtraItemId: e.feeExtraItemId, amountPaise: fundedByKey.get(e.key) || 0 }))
+            .filter((e) => e.amountPaise > 0),
         };
       }
 
