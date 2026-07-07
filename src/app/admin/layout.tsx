@@ -6,7 +6,8 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
 import { StaffModuleShell } from '@/components/staff-module-shell';
-import { firstAllowedPath, type StaffAccess } from '@/lib/staff-permissions';
+import { firstAllowedPath, isAyReadOnlyForPath, type StaffAccess } from '@/lib/staff-permissions';
+import { filterAcademicYearsForAccess } from '@/lib/ay-access';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
@@ -180,7 +181,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const activeBranch = branches.find(b => b.branch.id === activeBranchId);
   const activeAY = academicYears.find(a => a.id === activeAYId);
+  const visibleAcademicYears = filterAcademicYearsForAccess(academicYears, staffAccess);
   const isAyArchived = activeAY?.status === 'ARCHIVED';
+  const isAyReadOnly = isAyReadOnlyForPath(staffAccess, pathname, activeAY?.status ?? null);
 
   const handleSetActiveAY = (ayId: string) => {
     setActiveAYId(ayId);
@@ -334,7 +337,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span className="flex items-center gap-2">
                       <Calendar size={13} className={`shrink-0 ${activeAYId ? 'text-warm-accent' : 'text-yellow-400'}`} />
                       <span className="truncate">{activeAY?.calendar?.label || '— Select Year —'}</span>
-                      {isAyArchived && <span className="text-[9px] text-yellow-400">(Read Only)</span>}
+                      {isAyArchived && <span className="text-[9px] text-yellow-400">(Archived)</span>}
+                      {isAyReadOnly && !isAyArchived && <span className="text-[9px] text-yellow-400">(Read only)</span>}
                     </span>
                     <ChevronDown size={13} className={`text-warm-muted transition-transform duration-200 ${ayDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -343,7 +347,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   )}
                   {ayDropdownOpen && (
                     <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl max-h-48 overflow-y-auto">
-                      {academicYears.map(ay => (
+                      {visibleAcademicYears.map(ay => (
                         <button key={ay.id} onClick={() => handleSetActiveAY(ay.id)}
                           className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${activeAYId === ay.id ? 'text-warm-accent' : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'}`}>
                           <div className="flex flex-col items-start text-left">

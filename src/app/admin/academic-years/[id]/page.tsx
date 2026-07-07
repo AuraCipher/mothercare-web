@@ -177,6 +177,14 @@ export default function AcademicYearDetailPage() {
             )}
             {ay.status === 'ACTIVE' && (
               <button
+                onClick={() => router.push(`/admin/academic-years/${ayId}/promote`)}
+                className="flex items-center gap-1.5 rounded-lg bg-warm-accent/20 px-3.5 py-2 text-xs font-medium text-warm-accent hover:bg-warm-accent/30 border border-warm-accent/30 transition-colors"
+              >
+                <Archive size={13} /> Batch Promote
+              </button>
+            )}
+            {ay.status === 'ACTIVE' && (
+              <button
                 onClick={promptArchive}
                 className="flex items-center gap-1.5 rounded-lg bg-warm-accent/15 px-3.5 py-2 text-xs font-medium text-warm-accent hover:bg-warm-accent/25 border border-warm-accent/30 transition-colors"
               >

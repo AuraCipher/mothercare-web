@@ -13,13 +13,20 @@ import {
 export type { ModulePermission, StaffModuleKey } from '@/lib/staff-permissions';
 export { moduleLabel } from '@/lib/staff-permissions';
 
-function CrudBadges({ p }: { p: ModulePermission }) {
-  const items = [
-    { on: true, label: 'Read' },
-    { on: p.canCreate, label: 'Create' },
-    { on: p.canUpdate, label: 'Update' },
-    { on: p.canDelete, label: 'Delete' },
-  ];
+function CrudBadges({ p, archived }: { p: ModulePermission; archived?: boolean }) {
+  const items = archived
+    ? [
+        { on: !!p.archivedCanRead, label: 'Read' },
+        { on: !!p.archivedCanCreate, label: 'Create' },
+        { on: !!p.archivedCanUpdate, label: 'Update' },
+        { on: !!p.archivedCanDelete, label: 'Delete' },
+      ]
+    : [
+        { on: true, label: 'Read' },
+        { on: p.canCreate, label: 'Create' },
+        { on: p.canUpdate, label: 'Update' },
+        { on: p.canDelete, label: 'Delete' },
+      ];
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map(({ on, label }) => (
@@ -89,6 +96,9 @@ export function ModulePermissionsRead({ permissions }: { permissions: ModulePerm
             onToggle={() => setOpen((prev) => ({ ...prev, [key]: !isOpen }))}
           >
             <CrudBadges p={p} />
+            {p.archivedCanRead && (
+              <p className="mt-2 text-[10px] text-yellow-400/80">+ Archived year access</p>
+            )}
           </CollapsibleBlock>
         );
       })}
@@ -124,6 +134,36 @@ export function PermissionMatrix({
     onChange({ ...value, [key]: { ...row, [field]: on } });
   };
 
+  const toggleArchivedMaster = (key: StaffModuleKey, on: boolean) => {
+    const row = value[key] ?? EMPTY_PERMISSION_ROW(key);
+    onChange({
+      ...value,
+      [key]: {
+        ...row,
+        archivedCanRead: on,
+        archivedCanCreate: on ? row.archivedCanCreate : false,
+        archivedCanUpdate: on ? row.archivedCanUpdate : false,
+        archivedCanDelete: on ? row.archivedCanDelete : false,
+      },
+    });
+  };
+
+  const toggleArchivedCrud = (
+    key: StaffModuleKey,
+    field: 'archivedCanCreate' | 'archivedCanUpdate' | 'archivedCanDelete',
+    on: boolean,
+  ) => {
+    const row = value[key] ?? EMPTY_PERMISSION_ROW(key);
+    onChange({
+      ...value,
+      [key]: {
+        ...row,
+        archivedCanRead: true,
+        [field]: on,
+      },
+    });
+  };
+
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3'}>
       {STAFF_MODULES.map(({ key }) => {
@@ -157,23 +197,56 @@ export function PermissionMatrix({
               </label>
             </div>
             {enabled && row && isOpen && (
-              <div className={`border-t border-warm-card-border/50 px-4 pb-3 pt-2 ${compact ? 'text-[11px]' : 'text-xs'}`}>
-                <div className="flex flex-wrap gap-4 pl-1">
-                  <label className="flex items-center gap-1.5 text-warm-muted">
-                    <input type="checkbox" checked disabled className="rounded opacity-60" />
-                    Read <span className="text-[10px]">(required)</span>
-                  </label>
-                  {(['canCreate', 'canUpdate', 'canDelete'] as const).map((field) => (
-                    <label key={field} className="flex items-center gap-1.5 text-warm-cream">
-                      <input
-                        type="checkbox"
-                        checked={row[field]}
-                        onChange={(e) => toggleCrud(key, field, e.target.checked)}
-                        className="rounded border-warm-card-border"
-                      />
-                      {field === 'canCreate' ? 'Create' : field === 'canUpdate' ? 'Update' : 'Delete'}
+              <div className={`border-t border-warm-card-border/50 px-4 pb-3 pt-2 space-y-3 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+                <div>
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-warm-muted">Current year</p>
+                  <div className="flex flex-wrap gap-4 pl-1">
+                    <label className="flex items-center gap-1.5 text-warm-muted">
+                      <input type="checkbox" checked disabled className="rounded opacity-60" />
+                      Read <span className="text-[10px]">(required)</span>
                     </label>
-                  ))}
+                    {(['canCreate', 'canUpdate', 'canDelete'] as const).map((field) => (
+                      <label key={field} className="flex items-center gap-1.5 text-warm-cream">
+                        <input
+                          type="checkbox"
+                          checked={row[field]}
+                          onChange={(e) => toggleCrud(key, field, e.target.checked)}
+                          className="rounded border-warm-card-border"
+                        />
+                        {field === 'canCreate' ? 'Create' : field === 'canUpdate' ? 'Update' : 'Delete'}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
+                  <label className="mb-2 flex items-center gap-2 text-warm-cream">
+                    <input
+                      type="checkbox"
+                      checked={!!row.archivedCanRead}
+                      onChange={(e) => toggleArchivedMaster(key, e.target.checked)}
+                      className="rounded border-warm-card-border"
+                    />
+                    <span className="font-medium">Archived / old academic years</span>
+                  </label>
+                  {row.archivedCanRead && (
+                    <div className="flex flex-wrap gap-4 pl-1">
+                      <label className="flex items-center gap-1.5 text-warm-muted">
+                        <input type="checkbox" checked disabled className="rounded opacity-60" />
+                        Read <span className="text-[10px]">(required)</span>
+                      </label>
+                      {(['archivedCanCreate', 'archivedCanUpdate', 'archivedCanDelete'] as const).map((field) => (
+                        <label key={field} className="flex items-center gap-1.5 text-warm-cream">
+                          <input
+                            type="checkbox"
+                            checked={!!row[field]}
+                            onChange={(e) => toggleArchivedCrud(key, field, e.target.checked)}
+                            className="rounded border-warm-card-border"
+                          />
+                          {field === 'archivedCanCreate' ? 'Create' : field === 'archivedCanUpdate' ? 'Update' : 'Delete'}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

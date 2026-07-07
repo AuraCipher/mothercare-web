@@ -158,6 +158,42 @@ export const api = {
   deleteAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}`, { method: 'DELETE' }),
 
+  getPromotionPreconditions: (branchId: string, sourceAcademicYearId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/preconditions`,
+    ),
+
+  startBatchPromotion: (
+    branchId: string,
+    sourceAcademicYearId: string,
+    data: { targetAcademicYearId?: string; calendarId?: string; carryOptions?: Record<string, boolean>; notes?: string },
+  ) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/start`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  snapshotBatchPromotion: (branchId: string, sourceAcademicYearId: string, runId: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/runs/${runId}/snapshot`, {
+      method: 'POST',
+    }),
+
+  applyBatchPromotion: (branchId: string, sourceAcademicYearId: string, runId: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/runs/${runId}/apply`, {
+      method: 'POST',
+    }),
+
+  publishBatchPromotion: (branchId: string, sourceAcademicYearId: string, runId: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/runs/${runId}/publish`, {
+      method: 'POST',
+    }),
+
+  carryForwardFee: (data: { fromStudentFeeId: string; toStudentFeeId: string; notes?: string }) =>
+    apiRequest('/admin/fees/carry-forward', {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
   // ─── API Keys (CEO only) ────────────────────────────
   getApiKeys: () =>
     apiRequest<{ success: boolean; data: any[] }>('/api-keys'),

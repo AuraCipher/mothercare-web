@@ -15,6 +15,10 @@ export type ModulePermission = {
   canRead: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  archivedCanRead?: boolean;
+  archivedCanCreate?: boolean;
+  archivedCanUpdate?: boolean;
+  archivedCanDelete?: boolean;
 };
 
 export type StaffAccess = {
@@ -22,6 +26,7 @@ export type StaffAccess = {
   isRestricted: boolean;
   isFullAdmin: boolean;
   permissions: ModulePermission[];
+  accessibleAyStatuses?: string[];
 };
 
 export const STAFF_MODULES: Array<{
@@ -86,15 +91,55 @@ export function canCrud(
   access: StaffAccess | null,
   module: StaffModuleKey,
   action: CrudAction,
+  opts?: { archived?: boolean },
 ): boolean {
   if (!access?.isRestricted) return true;
   const row = access.permissions.find((p) => p.module === module);
   if (!row) return false;
+  const archived = opts?.archived === true;
+  if (archived) {
+    if (!row.archivedCanRead) return false;
+    if (action === 'read') return true;
+    if (action === 'create') return !!row.archivedCanCreate;
+    if (action === 'update') return !!row.archivedCanUpdate;
+    if (action === 'delete') return !!row.archivedCanDelete;
+    return false;
+  }
   if (action === 'read') return row.canRead;
   if (action === 'create') return row.canCreate;
   if (action === 'update') return row.canUpdate;
   if (action === 'delete') return row.canDelete;
   return false;
+}
+
+export function canAccessArchivedAy(access: StaffAccess | null): boolean {
+  if (!access?.isRestricted) return true;
+  return access.permissions.some((p) => p.archivedCanRead);
+}
+
+export function moduleForPathname(pathname: string): StaffModuleKey | null {
+  if (pathname.startsWith('/admin/students/operations')) return 'OPERATIONS';
+  if (pathname.startsWith('/admin/students')) return 'STUDENTS';
+  if (pathname.startsWith('/admin/timetable')) return 'TIMETABLE';
+  if (pathname.startsWith('/admin/attendance')) return 'ATTENDANCE';
+  if (pathname.startsWith('/admin/fees') || pathname.startsWith('/admin/payments')) return 'FEES';
+  if (pathname.startsWith('/admin/result') || pathname.startsWith('/admin/exam-sessions')) return 'RESULT';
+  if (pathname.startsWith('/admin/canteen')) return 'CANTEEN';
+  return null;
+}
+
+export function isAyReadOnlyForPath(
+  access: StaffAccess | null,
+  pathname: string,
+  ayStatus: string | null,
+): boolean {
+  if (!ayStatus || ayStatus !== 'ARCHIVED') return false;
+  if (!access?.isRestricted) return false;
+  const mod = moduleForPathname(pathname);
+  if (!mod) return true;
+  return !canCrud(access, mod, 'update', { archived: true })
+    && !canCrud(access, mod, 'create', { archived: true })
+    && !canCrud(access, mod, 'delete', { archived: true });
 }
 
 export const EMPTY_PERMISSION_ROW = (module: StaffModuleKey): ModulePermission => ({
@@ -103,4 +148,16 @@ export const EMPTY_PERMISSION_ROW = (module: StaffModuleKey): ModulePermission =
   canRead: true,
   canUpdate: false,
   canDelete: false,
+  archivedCanRead: false,
+  archivedCanCreate: false,
+  archivedCanUpdate: false,
+  archivedCanDelete: false,
 });
+
+export const CREDENTIAL_TAG_LABELS: Record<string, string> = {
+  CRED_NONE: 'No credential',
+  CRED_CARRIED: 'Credential carried',
+  CRED_NEW: 'New — send credential',
+  CRED_RESEND: 'Resend credential',
+  NO_LOGIN: 'No login',
+};

@@ -10,7 +10,9 @@ import {
 import { showToast } from '@/components/toast';
 import config from '@/config';
 
-type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+import { CREDENTIAL_TAG_LABELS } from '@/lib/staff-permissions';
+
+type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'cred_carried' | 'cred_new' | 'no_login';
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All Students' },
@@ -20,6 +22,9 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'delivered', label: 'Delivered' },
   { value: 'read', label: 'Read / Seen' },
   { value: 'failed', label: 'Failed' },
+  { value: 'cred_carried', label: 'Credential carried' },
+  { value: 'cred_new', label: 'New — not sent' },
+  { value: 'no_login', label: 'No login' },
 ];
 
 function statusBadge(status: string | null | undefined) {
@@ -109,6 +114,9 @@ export default function StudentCredentialsPage() {
           case 'delivered': filtered = filtered.filter((s: any) => s.credentialDeliveredAt && !s.credentialSeenAt); break;
           case 'read': filtered = filtered.filter((s: any) => s.credentialSeenAt); break;
           case 'failed': filtered = filtered.filter((s: any) => s.credentialStatus === 'failed'); break;
+          case 'cred_carried': filtered = filtered.filter((s: any) => s.credentialTag === 'CRED_CARRIED'); break;
+          case 'cred_new': filtered = filtered.filter((s: any) => s.credentialTag === 'CRED_NEW' || (s.credentialTag === 'CRED_NONE' && !s.credentialSentAt)); break;
+          case 'no_login': filtered = filtered.filter((s: any) => s.credentialTag === 'NO_LOGIN'); break;
         }
         // Apply search
         if (search.trim()) {
@@ -359,6 +367,11 @@ export default function StudentCredentialsPage() {
                     </td>
                     <td className="px-3 py-2.5">
                       <p className="text-warm-cream font-medium">{s.name}</p>
+                      {s.credentialTag && s.credentialTag !== 'CRED_NONE' && (
+                        <span className="mt-0.5 inline-block rounded bg-warm-card-border/40 px-1.5 py-0.5 text-[9px] text-warm-muted">
+                          {CREDENTIAL_TAG_LABELS[s.credentialTag] || s.credentialTag}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-warm-muted hidden sm:table-cell">{s.group?.name || '—'}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-warm-muted hidden md:table-cell">{s.studentWhatsapp || s.phone || '—'}</td>
