@@ -13,6 +13,7 @@ import {
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
   ClipboardList,
   UtensilsCrossed,
+  Package,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -48,6 +49,7 @@ const navItems = [
   { href: '/admin/fees', icon: DollarSign, label: 'Fees' },
   { href: '/admin/result', icon: ClipboardList, label: 'Result & Grade' },
   { href: '/admin/canteen', icon: UtensilsCrossed, label: 'Canteen' },
+  { href: '/admin/stationary', icon: Package, label: 'Stationary' },
 ];
 
 /* ── Layout ── */

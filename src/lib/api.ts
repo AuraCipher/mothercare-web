@@ -777,6 +777,66 @@ export const api = {
       `/admin/canteen/summary${canteenQuery({ date: date || new Date().toISOString().slice(0, 10) })}`,
     ),
 
+  // ─── Stationary (branch-scoped master + fee-linked assignment) ───
+  getStationaryCategories: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/categories${canteenQuery()}`),
+  createStationaryCategory: (name: string) =>
+    apiRequest(`/admin/stationary/categories${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  patchStationaryCategory: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/categories/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getStationarySuppliers: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/suppliers${canteenQuery()}`),
+  createStationarySupplier: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/suppliers${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  patchStationarySupplier: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/suppliers/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getStationaryProducts: (activeOnly = true) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/stationary/products${canteenQuery({ activeOnly: activeOnly ? 'true' : 'false' })}`,
+    ),
+  createStationaryProduct: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/products${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  patchStationaryProduct: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/products/${id}${canteenQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getStationaryInventory: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/inventory${canteenQuery()}`),
+  adjustStationaryInventory: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/inventory/adjust${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getStationarySalesRecords: (search?: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/sales-records${canteenQuery(search ? { search } : undefined)}`),
+  getFeeStationaryCatalog: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/fees/stationary/catalog${scopeQuery()}`),
+  assignStationaryToStudentFee: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/fees/stationary/assign${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
   mePermissions: (branchId?: string) =>
     apiRequest<{ success: boolean; data: import('@/lib/staff-permissions').StaffAccess }>(
       `/me/permissions${scopeQuery(branchId ? { branchId } : undefined)}`,

@@ -7,7 +7,8 @@ export type StaffModuleKey =
   | 'ATTENDANCE'
   | 'FEES'
   | 'RESULT'
-  | 'CANTEEN';
+  | 'CANTEEN'
+  | 'STATIONARY';
 
 export type ModulePermission = {
   module: StaffModuleKey;
@@ -41,6 +42,7 @@ export const STAFF_MODULES: Array<{
   { key: 'FEES', label: 'Fees', path: '/admin/fees' },
   { key: 'RESULT', label: 'Result & Grade', path: '/admin/result' },
   { key: 'CANTEEN', label: 'Canteen', path: '/admin/canteen' },
+  { key: 'STATIONARY', label: 'Stationary', path: '/admin/stationary' },
 ];
 
 export function moduleLabel(key: StaffModuleKey): string {
@@ -77,6 +79,7 @@ export function pathnameAllowed(pathname: string, access: StaffAccess | null): b
     if (p.module === 'FEES' && (pathname.startsWith('/admin/fees') || pathname.startsWith('/admin/payments'))) return true;
     if (p.module === 'RESULT' && (pathname.startsWith('/admin/result') || pathname.startsWith('/admin/exam-sessions'))) return true;
     if (p.module === 'CANTEEN' && pathname.startsWith('/admin/canteen')) return true;
+    if (p.module === 'STATIONARY' && pathname.startsWith('/admin/stationary')) return true;
   }
   return false;
 }
@@ -125,6 +128,7 @@ export function moduleForPathname(pathname: string): StaffModuleKey | null {
   if (pathname.startsWith('/admin/fees') || pathname.startsWith('/admin/payments')) return 'FEES';
   if (pathname.startsWith('/admin/result') || pathname.startsWith('/admin/exam-sessions')) return 'RESULT';
   if (pathname.startsWith('/admin/canteen')) return 'CANTEEN';
+  if (pathname.startsWith('/admin/stationary')) return 'STATIONARY';
   return null;
 }
 
