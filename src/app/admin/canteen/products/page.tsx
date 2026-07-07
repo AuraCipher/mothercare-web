@@ -32,6 +32,8 @@ export default function CanteenProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [newCategory, setNewCategory] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -118,6 +120,33 @@ export default function CanteenProductsPage() {
     }
   };
 
+  const startEditCategory = (c: { id: string; name: string }) => {
+    setEditingCategoryId(c.id);
+    setEditingCategoryName(c.name);
+  };
+
+  const saveCategory = async () => {
+    if (!editingCategoryId || !editingCategoryName.trim()) return;
+    try {
+      await api.patchCanteenCategory(editingCategoryId, { name: editingCategoryName.trim() });
+      setEditingCategoryId(null);
+      setEditingCategoryName('');
+      load();
+      showToast('success', 'Category updated');
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : 'Failed');
+    }
+  };
+
+  const toggleCategory = async (c: { id: string; isActive?: boolean }) => {
+    try {
+      await api.patchCanteenCategory(c.id, { isActive: !c.isActive });
+      load();
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : 'Failed');
+    }
+  };
+
   const toggleProduct = async (p: CanteenProduct) => {
     try {
       if (p.isActive) await api.deactivateCanteenProduct(p.id);
@@ -146,7 +175,7 @@ export default function CanteenProductsPage() {
         </button>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 items-center">
+      <div className="mb-3 flex flex-wrap gap-2 items-center">
         <input
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
@@ -156,6 +185,25 @@ export default function CanteenProductsPage() {
         <button type="button" onClick={addCategory} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-cream">
           Add category
         </button>
+      </div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        {categories.map((c: any) => (
+          <div key={c.id} className="rounded border border-warm-card-border px-2 py-1 text-[11px] text-warm-cream">
+            {editingCategoryId === c.id ? (
+              <span className="flex items-center gap-2">
+                <input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} className="rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-[11px]" />
+                <button onClick={saveCategory} className="text-warm-accent">Save</button>
+                <button onClick={() => setEditingCategoryId(null)} className="text-warm-muted">Cancel</button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span>{c.name} {!c.isActive ? '(disabled)' : ''}</span>
+                <button onClick={() => startEditCategory(c)} className="text-warm-accent">Edit</button>
+                <button onClick={() => toggleCategory(c)} className="text-warm-muted">{c.isActive ? 'Disable' : 'Enable'}</button>
+              </span>
+            )}
+          </div>
+        ))}
       </div>
 
       {loading ? (

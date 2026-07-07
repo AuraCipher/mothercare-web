@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ReceiptText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 
@@ -17,7 +17,10 @@ export default function StationarySalesRecordsPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <button type="button" onClick={() => router.push('/admin/stationary')} className="mb-4 flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream"><ChevronLeft size={14} /> Stationary</button>
-      <h1 className="text-xl font-light text-warm-cream">Stationary Sales Records</h1>
+      <h1 className="flex items-center gap-2 text-xl font-light text-warm-cream">
+        <ReceiptText size={20} className="text-warm-accent" />
+        Stationary Sales Records
+      </h1>
       <div className="my-4 flex gap-2">
         <input className="w-full rounded border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream" placeholder="Search student" value={search} onChange={(e) => setSearch(e.target.value)} />
         <button className="rounded border border-warm-card-border px-3 py-2 text-xs text-warm-cream" onClick={load}>Search</button>

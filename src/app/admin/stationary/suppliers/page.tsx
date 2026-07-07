@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Truck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 
@@ -26,7 +26,10 @@ export default function StationarySuppliersPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <button type="button" onClick={() => router.push('/admin/stationary')} className="mb-4 flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream"><ChevronLeft size={14} /> Stationary</button>
-      <h1 className="text-xl font-light text-warm-cream">Stationary Suppliers</h1>
+      <h1 className="flex items-center gap-2 text-xl font-light text-warm-cream">
+        <Truck size={20} className="text-warm-accent" />
+        Stationary Suppliers
+      </h1>
       <div className="my-4 grid grid-cols-1 gap-2 md:grid-cols-3">
         <input className="rounded border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream" placeholder="Supplier name" value={name} onChange={(e) => setName(e.target.value)} />
         <input className="rounded border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream" placeholder="Contact number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
