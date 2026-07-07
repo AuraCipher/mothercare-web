@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
-  Calendar, Plus, X, Check, Archive, Trash2,
+  Calendar, Plus, X, Check, Archive, Trash2, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -21,6 +22,7 @@ interface AcademicYear {
 }
 
 export default function AcademicYearsPage() {
+  const router = useRouter();
   const [branchId, setBranchId] = useState('');
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ export default function AcademicYearsPage() {
 
   const handleViewAY = (ay: AcademicYear) => {
     localStorage.setItem('activeAYId', ay.id);
-    window.location.reload();
+    router.push(`/admin/academic-years/${ay.id}`);
   };
 
   const handleArchive = (ay: AcademicYear) => {
@@ -278,6 +280,13 @@ export default function AcademicYearsPage() {
                   )}
                   {isActive && (
                     <>
+                      <button
+                        onClick={() => router.push(`/admin/academic-years/${ay.id}/promote`)}
+                        title="Batch Promote"
+                        className="rounded-lg p-1.5 text-warm-muted hover:text-warm-accent hover:bg-warm-accent/10 transition-colors"
+                      >
+                        <ChevronRight size={15} />
+                      </button>
                       <button onClick={() => handlePause(ay)} title="Pause" className="rounded-lg p-1.5 text-warm-muted hover:text-blue-400 hover:bg-blue-900/20 transition-colors"><span className="text-[11px] font-bold">⏸</span></button>
                       <button onClick={() => handleArchive(ay)} title="Archive" className="rounded-lg p-1.5 text-warm-muted hover:text-yellow-400 hover:bg-yellow-900/20 transition-colors"><Archive size={15} /></button>
                     </>

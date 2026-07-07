@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ArrowLeft, Check, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
 
 type Step = 1 | 2 | 3 | 4;
@@ -25,6 +25,12 @@ export default function BatchPromotionPage() {
   const [runId, setRunId] = useState('');
   const [run, setRun] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [useExistingTarget, setUseExistingTarget] = useState(true);
+  const [showCreateAyModal, setShowCreateAyModal] = useState(false);
+  const [newAyLabel, setNewAyLabel] = useState('');
+  const [newAyStartDate, setNewAyStartDate] = useState('');
+  const [newAyEndDate, setNewAyEndDate] = useState('');
+  const [creatingAy, setCreatingAy] = useState(false);
 
   useEffect(() => {
     const b = localStorage.getItem('activeBranchId');
@@ -52,10 +58,9 @@ export default function BatchPromotionPage() {
     setBusy(true);
     try {
       const res = await api.startBatchPromotion(branchId, sourceAyId, {
-        targetAcademicYearId: targetAyId || undefined,
-        calendarId: targetAyId ? undefined : calendarId,
+        targetAcademicYearId: useExistingTarget ? (targetAyId || undefined) : undefined,
+        calendarId: useExistingTarget ? undefined : calendarId,
         carryOptions,
-        previousAcademicYearId: sourceAyId,
       });
       if (!res.success) throw new Error((res as any).message);
       setRunId(res.data.id);
@@ -66,6 +71,46 @@ export default function BatchPromotionPage() {
       showToast('error', e.message || 'Failed to start');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const createBuildStageAy = async () => {
+    if (!newAyLabel.trim() || !newAyStartDate || !newAyEndDate) {
+      showToast('error', 'Label, start date and end date are required');
+      return;
+    }
+    setCreatingAy(true);
+    try {
+      const calRes = await api.createCalendar({
+        label: newAyLabel.trim(),
+        startDate: newAyStartDate,
+        endDate: newAyEndDate,
+      });
+      if (!calRes.success || !calRes.data?.id) {
+        throw new Error('Failed to create calendar');
+      }
+      const ayRes = await api.createAcademicYear(branchId, {
+        calendarId: calRes.data.id,
+        previousAcademicYearId: sourceAyId,
+      });
+      if (!ayRes.success || !ayRes.data?.id) {
+        throw new Error('Failed to create academic year');
+      }
+      setPre((prev: any) => ({
+        ...prev,
+        buildYears: [{ ...ayRes.data, calendar: calRes.data }, ...(prev?.buildYears || [])],
+      }));
+      setTargetAyId(ayRes.data.id);
+      setUseExistingTarget(true);
+      setShowCreateAyModal(false);
+      setNewAyLabel('');
+      setNewAyStartDate('');
+      setNewAyEndDate('');
+      showToast('success', 'BUILD_STAGE academic year created');
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to create academic year');
+    } finally {
+      setCreatingAy(false);
     }
   };
 
@@ -158,31 +203,72 @@ export default function BatchPromotionPage() {
       {step === 2 && (
         <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
           <h2 className="text-sm font-medium text-warm-cream">Step 2 — Target year & carry options</h2>
-          <div>
-            <p className="mb-2 text-xs text-warm-muted">Pick existing BUILD_STAGE year or create new</p>
-            <select
-              value={targetAyId}
-              onChange={(e) => { setTargetAyId(e.target.value); setCalendarId(''); }}
-              className="w-full rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream"
-            >
-              <option value="">— Create new year —</option>
-              {(pre?.buildYears || []).map((ay: any) => (
-                <option key={ay.id} value={ay.id}>{ay.calendar?.label} (BUILD)</option>
-              ))}
-            </select>
+          <div className="rounded-lg border border-warm-card-border/60 bg-warm-card/25 p-3">
+            <p className="mb-2 text-xs text-warm-muted">Choose target setup method</p>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <label className="flex items-center gap-2 text-warm-cream">
+                <input
+                  type="radio"
+                  checked={useExistingTarget}
+                  onChange={() => setUseExistingTarget(true)}
+                />
+                Use existing BUILD_STAGE year
+              </label>
+              <label className="flex items-center gap-2 text-warm-cream">
+                <input
+                  type="radio"
+                  checked={!useExistingTarget}
+                  onChange={() => setUseExistingTarget(false)}
+                />
+                Create new BUILD_STAGE year from calendar
+              </label>
+            </div>
           </div>
-          {!targetAyId && (
-            <select
-              value={calendarId}
-              onChange={(e) => setCalendarId(e.target.value)}
-              className="w-full rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream"
-            >
-              <option value="">Select calendar label…</option>
-              {calendars.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          )}
+          <div>
+            {useExistingTarget ? (
+              <>
+                <p className="mb-2 text-xs text-warm-muted">Select existing BUILD_STAGE year</p>
+                <select
+                  value={targetAyId}
+                  onChange={(e) => { setTargetAyId(e.target.value); }}
+                  className="w-full rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream"
+                >
+                  <option value="">Select target BUILD_STAGE year…</option>
+                  {(pre?.buildYears || []).map((ay: any) => (
+                    <option key={ay.id} value={ay.id}>{ay.calendar?.label} (BUILD_STAGE)</option>
+                  ))}
+                </select>
+                {(pre?.buildYears || []).length === 0 && (
+                  <div className="mt-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-2 text-[11px] text-yellow-300">
+                    No BUILD_STAGE year exists yet.
+                    <button
+                      onClick={() => setShowCreateAyModal(true)}
+                      className="ml-2 inline-flex items-center gap-1 rounded border border-yellow-500/40 px-2 py-0.5 text-[10px] hover:bg-yellow-500/10"
+                    >
+                      <Plus size={11} /> Create AY
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="mb-2 text-xs text-warm-muted">Select calendar to create new BUILD_STAGE year</p>
+                <select
+                  value={calendarId}
+                  onChange={(e) => setCalendarId(e.target.value)}
+                  className="w-full rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream"
+                >
+                  <option value="">Select calendar label…</option>
+                  {calendars.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] text-warm-muted">
+                  If selected calendar already exists in this branch as BUILD_STAGE, it will reuse that year.
+                </p>
+              </>
+            )}
+          </div>
           <div className="space-y-2">
             <p className="text-xs font-medium text-warm-muted">Carry into new year (defaults recommended)</p>
             {Object.entries(carryOptions).map(([key, on]) => (
@@ -193,7 +279,16 @@ export default function BatchPromotionPage() {
                   disabled={key === 'datesheets'}
                   onChange={(e) => setCarryOptions((prev) => ({ ...prev, [key]: e.target.checked }))}
                 />
-                {key}
+                {key === 'classes' && 'Classes/sections skeleton + order mapping'}
+                {key === 'students' && 'Promote active students (+1); highest class graduates; lowest stays empty'}
+                {key === 'subjects' && 'Subjects and class-subject links'}
+                {key === 'teacherAssignments' && 'Teacher assignments as initial setup (not attendance history)'}
+                {key === 'timetableGrid' && 'Timetable structure as initial setup (datesheets remain empty)'}
+                {key === 'feeStructures' && 'Fee structure templates only (not paid/outstanding transactions)'}
+                {key === 'attendance' && 'Attendance records history'}
+                {key === 'examsResults' && 'Exam sessions/results history'}
+                {key === 'announcementsMessages' && 'Announcements/messages history'}
+                {key === 'datesheets' && 'Datesheets (always disabled for carry)'}
               </label>
             ))}
           </div>
@@ -203,7 +298,7 @@ export default function BatchPromotionPage() {
           <div className="flex gap-2">
             <button onClick={() => setStep(1)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Back</button>
             <button
-              disabled={busy || (!targetAyId && !calendarId)}
+              disabled={busy || (useExistingTarget ? !targetAyId : !calendarId)}
               onClick={startRun}
               className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-40"
             >
@@ -230,6 +325,35 @@ export default function BatchPromotionPage() {
               <Check size={14} /> Publish new year
             </button>
           )}
+        </div>
+      )}
+
+      {showCreateAyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowCreateAyModal(false)}>
+          <div className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-warm-cream">Create BUILD_STAGE Year</h3>
+              <button onClick={() => setShowCreateAyModal(false)} className="text-warm-muted hover:text-warm-cream"><X size={15} /></button>
+            </div>
+            <div className="space-y-3">
+              <input
+                placeholder="Label e.g. 2026-2027"
+                value={newAyLabel}
+                onChange={(e) => setNewAyLabel(e.target.value)}
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={newAyStartDate} onChange={(e) => setNewAyStartDate(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream [color-scheme:dark]" />
+                <input type="date" value={newAyEndDate} onChange={(e) => setNewAyEndDate(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream [color-scheme:dark]" />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowCreateAyModal(false)} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted">Cancel</button>
+              <button onClick={createBuildStageAy} disabled={creatingAy} className="rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">
+                {creatingAy ? 'Creating…' : 'Create AY'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
