@@ -25,8 +25,11 @@ export default function StudentFeeDetailPage() {
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [addExtraModal, setAddExtraModal] = useState<any>(null);
+  const [addItemType, setAddItemType] = useState<'EXTRA_DUE' | 'STATIONARY'>('EXTRA_DUE');
   const [addExtraName, setAddExtraName] = useState('');
   const [addExtraAmt, setAddExtraAmt] = useState(0);
+  const [stationaryCatalog, setStationaryCatalog] = useState<any[]>([]);
+  const [stationaryQty, setStationaryQty] = useState<Record<string, number>>({});
   const [showFamilyPay, setShowFamilyPay] = useState(false);
   const [showCarryModal, setShowCarryModal] = useState(false);
   const [carrySources, setCarrySources] = useState<any[]>([]);
@@ -51,6 +54,10 @@ export default function StudentFeeDetailPage() {
   };
 
   useEffect(() => { loadData(); }, [params.id, ayId]);
+  useEffect(() => {
+    if (!addExtraModal || addItemType !== 'STATIONARY') return;
+    api.getFeeStationaryCatalog().then((r) => setStationaryCatalog(r.data || [])).catch(() => {});
+  }, [addExtraModal, addItemType]);
 
   const fees = data?.studentFees || [];
   const getExtraTotal = (sf: any) => (sf.extraItems || []).reduce((s: number, e: any) => s + e.amount, 0);
@@ -360,9 +367,9 @@ export default function StudentFeeDetailPage() {
       {/* Fee History (newest first) — expandable */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-medium text-warm-cream">Fee History</h2>
-        <button onClick={() => setAddExtraModal(true)}
+        <button onClick={() => setAddExtraModal(fees[0] || null)}
           className="inline-flex items-center gap-1 rounded-lg bg-warm-accent/20 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/30 transition-colors">
-          <Plus size={13} /> Add Extra Due
+          <Plus size={13} /> Add Item
         </button>
       </div>
       <div className="rounded-xl border border-warm-card-border overflow-hidden mb-6">
@@ -577,11 +584,11 @@ export default function StudentFeeDetailPage() {
         </div>
       </div>
 
-      {/* Add Extra Due Modal */}
+      {/* Add Item Modal */}
       {addExtraModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setAddExtraModal(null)}>
           <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-medium text-warm-cream mb-4">Add Extra Due</h3>
+            <h3 className="text-sm font-medium text-warm-cream mb-4">Add Item</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Month</label>
@@ -596,6 +603,15 @@ export default function StudentFeeDetailPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Type</label>
+                <select value={addItemType} onChange={(e) => setAddItemType(e.target.value as any)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
+                  <option value="EXTRA_DUE">Extra Due</option>
+                  <option value="STATIONARY">Stationary</option>
+                </select>
+              </div>
+              {addItemType === 'EXTRA_DUE' ? (
+                <>
+              <div>
                 <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Name</label>
                 <input value={addExtraName} onChange={e => setAddExtraName(e.target.value)}
                   className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" placeholder="e.g., Lab Charges, Late Fee" />
@@ -605,19 +621,43 @@ export default function StudentFeeDetailPage() {
                 <input type="number" value={addExtraAmt} onChange={e => setAddExtraAmt(Math.max(0, Number(e.target.value) || 0))}
                   className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
               </div>
+                </>
+              ) : (
+                <div className="max-h-56 overflow-y-auto rounded border border-warm-card-border/40 p-2">
+                  {stationaryCatalog.map((c: any) => (
+                    <div key={c.categoryId} className="mb-2">
+                      <p className="text-[10px] text-warm-muted/70">{c.categoryName}</p>
+                      {(c.products || []).map((p: any) => (
+                        <label key={p.id} className="mt-1 flex items-center justify-between text-xs text-warm-cream">
+                          <span>{p.name} ({(p.unitPricePaise / 100).toLocaleString()} PKR)</span>
+                          <input type="number" min={0} value={stationaryQty[p.id] || 0} onChange={(e) => setStationaryQty((prev) => ({ ...prev, [p.id]: Math.max(0, Number(e.target.value) || 0) }))} className="w-16 rounded border border-warm-card-border bg-[#1a1614] px-1 py-0.5 text-right" />
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={async () => {
-                if (!token || !addExtraModal?.id || !addExtraName || addExtraAmt <= 0) { showToast('error', 'Fill all fields'); return; }
+                if (!token || !addExtraModal?.id) { showToast('error', 'Select month'); return; }
                 try {
-                  const res = await fetch(`${config.apiUrl}/admin/student-fees/${addExtraModal.id}/extra-items`, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: addExtraName, amount: Math.round(addExtraAmt * 100) }),
-                  });
-                  const json = await res.json();
-                  if (json.success) { showToast('success', 'Extra due added'); setAddExtraModal(null); setAddExtraName(''); setAddExtraAmt(0); loadData(); }
-                  else showToast('error', json.message || 'Failed');
+                  if (addItemType === 'EXTRA_DUE') {
+                    if (!addExtraName || addExtraAmt <= 0) { showToast('error', 'Fill all fields'); return; }
+                    const res = await fetch(`${config.apiUrl}/admin/student-fees/${addExtraModal.id}/extra-items`, {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: addExtraName, amount: Math.round(addExtraAmt * 100) }),
+                    });
+                    const json = await res.json();
+                    if (!json.success) throw new Error(json.message || 'Failed');
+                  } else {
+                    const items = Object.entries(stationaryQty).filter(([, q]) => Number(q) > 0).map(([productId, quantity]) => ({ productId, quantity: Number(quantity) }));
+                    if (!items.length) { showToast('error', 'Select stationary quantity'); return; }
+                    await api.assignStationaryToStudentFee({ studentId: String(params.id), studentFeeId: addExtraModal.id, items });
+                  }
+                  showToast('success', 'Item added');
+                  setAddExtraModal(null); setAddExtraName(''); setAddExtraAmt(0); setStationaryQty({}); setAddItemType('EXTRA_DUE'); loadData();
                 } catch { showToast('error', 'Failed'); }
               }} className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Add</button>
               <button onClick={() => setAddExtraModal(null)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>

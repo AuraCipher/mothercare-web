@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { showToast } from '@/components/toast';
+import { api } from '@/lib/api';
 import { ArrowLeft, Users, CreditCard, History, Printer } from 'lucide-react';
 import config from '@/config';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
@@ -27,6 +28,11 @@ export default function FamilyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<FeeStatusFilter>('');
+  const [addItem, setAddItem] = useState<{ studentId: string; studentName: string; feeId: string; mode: 'EXTRA_DUE' | 'STATIONARY' } | null>(null);
+  const [extraName, setExtraName] = useState('');
+  const [extraAmt, setExtraAmt] = useState(0);
+  const [stationaryCatalog, setStationaryCatalog] = useState<any[]>([]);
+  const [stationaryQty, setStationaryQty] = useState<Record<string, number>>({});
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -51,6 +57,10 @@ export default function FamilyDetailPage() {
   }, [token, id, ayId, statusFilter]);
 
   useEffect(() => { loadFamily(); }, [loadFamily]);
+  useEffect(() => {
+    if (!addItem || addItem.mode !== 'STATIONARY') return;
+    api.getFeeStationaryCatalog().then((r) => setStationaryCatalog(r.data || [])).catch(() => {});
+  }, [addItem]);
 
   useEffect(() => {
     if (searchParams.get('pay') === '1' && family && !loading) {
@@ -175,6 +185,16 @@ export default function FamilyDetailPage() {
                       <span className="text-warm-muted/50 ml-2">{cls}{s.rollNumber ? ` · ${s.rollNumber}` : ''}</span>
                     </button>
                     <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => {
+                          const latest = unpaidFees[0];
+                          if (!latest) return;
+                          setAddItem({ studentId: s.id, studentName: s.name, feeId: latest.id, mode: 'EXTRA_DUE' });
+                        }}
+                        className="rounded border border-warm-card-border px-2 py-0.5 text-[10px] text-warm-muted hover:text-warm-cream"
+                      >
+                        Add Item
+                      </button>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
                         status === 'PAID' || status === 'OVERPAID' ? 'bg-green-900/20 text-green-400' :
                         status === 'PARTIAL' ? 'bg-yellow-900/20 text-yellow-400' :
@@ -191,6 +211,7 @@ export default function FamilyDetailPage() {
                       {unpaidFees.map((f: any) => (
                         <div key={f.id} className="flex justify-between text-[10px] text-warm-muted/60">
                           <span>{monthLabel(f.month, f.year)}</span>
+                          <button onClick={() => setAddItem({ studentId: s.id, studentName: s.name, feeId: f.id, mode: 'EXTRA_DUE' })} className="rounded px-1 text-[10px] text-warm-accent">+</button>
                           <span>{formatPkr(f.remainingPaise)} PKR due</span>
                         </div>
                       ))}
@@ -202,6 +223,61 @@ export default function FamilyDetailPage() {
           </div>
         )}
       </div>
+
+      {addItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setAddItem(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-3 text-sm text-warm-cream">Add Item - {addItem.studentName}</h3>
+            <select value={addItem.mode} onChange={(e) => setAddItem({ ...addItem, mode: e.target.value as any })} className="mb-2 w-full rounded border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream">
+              <option value="EXTRA_DUE">Extra Due</option>
+              <option value="STATIONARY">Stationary</option>
+            </select>
+            {addItem.mode === 'EXTRA_DUE' ? (
+              <div className="space-y-2">
+                <input value={extraName} onChange={(e) => setExtraName(e.target.value)} placeholder="Name" className="w-full rounded border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream" />
+                <input type="number" value={extraAmt} onChange={(e) => setExtraAmt(Number(e.target.value) || 0)} placeholder="Amount PKR" className="w-full rounded border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream" />
+              </div>
+            ) : (
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded border border-warm-card-border/40 p-2">
+                {stationaryCatalog.map((c: any) => (
+                  <div key={c.categoryId}>
+                    <p className="text-[10px] text-warm-muted">{c.categoryName}</p>
+                    {(c.products || []).map((p: any) => (
+                      <label key={p.id} className="flex items-center justify-between text-xs">
+                        <span>{p.name}</span>
+                        <input type="number" min={0} value={stationaryQty[p.id] || 0} onChange={(e) => setStationaryQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) || 0 }))} className="w-14 rounded border border-warm-card-border bg-[#1a1614] px-1 text-right" />
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 flex gap-2">
+              <button
+                className="flex-1 rounded bg-warm-accent py-1.5 text-xs text-[#1a1614]"
+                onClick={async () => {
+                  try {
+                    if (addItem.mode === 'EXTRA_DUE') {
+                      await fetch(`${config.apiUrl}/admin/student-fees/${addItem.feeId}/extra-items`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: extraName, amount: Math.round(extraAmt * 100) }),
+                      });
+                    } else {
+                      const items = Object.entries(stationaryQty).filter(([, q]) => Number(q) > 0).map(([productId, quantity]) => ({ productId, quantity: Number(quantity) }));
+                      await api.assignStationaryToStudentFee({ familyId: id, studentId: addItem.studentId, studentFeeId: addItem.feeId, items });
+                    }
+                    setAddItem(null); setExtraName(''); setExtraAmt(0); setStationaryQty({}); loadFamily();
+                  } catch {
+                    showToast('error', 'Failed to add item');
+                  }
+                }}
+              >Save</button>
+              <button className="rounded border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted" onClick={() => setAddItem(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Family payment history */}
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
