@@ -43,6 +43,14 @@ export default function BatchPromotionPage() {
       if (preRes.success) {
         setPre(preRes.data);
         setCarryOptions(preRes.data.defaultCarryOptions || {});
+        if (preRes.data?.inProgressRun) {
+          const existing = preRes.data.inProgressRun;
+          setRun(existing);
+          setRunId(existing.id);
+          if (existing.phase === 'DRAFT') setStep(2);
+          else if (existing.phase === 'SNAPSHOT_DONE') setStep(3);
+          else if (existing.phase === 'APPLIED') setStep(4);
+        }
         const items: Record<string, boolean> = {};
         (preRes.data.acknowledgements || []).forEach((_: string, i: number) => { items[`a${i}`] = false; });
         setAck(items);
@@ -203,6 +211,25 @@ export default function BatchPromotionPage() {
       {step === 2 && (
         <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
           <h2 className="text-sm font-medium text-warm-cream">Step 2 — Target year & carry options</h2>
+          {pre?.inProgressRun && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-200">
+              Existing promotion run found for this branch:
+              <span className="ml-1 font-medium">{pre.inProgressRun.sourceAy?.calendar?.label} → {pre.inProgressRun.targetAy?.calendar?.label}</span>
+              <span className="ml-1">({pre.inProgressRun.phase})</span>
+              <button
+                onClick={() => {
+                  setRun(pre.inProgressRun);
+                  setRunId(pre.inProgressRun.id);
+                  if (pre.inProgressRun.phase === 'DRAFT') setStep(2);
+                  else if (pre.inProgressRun.phase === 'SNAPSHOT_DONE') setStep(3);
+                  else if (pre.inProgressRun.phase === 'APPLIED') setStep(4);
+                }}
+                className="ml-3 rounded border border-blue-400/40 px-2 py-0.5 text-[11px] hover:bg-blue-500/20"
+              >
+                Continue existing
+              </button>
+            </div>
+          )}
           <div className="rounded-lg border border-warm-card-border/60 bg-warm-card/25 p-3">
             <p className="mb-2 text-xs text-warm-muted">Choose target setup method</p>
             <div className="flex flex-wrap gap-3 text-xs">
