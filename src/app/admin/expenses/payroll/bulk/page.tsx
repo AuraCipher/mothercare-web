@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, CheckSquare, RefreshCw, Square } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { useAyPermissions } from '@/hooks/use-ay-permissions';
 import NumberStepper from '@/components/inputs/number-stepper';
 
 const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
@@ -22,6 +23,7 @@ type Row = {
 
 export default function BulkPayrollPage() {
   const router = useRouter();
+  const { canCreate, readOnly } = useAyPermissions('EXPENSES');
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [payeeType, setPayeeType] = useState<string>('ALL');
   const [unpaidOnly, setUnpaidOnly] = useState(true);
@@ -134,6 +136,12 @@ export default function BulkPayrollPage() {
         </div>
       </div>
 
+      {readOnly && (
+        <p className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-300">
+          Archived year — bulk payroll is disabled (read-only).
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-3 rounded-xl border border-warm-card-border bg-warm-card/30 p-4">
         <select value={payeeType} onChange={(e) => setPayeeType(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-xs text-warm-cream">
           {PAYEE_TYPES.map((t) => <option key={t} value={t}>{t === 'ALL' ? 'All types' : t.charAt(0) + t.slice(1).toLowerCase() + 's'}</option>)}
@@ -205,7 +213,7 @@ export default function BulkPayrollPage() {
           <div className="mt-5 flex justify-end">
             <button
               type="button"
-              disabled={saving || selected.size === 0}
+              disabled={saving || selected.size === 0 || !canCreate}
               onClick={submit}
               className="rounded-lg bg-warm-accent px-4 py-2 text-sm font-medium text-[#1a1614] disabled:opacity-50"
             >

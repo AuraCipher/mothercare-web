@@ -8,6 +8,7 @@ import DocNav from '@/components/doc-nav';
 import { StaffModuleShell } from '@/components/staff-module-shell';
 import { firstAllowedPath, isAyReadOnlyForPath, type StaffAccess } from '@/lib/staff-permissions';
 import { filterAcademicYearsForAccess } from '@/lib/ay-access';
+import { AyPermissionsProvider } from '@/hooks/use-ay-permissions';
 import {
   LogOut, BookOpen, LayoutDashboard, Building2, Menu, X, DollarSign,
   ChevronDown, Check, MapPin, Users, GraduationCap, UserPlus, Settings, Calendar, CalendarDays, Send, CheckSquare,
@@ -227,12 +228,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const ayProviderProps = {
+    staffAccess,
+    ayStatus: activeAY?.status ?? null,
+  };
+
   if (staffAccess?.isRestricted && !loadingPermissions) {
     return (
       <>
-        <StaffModuleShell access={staffAccess} userName={user?.name}>
-          {children}
-        </StaffModuleShell>
+        <AyPermissionsProvider {...ayProviderProps}>
+          <StaffModuleShell access={staffAccess} userName={user?.name}>
+            {children}
+          </StaffModuleShell>
+        </AyPermissionsProvider>
         <ToastContainer />
       </>
     );
@@ -415,7 +423,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </div>
 
-      {children}
+      <AyPermissionsProvider staffAccess={staffAccess} ayStatus={activeAY?.status ?? null}>
+        {children}
+      </AyPermissionsProvider>
       {activeAY?.status === 'BUILD_STAGE' && (
         <div className="fixed bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">
           BUILD_STAGE year active in selector (preview/setup mode)

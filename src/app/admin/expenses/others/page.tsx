@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { useAyPermissions } from '@/hooks/use-ay-permissions';
 import NumberStepper from '@/components/inputs/number-stepper';
 
 const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
 
 export default function OthersPage() {
   const router = useRouter();
+  const { canCreate } = useAyPermissions('EXPENSES');
   const [payments, setPayments] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -66,9 +68,11 @@ export default function OthersPage() {
           <h1 className="text-xl font-light text-warm-cream">Other Payments</h1>
           <p className="text-xs text-warm-muted">Maintenance, repairs, transport, and miscellaneous</p>
         </div>
+        {canCreate && (
         <button type="button" onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-2 text-xs text-black">
           <Plus size={14} /> Record payment
         </button>
+        )}
       </div>
 
       <div className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-4">

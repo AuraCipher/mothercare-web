@@ -184,7 +184,7 @@ export default function BranchDetailPage() {
       confirmLabel: 'Delete',
       action: async () => {
         try {
-          await api.deleteAcademicYear(branchId, ay.id);
+          await api.deleteAcademicYear(branchId, ay.id, ay.calendar.label);
           showToast('success', 'Academic year deleted');
           loadData();
         } catch (e: any) {

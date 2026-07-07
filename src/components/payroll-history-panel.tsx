@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { useAyPermissions } from '@/hooks/use-ay-permissions';
 import NumberStepper from '@/components/inputs/number-stepper';
 
 const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export default function PayrollHistoryPanel({ userId, payeeName }: Props) {
+  const { canCreate } = useAyPermissions('EXPENSES');
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any | null>(null);
   const [payModal, setPayModal] = useState<{ month: string; kind: 'REGULAR' | 'EXTRA'; closingBalance: number; attendanceEarned: number } | null>(null);
@@ -112,10 +114,12 @@ export default function PayrollHistoryPanel({ userId, payeeName }: Props) {
                   </td>
                   <td className="px-2 py-1.5 text-warm-muted">{m.unmarkedDays ?? 0}</td>
                   <td className="px-2 py-1.5">
+                    {canCreate ? (
                     <div className="flex gap-1">
                       <button type="button" onClick={() => openPay(m.salaryMonth, Number(m.closingBalance), Number(m.attendanceEarned), 'REGULAR')} className="rounded border border-warm-card-border px-1.5 py-0.5 text-[10px] hover:border-warm-accent/50">Pay</button>
                       <button type="button" onClick={() => openPay(m.salaryMonth, Number(m.closingBalance), Number(m.attendanceEarned), 'EXTRA')} className="rounded border border-warm-card-border px-1.5 py-0.5 text-[10px] hover:border-warm-accent/50">Extra</button>
                     </div>
+                    ) : <span className="text-warm-muted">—</span>}
                   </td>
                 </tr>
               ))}

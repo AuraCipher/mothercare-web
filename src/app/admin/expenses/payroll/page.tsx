@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { useAyPermissions } from '@/hooks/use-ay-permissions';
 import NumberStepper from '@/components/inputs/number-stepper';
 
 const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
 
 export default function PayrollPage() {
   const router = useRouter();
+  const { canCreate, readOnly } = useAyPermissions('EXPENSES');
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,19 +85,27 @@ export default function PayrollPage() {
           <p className="text-xs text-warm-muted">Attendance-based salary · partial payments · balance carries forward</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => router.push('/admin/expenses/payroll/bulk')}
-            className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream"
-          >
-            Bulk pay
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => router.push('/admin/expenses/payroll/bulk')}
+              className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream"
+            >
+              Bulk pay
+            </button>
+          )}
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream" />
           <button type="button" onClick={load} className="rounded-lg border border-warm-card-border p-2 text-warm-muted hover:text-warm-cream">
             <RefreshCw size={16} />
           </button>
         </div>
       </div>
+
+      {readOnly && (
+        <p className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-300">
+          Archived year — you have read-only access to Payments. Recording payroll requires archived create permission.
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-warm-muted">Loading…</p>
@@ -129,10 +139,12 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-3 py-2 text-warm-muted">{r.unmarkedDays ?? 0} unmarked</td>
                   <td className="px-3 py-2">
+                    {canCreate ? (
                     <div className="flex gap-1">
                       <button type="button" onClick={() => openPay(r, 'REGULAR')} className="rounded border border-warm-card-border px-2 py-1 text-[10px] hover:border-warm-accent/50">Pay</button>
                       <button type="button" onClick={() => openPay(r, 'EXTRA')} className="rounded border border-warm-card-border px-2 py-1 text-[10px] hover:border-warm-accent/50">Extra</button>
                     </div>
+                    ) : <span className="text-warm-muted">—</span>}
                   </td>
                 </tr>
               ))}

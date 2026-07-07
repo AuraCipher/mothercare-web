@@ -161,8 +161,24 @@ export const api = {
   resumeAcademicYear: (branchId: string, id: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${id}/resume`, { method: 'PATCH' }),
 
-  deleteAcademicYear: (branchId: string, id: string) =>
-    apiRequest(`/admin/branches/${branchId}/academic-years/${id}`, { method: 'DELETE' }),
+  deleteAcademicYear: (branchId: string, id: string, confirmLabel: string) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ confirmLabel }),
+    }),
+
+  getAcademicYearDeletePreview: (branchId: string, id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/academic-years/${id}/delete-preview`),
+
+  getAcademicYearAuditLogs: (branchId: string, params?: { academicYearId?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.academicYearId) qs.set('academicYearId', params.academicYearId);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const tail = qs.toString();
+    return apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/branches/${branchId}/academic-year-audit-logs${tail ? `?${tail}` : ''}`,
+    );
+  },
 
   getPromotionPreconditions: (branchId: string, sourceAcademicYearId: string) =>
     apiRequest<{ success: boolean; data: any }>(

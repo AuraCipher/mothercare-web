@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, Shield, Mail, Phone, User, Save, Edit3, X, Key, Copy, Check,
+  ArrowLeft, Shield, Mail, Phone, User, Save, Edit3, X, Key, Copy, Check, HardHat,
   Eye, EyeOff, RefreshCw, Send, Award, BookOpen, Calendar, MapPin, DollarSign,
   Heart, CreditCard, AlertTriangle, Briefcase, FileText,
 } from 'lucide-react';
@@ -35,6 +35,7 @@ type StaffDetail = {
   permissions: ModulePermission[];
   profilePhotoId?: string | null;
   employeeId?: string | null;
+  workRole?: string | null;
   qualification?: string | null;
   specialization?: string | null;
   joiningDate?: string | null;
@@ -56,6 +57,7 @@ type ProfileForm = {
   email: string;
   phone: string;
   employeeId: string;
+  workRole: string;
   fatherName: string;
   qualification: string;
   specialization: string;
@@ -91,6 +93,7 @@ function detailFromData(d: StaffDetail): ProfileForm {
     email: d.email || '',
     phone: d.phone || '',
     employeeId: d.employeeId || '',
+    workRole: d.workRole || '',
     fatherName: d.fatherName || '',
     qualification: d.qualification || '',
     specialization: d.specialization || '',
@@ -226,6 +229,7 @@ export default function StaffDetailPage() {
         email: form.email.trim() || undefined,
         phone: form.phone.trim() || undefined,
         employeeId: form.employeeId.trim() || undefined,
+        workRole: form.workRole.trim() || undefined,
         fatherName: form.fatherName.trim() || undefined,
         qualification: form.qualification.trim() || undefined,
         specialization: form.specialization.trim() || undefined,
@@ -403,6 +407,7 @@ export default function StaffDetailPage() {
   }
 
   const displayPhone = data.phone || form.phone;
+  const isWorker = data.branchRole === 'worker';
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -458,7 +463,16 @@ export default function StaffDetailPage() {
           </div>
           <div>
             <h1 className="text-xl font-light text-warm-cream">{data.name}</h1>
-            <p className="mt-0.5 text-xs text-warm-muted">@{data.username} · {data.branchRole.replace('_', ' ')}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-warm-muted">
+              {isWorker ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                  <HardHat size={11} /> Worker
+                </span>
+              ) : (
+                <span>@{data.username} · {data.branchRole.replace('_', ' ')}</span>
+              )}
+            </p>
+            {data.workRole && <p className="mt-1 text-xs text-warm-accent/90">{data.workRole}</p>}
             {data.employeeId && <p className="mt-1 text-xs text-warm-muted/70">{data.employeeId}</p>}
             {data.qualification && <p className="text-xs text-warm-muted">{data.qualification}</p>}
             <span className={`mt-2 inline-flex items-center gap-1 text-[11px] ${data.status === 'active' ? 'text-green-400' : 'text-warm-muted'}`}>
@@ -500,6 +514,7 @@ export default function StaffDetailPage() {
               <Field label="Email"><Input value={form.email} onChange={(v) => setForm((p) => ({ ...p, email: v }))} /></Field>
               <Field label="Phone"><Input value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))} placeholder="+92 300 …" /></Field>
               <Field label="Employee ID"><Input value={form.employeeId} onChange={(v) => setForm((p) => ({ ...p, employeeId: v }))} placeholder="e.g. STF-001" /></Field>
+              <Field label="Work Role"><Input value={form.workRole} onChange={(v) => setForm((p) => ({ ...p, workRole: v }))} placeholder="e.g. Accountant, Guard" /></Field>
               <Field label="Father Name"><Input value={form.fatherName} onChange={(v) => setForm((p) => ({ ...p, fatherName: v }))} /></Field>
               <Field label="Qualification"><Input value={form.qualification} onChange={(v) => setForm((p) => ({ ...p, qualification: v }))} /></Field>
               <Field label="Specialization"><Input value={form.specialization} onChange={(v) => setForm((p) => ({ ...p, specialization: v }))} /></Field>
@@ -538,6 +553,7 @@ export default function StaffDetailPage() {
             <DetailCard icon={Mail} label="Email" value={data.email || '—'} />
             <DetailCard icon={Phone} label="Phone" value={displayPhone || '—'} />
             <DetailCard icon={Award} label="Employee ID" value={data.employeeId || '—'} />
+            <DetailCard icon={Briefcase} label="Work Role" value={data.workRole || '—'} />
             <DetailCard icon={User} label="Father Name" value={data.fatherName || '—'} />
             <DetailCard icon={Award} label="Qualification" value={data.qualification || '—'} />
             <DetailCard icon={BookOpen} label="Specialization" value={data.specialization || '—'} />
@@ -610,7 +626,8 @@ export default function StaffDetailPage() {
         </div>
       </section>
 
-      {/* Module access */}
+      {/* Module access — staff with login only */}
+      {!isWorker && (
       <section className="mb-8 rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -638,8 +655,19 @@ export default function StaffDetailPage() {
           <ModulePermissionsRead permissions={data.permissions} />
         )}
       </section>
+      )}
 
-      {/* Credentials */}
+      {isWorker ? (
+        <section className="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <h2 className="mb-2 text-sm font-medium text-warm-cream">Worker account</h2>
+          <p className="text-xs text-warm-muted">
+            No module login — tracked for payroll and staff attendance only. Profile, photo, and salary are fully editable above.
+          </p>
+          {data.username && (
+            <p className="mt-2 text-[11px] text-warm-muted">Internal ID: <span className="font-mono text-warm-cream">@{data.username}</span></p>
+          )}
+        </section>
+      ) : (
       <section className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
         <h2 className="mb-4 text-sm font-medium text-warm-cream">Login Credentials</h2>
         <div className="mb-4">
@@ -691,6 +719,7 @@ export default function StaffDetailPage() {
           {!displayPhone && <p className="mt-2 text-[11px] text-amber-400/80">Add a phone number in profile to send credentials.</p>}
         </div>
       </section>
+      )}
 
       {showAdminPassPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>

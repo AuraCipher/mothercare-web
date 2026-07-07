@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { useAyPermissions } from '@/hooks/use-ay-permissions';
 import NumberStepper from '@/components/inputs/number-stepper';
 
 const METHODS = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'ONLINE'] as const;
 
 export default function UtilitiesPage() {
   const router = useRouter();
+  const { canCreate } = useAyPermissions('EXPENSES');
   const [bills, setBills] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
@@ -76,9 +78,11 @@ export default function UtilitiesPage() {
           <h1 className="text-xl font-light text-warm-cream">Utility Bills</h1>
           <p className="text-xs text-warm-muted">Electricity, water, gas, internet, and other utilities</p>
         </div>
+        {canCreate && (
         <button type="button" onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded-lg bg-warm-accent px-3 py-2 text-xs text-black">
           <Plus size={14} /> Record bill
         </button>
+        )}
       </div>
 
       <div className="mb-6 rounded-xl border border-warm-card-border bg-warm-card p-4">

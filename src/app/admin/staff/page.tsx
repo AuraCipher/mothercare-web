@@ -29,12 +29,13 @@ type StaffRow = {
   permissions: ModulePermission[];
   profilePhotoId?: string | null;
   employeeId?: string | null;
+  workRole?: string | null;
   qualification?: string | null;
 };
 
 const emptyCreateForm = () => ({
   name: '', username: '', email: '', phone: '',
-  employeeId: '', qualification: '', specialization: '',
+  employeeId: '', workRole: '', qualification: '', specialization: '',
   joiningDate: '', salary: '', emergencyContact: '', address: '',
   dateOfBirth: '', gender: '', bloodGroup: '', fatherName: '',
   cardId: '', severeDisease: '', experience: '', bio: '',
@@ -68,7 +69,9 @@ const selectClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors';
 
 const emptyWorkerForm = () => ({
-  name: '', phone: '', employeeId: '', joiningDate: '', salary: '', address: '',
+  name: '', phone: '', employeeId: '', workRole: '', fatherName: '', qualification: '', specialization: '',
+  joiningDate: '', salary: '', emergencyContact: '', address: '',
+  dateOfBirth: '', gender: '', bloodGroup: '', cardId: '', severeDisease: '', experience: '', bio: '',
 });
 
 export default function StaffPage() {
@@ -84,6 +87,9 @@ export default function StaffPage() {
   const [creatingWorker, setCreatingWorker] = useState(false);
   const [workerError, setWorkerError] = useState('');
   const [wf, setWf] = useState(emptyWorkerForm);
+  const [workerPhotoId, setWorkerPhotoId] = useState<string | null>(null);
+  const [workerPhotoPreview, setWorkerPhotoPreview] = useState<string | null>(null);
+  const workerPhotoRef = useRef<HTMLInputElement>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [cf, setCf] = useState(emptyCreateForm);
@@ -163,6 +169,7 @@ export default function StaffPage() {
         email: cf.email.trim() || undefined,
         phone: cf.phone.trim() || undefined,
         employeeId: cf.employeeId.trim() || undefined,
+        workRole: cf.workRole.trim() || undefined,
         fatherName: cf.fatherName.trim() || undefined,
         qualification: cf.qualification.trim() || undefined,
         specialization: cf.specialization.trim() || undefined,
@@ -195,7 +202,29 @@ export default function StaffPage() {
 
   const resetWorker = () => {
     setWf(emptyWorkerForm());
+    setWorkerPhotoId(null);
+    setWorkerPhotoPreview(null);
     setWorkerError('');
+  };
+
+  const uploadWorkerPhoto = async (file: File) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('purpose', 'profile');
+      const res = await fetch(`${config.apiUrl}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || 'Upload failed');
+      setWorkerPhotoId(result.data.id);
+      setWorkerPhotoPreview(URL.createObjectURL(file));
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to upload photo');
+    }
   };
 
   const handleCreateWorker = async () => {
@@ -210,9 +239,22 @@ export default function StaffPage() {
         name: wf.name.trim(),
         phone: wf.phone.trim() || undefined,
         employeeId: wf.employeeId.trim() || undefined,
+        workRole: wf.workRole.trim() || undefined,
+        fatherName: wf.fatherName.trim() || undefined,
+        qualification: wf.qualification.trim() || undefined,
+        specialization: wf.specialization.trim() || undefined,
         joiningDate: wf.joiningDate || undefined,
-        salary: wf.salary.trim() ? Number(wf.salary) : undefined,
+        dateOfBirth: wf.dateOfBirth || undefined,
         address: wf.address.trim() || undefined,
+        salary: wf.salary.trim() ? Number(wf.salary) : undefined,
+        gender: wf.gender || undefined,
+        bloodGroup: wf.bloodGroup.trim() || undefined,
+        emergencyContact: wf.emergencyContact.trim() || undefined,
+        cardId: wf.cardId.trim() || undefined,
+        severeDisease: wf.severeDisease.trim() || undefined,
+        experience: wf.experience.trim() || undefined,
+        bio: wf.bio.trim() || undefined,
+        profilePhotoId: workerPhotoId || undefined,
       });
       setShowWorker(false);
       resetWorker();
@@ -385,6 +427,7 @@ export default function StaffPage() {
                     )}
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-warm-muted">
+                    {s.workRole && <span>{s.workRole}</span>}
                     {s.qualification && <span>{s.qualification}</span>}
                     <span className="truncate">{formatModuleSummary(s.permissions)}</span>
                     <span className={`inline-flex items-center gap-1 ${
@@ -509,10 +552,13 @@ export default function StaffPage() {
                 <Field label="Employee ID">
                   <Input value={cf.employeeId} onChange={(v) => setCf((p) => ({ ...p, employeeId: v }))} placeholder="e.g. STF-122" />
                 </Field>
-                <Field label="Father Name">
-                  <Input value={cf.fatherName} onChange={(v) => setCf((p) => ({ ...p, fatherName: v }))} />
+                <Field label="Work Role">
+                  <Input value={cf.workRole} onChange={(v) => setCf((p) => ({ ...p, workRole: v }))} placeholder="e.g. Accountant, Receptionist" />
                 </Field>
               </div>
+              <Field label="Father Name">
+                <Input value={cf.fatherName} onChange={(v) => setCf((p) => ({ ...p, fatherName: v }))} />
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Qualification">
                   <Input value={cf.qualification} onChange={(v) => setCf((p) => ({ ...p, qualification: v }))} placeholder="e.g. M.Sc. (Biology)" />
@@ -613,41 +659,78 @@ export default function StaffPage() {
           onClick={() => { setShowWorker(false); resetWorker(); }}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-medium text-warm-cream">Add Worker</h2>
-                <p className="mt-0.5 text-[11px] text-warm-muted">Payroll & attendance only — no module login</p>
+                <p className="mt-0.5 text-[11px] text-warm-muted">Full profile · payroll & attendance only (no module login)</p>
               </div>
               <button type="button" onClick={() => { setShowWorker(false); resetWorker(); }} className="text-warm-muted hover:text-warm-cream">
                 <X size={16} />
               </button>
             </div>
-            <div className="space-y-3">
-              <Field label="Full Name" required>
-                <Input value={wf.name} onChange={(v) => setWf((p) => ({ ...p, name: v }))} placeholder="e.g. Ali Khan" />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Employee ID">
-                  <Input value={wf.employeeId} onChange={(v) => setWf((p) => ({ ...p, employeeId: v }))} />
-                </Field>
-                <Field label="Joining Date">
-                  <Input type="date" value={wf.joiningDate} onChange={(v) => setWf((p) => ({ ...p, joiningDate: v }))} />
-                </Field>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={() => workerPhotoRef.current?.click()} className="group relative shrink-0">
+                  {workerPhotoPreview || workerPhotoId ? (
+                    <img
+                      src={workerPhotoPreview || `${config.apiUrl}/api/uploads/${workerPhotoId}`}
+                      alt="Preview"
+                      className="h-20 w-16 rounded-lg border-2 border-warm-card-border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-16 items-center justify-center rounded-lg border-2 border-dashed border-warm-card-border bg-[#1a1614] text-[10px] text-warm-muted group-hover:border-warm-accent">
+                      Photo
+                    </div>
+                  )}
+                </button>
+                <input ref={workerPhotoRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadWorkerPhoto(file);
+                  e.target.value = '';
+                }} />
+                <div className="grid flex-1 grid-cols-1 gap-3">
+                  <Field label="Full Name" required>
+                    <Input value={wf.name} onChange={(v) => setWf((p) => ({ ...p, name: v }))} placeholder="e.g. Ali Khan" />
+                  </Field>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone">
-                  <Input value={wf.phone} onChange={(v) => setWf((p) => ({ ...p, phone: v }))} />
-                </Field>
-                <Field label="Monthly Salary">
-                  <Input type="number" step="0.01" value={wf.salary} onChange={(v) => setWf((p) => ({ ...p, salary: v }))} />
-                </Field>
+                <Field label="Employee ID"><Input value={wf.employeeId} onChange={(v) => setWf((p) => ({ ...p, employeeId: v }))} /></Field>
+                <Field label="Work Role"><Input value={wf.workRole} onChange={(v) => setWf((p) => ({ ...p, workRole: v }))} placeholder="e.g. Guard, Cleaner" /></Field>
               </div>
-              <Field label="Address">
-                <Input value={wf.address} onChange={(v) => setWf((p) => ({ ...p, address: v }))} />
-              </Field>
+              <Field label="Father Name"><Input value={wf.fatherName} onChange={(v) => setWf((p) => ({ ...p, fatherName: v }))} /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Qualification"><Input value={wf.qualification} onChange={(v) => setWf((p) => ({ ...p, qualification: v }))} /></Field>
+                <Field label="Specialization"><Input value={wf.specialization} onChange={(v) => setWf((p) => ({ ...p, specialization: v }))} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Joining Date"><Input type="date" value={wf.joiningDate} onChange={(v) => setWf((p) => ({ ...p, joiningDate: v }))} /></Field>
+                <Field label="Date of Birth"><Input type="date" value={wf.dateOfBirth} onChange={(v) => setWf((p) => ({ ...p, dateOfBirth: v }))} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Phone"><Input value={wf.phone} onChange={(v) => setWf((p) => ({ ...p, phone: v }))} /></Field>
+                <Field label="Emergency Contact"><Input value={wf.emergencyContact} onChange={(v) => setWf((p) => ({ ...p, emergencyContact: v }))} /></Field>
+              </div>
+              <Field label="Address"><Input value={wf.address} onChange={(v) => setWf((p) => ({ ...p, address: v }))} /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Monthly Salary"><Input type="number" step="0.01" value={wf.salary} onChange={(v) => setWf((p) => ({ ...p, salary: v }))} /></Field>
+                <Field label="Blood Group"><Input value={wf.bloodGroup} onChange={(v) => setWf((p) => ({ ...p, bloodGroup: v }))} /></Field>
+                <Field label="Card ID"><Input value={wf.cardId} onChange={(v) => setWf((p) => ({ ...p, cardId: v }))} /></Field>
+                <Field label="Severe Disease"><Input value={wf.severeDisease} onChange={(v) => setWf((p) => ({ ...p, severeDisease: v }))} /></Field>
+                <Field label="Gender">
+                  <select value={wf.gender} onChange={(e) => setWf((p) => ({ ...p, gender: e.target.value }))} className={selectClass}>
+                    <option value="">— Select —</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </Field>
+                <Field label="Experience"><Input value={wf.experience} onChange={(v) => setWf((p) => ({ ...p, experience: v }))} /></Field>
+              </div>
+              <Field label="Bio"><Input value={wf.bio} onChange={(v) => setWf((p) => ({ ...p, bio: v }))} /></Field>
               {workerError && <p className="text-xs text-red-400">{workerError}</p>}
             </div>
             <div className="mt-5 flex justify-end gap-2">
