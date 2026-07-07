@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw } from 'lucide-react';
+import { BarChart, Users, GraduationCap, FileText, Calendar, RefreshCw, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import config from '@/config';
 import { scopeQuery } from '@/lib/api';
@@ -240,6 +240,7 @@ export default function AttendanceDashboard() {
   const cards = [
     { icon: Users, label: 'Student Attendance', desc: 'Mark and view student attendance', href: '/admin/attendance/students', color: 'text-green-400' },
     { icon: GraduationCap, label: 'Teacher Attendance', desc: 'Mark and view teacher attendance', href: '/admin/attendance/teachers', color: 'text-yellow-400' },
+    { icon: UserPlus, label: 'Staff Attendance', desc: 'Workers, cleaners, and office staff', href: '/admin/attendance/staff', color: 'text-orange-400' },
     { icon: FileText, label: 'Reports', desc: 'Generate monthly & term reports (PDF)', href: '/admin/attendance/reports', color: 'text-pink-400' },
     { icon: Calendar, label: 'Today Snapshot', desc: `${stats?.totalStudents || 0} active students`, href: '/admin/attendance/students', color: 'text-blue-400', key: 'snap' },
   ];

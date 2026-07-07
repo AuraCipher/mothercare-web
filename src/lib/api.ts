@@ -945,4 +945,70 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  createWorker: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/staff/workers${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getExpensesSummary: (month?: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/summary${scopeQuery(month ? { month } : {})}`),
+
+  getPayrollList: (month?: string) =>
+    apiRequest<{ success: boolean; data: any[]; month: string }>(`/admin/expenses/payroll${scopeQuery(month ? { month } : {})}`),
+
+  getPayrollPayeeDetail: (userId: string, month?: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/payroll/payee/${userId}${scopeQuery(month ? { month } : {})}`),
+
+  recordPayrollPayment: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/payroll${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getUtilityCategories: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/categories${scopeQuery()}`),
+
+  createUtilityCategory: (name: string) =>
+    apiRequest(`/admin/expenses/utilities/categories${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  getUtilityProviders: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/providers${scopeQuery()}`),
+
+  getUtilityBills: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities${scopeQuery(params)}`),
+
+  recordUtilityBill: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/utilities${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getOtherCategories: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/others/categories${scopeQuery()}`),
+
+  createOtherCategory: (name: string) =>
+    apiRequest(`/admin/expenses/others/categories${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  getOtherPayments: (params?: Record<string, string>) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/others${scopeQuery(params)}`),
+
+  recordOtherPayment: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/expenses/others${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  voidExpenseVoucher: (id: string, reason: string) =>
+    apiRequest(`/admin/expenses/vouchers/${id}/void${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };

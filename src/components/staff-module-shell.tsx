@@ -50,6 +50,7 @@ export function StaffModuleShell({ access, userName, children }: Props) {
       if (p.module === 'RESULT' && pathname.startsWith('/admin/result')) return p.module;
       if (p.module === 'CANTEEN' && pathname.startsWith('/admin/canteen')) return p.module;
       if (p.module === 'STATIONARY' && pathname.startsWith('/admin/stationary')) return p.module;
+      if (p.module === 'EXPENSES' && pathname.startsWith('/admin/expenses')) return p.module;
     }
     return modules[0]?.module ?? null;
   }, [access.permissions, modules, pathname]);
