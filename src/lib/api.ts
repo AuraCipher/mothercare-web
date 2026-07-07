@@ -793,6 +793,8 @@ export const api = {
 
   getStationarySuppliers: () =>
     apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/suppliers${canteenQuery()}`),
+  getStationarySupplierDetail: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/admin/stationary/suppliers/${id}${canteenQuery({ detail: 'true' })}`),
   createStationarySupplier: (data: Record<string, unknown>) =>
     apiRequest(`/admin/stationary/suppliers${canteenQuery()}`, {
       method: 'POST',
@@ -801,6 +803,20 @@ export const api = {
   patchStationarySupplier: (id: string, data: Record<string, unknown>) =>
     apiRequest(`/admin/stationary/suppliers/${id}${canteenQuery()}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  getStationarySupplierPayments: (supplierId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/stationary/suppliers/${supplierId}/payments${canteenQuery()}`,
+    ),
+  postStationarySupplierPayment: (supplierId: string, data: { amount: number; direction: string; note?: string }) =>
+    apiRequest(`/admin/stationary/suppliers/${supplierId}/payments${canteenQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  createStationaryRestock: (data: Record<string, unknown>) =>
+    apiRequest(`/admin/stationary/restock-purchases${canteenQuery()}`, {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
