@@ -114,3 +114,20 @@ input:-webkit-autofill:active {
   caret-color: #f0ebe3 !important;
   transition: background-color 9999999s ease-in-out 0s;
 }
+
+/* Hide native number input spinner arrows globally */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0;
+  display: none !important;
+}
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type='number']:hover,
+input[type='number']:focus {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

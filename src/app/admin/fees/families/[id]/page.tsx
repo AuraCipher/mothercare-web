@@ -9,6 +9,7 @@ import config from '@/config';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
 import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import { FEE_STATUS_OPTIONS, type FeeStatusFilter } from '@/lib/feeStatusFilter';
+import NumberStepper from '@/components/inputs/number-stepper';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -235,7 +236,7 @@ export default function FamilyDetailPage() {
             {addItem.mode === 'EXTRA_DUE' ? (
               <div className="space-y-2">
                 <input value={extraName} onChange={(e) => setExtraName(e.target.value)} placeholder="Name" className="w-full rounded border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream" />
-                <input type="number" value={extraAmt} onChange={(e) => setExtraAmt(Number(e.target.value) || 0)} placeholder="Amount PKR" className="w-full rounded border border-warm-card-border bg-[#1a1614] px-2 py-1.5 text-xs text-warm-cream" />
+                <NumberStepper value={extraAmt} onChange={(n) => setExtraAmt(Math.max(0, n))} step={50} containerClassName="inline-flex w-full items-center justify-between gap-2" inputClassName="h-8 flex-1 rounded border border-warm-card-border bg-[#1a1614] px-2 text-xs text-warm-cream text-center" />
               </div>
             ) : (
               <div className="max-h-56 space-y-2 overflow-y-auto rounded border border-warm-card-border/40 p-2">
@@ -245,7 +246,7 @@ export default function FamilyDetailPage() {
                     {(c.products || []).map((p: any) => (
                       <label key={p.id} className="flex items-center justify-between text-xs">
                         <span>{p.name}</span>
-                        <input type="number" min={0} value={stationaryQty[p.id] || 0} onChange={(e) => setStationaryQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) || 0 }))} className="w-14 rounded border border-warm-card-border bg-[#1a1614] px-1 text-right" />
+                        <NumberStepper value={stationaryQty[p.id] || 0} onChange={(n) => setStationaryQty((prev) => ({ ...prev, [p.id]: Math.max(0, n) }))} />
                       </label>
                     ))}
                   </div>

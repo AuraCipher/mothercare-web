@@ -12,6 +12,7 @@ import AvatarImage from '@/components/avatar-image';
 import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
 import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
+import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
 
 export default function StudentDetailPage() {
@@ -43,6 +44,7 @@ export default function StudentDetailPage() {
   const [studentTenureReason, setStudentTenureReason] = useState('WITHDRAWN');
   const [studentTenureNote, setStudentTenureNote] = useState('');
   const [movementGroupId, setMovementGroupId] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
 
@@ -215,7 +217,6 @@ export default function StudentDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Permanently delete this student? This cannot be undone.')) return;
     try {
       const res = await apiRequest(`/admin/students/${id}`, { method: 'DELETE' });
       if (res.success) { showToast('success', res.message); router.push('/admin/students'); }
@@ -506,7 +507,7 @@ export default function StudentDetailPage() {
           )}
 
           <div className="mt-4 border-t border-warm-card-border pt-4 flex justify-end">
-            <button onClick={handleDelete} className="rounded-lg border border-red-900/30 px-4 py-2 text-xs text-red-400 hover:bg-red-900/10 transition-colors">
+            <button onClick={() => setShowDeleteConfirm(true)} className="rounded-lg border border-red-900/30 px-4 py-2 text-xs text-red-400 hover:bg-red-900/10 transition-colors">
               Delete Student
             </button>
           </div>
@@ -737,6 +738,19 @@ export default function StudentDetailPage() {
           <div className="flex justify-end gap-2"><button onClick={() => setEditPrev(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, prevf, () => setEditPrev(false), 'Saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
       </Modal>
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Delete Student?"
+        message="Permanently delete this student? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          void handleDelete();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { showToast } from '@/components/toast';
 import { RefreshCw, CheckCircle, ChevronDown, ChevronRight, Edit3 } from 'lucide-react';
+import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -30,6 +31,7 @@ export default function GenerateFeesPage() {
   const [classesPanelOpen, setClassesPanelOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [activeMode, setActiveMode] = useState<'generate' | 'update' | 'regenerate' | null>(null);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [result, setResult] = useState<{
     generated: number; skipped: number; updated: number; total: number;
     deleted?: number; protected?: number; mode?: string;
@@ -139,7 +141,14 @@ export default function GenerateFeesPage() {
     if (!token) return;
     if (!ayId) { showToast('error', 'Select an academic year first'); return; }
     if (selectedGroupIds.size === 0) { showToast('error', 'Select at least one class'); return; }
-    if (mode === 'regenerate' && !window.confirm('Regenerate will delete unpaid fees for the selected month and recreate them. Fees with payments are protected. Continue?')) return;
+    if (mode === 'regenerate') {
+      setShowRegenerateConfirm(true);
+      return;
+    }
+    await runAction(mode);
+  };
+
+  const runAction = async (mode: 'generate' | 'update' | 'regenerate') => {
     setGenerating(true);
     setActiveMode(mode);
     setResult(null);
@@ -210,17 +219,17 @@ export default function GenerateFeesPage() {
               className="rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-2.5 text-sm text-warm-cream outline-none focus:border-warm-accent w-24" />
           </div>
           <div className="flex flex-wrap gap-2 ml-auto">
-            <button onClick={() => handleAction('generate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+            <button onClick={() => void runAction('generate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
               className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2.5 text-sm font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors">
               {generating && activeMode === 'generate' ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
               {generating && activeMode === 'generate' ? 'Generating...' : 'Generate'}
             </button>
-            <button onClick={() => handleAction('update')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+            <button onClick={() => void runAction('update')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
               className="inline-flex items-center gap-1.5 rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-4 py-2.5 text-sm font-medium text-warm-accent hover:bg-warm-accent/20 disabled:opacity-50 transition-colors">
               {generating && activeMode === 'update' ? <RefreshCw size={15} className="animate-spin" /> : <Edit3 size={15} />}
               {generating && activeMode === 'update' ? 'Updating...' : 'Update'}
             </button>
-            <button onClick={() => handleAction('regenerate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
+            <button onClick={handleAction.bind(null, 'regenerate')} disabled={generating || loading || selectedHeadIds.size === 0 || selectedGroupIds.size === 0}
               className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-900/20 px-4 py-2.5 text-sm font-medium text-orange-300 hover:bg-orange-900/30 disabled:opacity-50 transition-colors">
               {generating && activeMode === 'regenerate' ? <RefreshCw size={15} className="animate-spin" /> : <RefreshCw size={15} />}
               {generating && activeMode === 'regenerate' ? 'Regenerating...' : 'Regenerate'}
@@ -374,6 +383,20 @@ export default function GenerateFeesPage() {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={showRegenerateConfirm}
+        title="Regenerate Fees?"
+        message="This will delete unpaid fees for the selected month and recreate them. Fees with payments are protected."
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
+        variant="warning"
+        loading={generating}
+        onConfirm={() => {
+          setShowRegenerateConfirm(false);
+          void runAction('regenerate');
+        }}
+        onCancel={() => setShowRegenerateConfirm(false)}
+      />
     </main>
   );
 }

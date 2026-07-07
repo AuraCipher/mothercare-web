@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { showToast } from '@/components/toast';
 import { Plus, Edit3, Trash2 } from 'lucide-react';
+import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
 
 export default function FeeHeadsPage() {
@@ -11,6 +12,7 @@ export default function FeeHeadsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', description: '', category: 'MONTHLY', isOptional: false });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -41,7 +43,7 @@ export default function FeeHeadsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!token || !confirm('Deactivate this fee head?')) return;
+    if (!token) return;
     try {
       const res = await fetch(`${config.apiUrl}/admin/fee-heads/${id}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
@@ -117,7 +119,7 @@ export default function FeeHeadsPage() {
                 <td className="px-4 py-3 text-center">
                   <button onClick={() => { setEditId(h.id); setForm({ name: h.name, description: h.description || '', category: h.category, isOptional: h.isOptional }); setShowForm(true); }}
                     className="p-1 text-warm-muted hover:text-warm-accent transition-colors"><Edit3 size={13} /></button>
-                  <button onClick={() => handleDelete(h.id)} className="p-1 text-warm-muted hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
+                  <button onClick={() => setDeleteId(h.id)} className="p-1 text-warm-muted hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
                 </td>
               </tr>
             ))}
@@ -125,6 +127,20 @@ export default function FeeHeadsPage() {
         </table>
         {heads.length === 0 && <div className="p-8 text-center text-xs text-warm-muted/40">No fee heads yet</div>}
       </div>
+      <ConfirmModal
+        open={!!deleteId}
+        title="Deactivate Fee Head?"
+        message="This fee head will be marked inactive and hidden from new fee generation."
+        confirmLabel="Deactivate"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          const id = deleteId;
+          setDeleteId(null);
+          if (id) void handleDelete(id);
+        }}
+        onCancel={() => setDeleteId(null)}
+      />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ArrowLeft, Check, ChevronRight, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import ConfirmModal from '@/components/confirm-modal';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -40,6 +41,7 @@ export default function BatchPromotionPage() {
   const [newAyStartDate, setNewAyStartDate] = useState('');
   const [newAyEndDate, setNewAyEndDate] = useState('');
   const [creatingAy, setCreatingAy] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   useEffect(() => {
     const b = localStorage.getItem('activeBranchId');
@@ -174,7 +176,6 @@ export default function BatchPromotionPage() {
   };
 
   const doPublish = async () => {
-    if (!confirm('Publish new year and archive the current ACTIVE year?')) return;
     setBusy(true);
     try {
       const res = await api.publishBatchPromotion(branchId, sourceAyId, runId);
@@ -388,7 +389,7 @@ export default function BatchPromotionPage() {
             </button>
           </div>
           {step === 4 && (
-            <button disabled={busy || run.phase !== 'APPLIED'} onClick={doPublish} className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40">
+            <button disabled={busy || run.phase !== 'APPLIED'} onClick={() => setShowPublishConfirm(true)} className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40">
               <Check size={14} /> Publish new year
             </button>
           )}
@@ -423,6 +424,20 @@ export default function BatchPromotionPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={showPublishConfirm}
+        title="Publish Academic Year?"
+        message="Publish new year and archive the current ACTIVE year?"
+        confirmLabel="Publish"
+        cancelLabel="Cancel"
+        variant="warning"
+        loading={busy}
+        onConfirm={() => {
+          setShowPublishConfirm(false);
+          void doPublish();
+        }}
+        onCancel={() => setShowPublishConfirm(false)}
+      />
     </div>
   );
 }

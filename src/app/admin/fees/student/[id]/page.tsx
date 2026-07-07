@@ -10,6 +10,7 @@ import { printReceipt as upgradedPrintReceipt, downloadReceipt, receiptDataFromS
 import type { ReceiptData, ReceiptMonthSection } from '@/lib/receipt';
 import { fetchAndPrintFamilyReceipt } from '@/lib/familyReceipt';
 import FamilyPayModal from '@/components/fees/FamilyPayModal';
+import NumberStepper from '@/components/inputs/number-stepper';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function StudentFeeDetailPage() {
@@ -618,8 +619,7 @@ export default function StudentFeeDetailPage() {
               </div>
               <div>
                 <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
-                <input type="number" value={addExtraAmt} onChange={e => setAddExtraAmt(Math.max(0, Number(e.target.value) || 0))}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
+                <NumberStepper value={addExtraAmt} onChange={(n) => setAddExtraAmt(Math.max(0, n))} step={50} containerClassName="inline-flex w-full items-center justify-between gap-2" inputClassName="h-9 flex-1 rounded border border-warm-card-border bg-[#1a1614] px-3 text-sm text-warm-cream text-center" />
               </div>
                 </>
               ) : (
@@ -630,7 +630,7 @@ export default function StudentFeeDetailPage() {
                       {(c.products || []).map((p: any) => (
                         <label key={p.id} className="mt-1 flex items-center justify-between text-xs text-warm-cream">
                           <span>{p.name} ({(p.unitPricePaise / 100).toLocaleString()} PKR)</span>
-                          <input type="number" min={0} value={stationaryQty[p.id] || 0} onChange={(e) => setStationaryQty((prev) => ({ ...prev, [p.id]: Math.max(0, Number(e.target.value) || 0) }))} className="w-16 rounded border border-warm-card-border bg-[#1a1614] px-1 py-0.5 text-right" />
+                          <NumberStepper value={stationaryQty[p.id] || 0} onChange={(n) => setStationaryQty((prev) => ({ ...prev, [p.id]: Math.max(0, n) }))} />
                         </label>
                       ))}
                     </div>
@@ -703,8 +703,7 @@ export default function StudentFeeDetailPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Amount (PKR)</label>
-                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Math.max(0, Math.min(Number(e.target.value) || 0, totalRemainingPkr)))}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" />
+                    <NumberStepper value={payAmount || 0} onChange={(n) => setPayAmount(Math.max(0, Math.min(n, totalRemainingPkr)))} step={100} containerClassName="inline-flex w-full items-center justify-between gap-2" inputClassName="h-9 flex-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 text-sm text-warm-cream text-center outline-none focus:border-warm-accent" />
                     {payAmount > 0 && <p className="text-[10px] text-green-400/60 mt-1">{((payAmount / totalRemainingPkr) * 100).toFixed(0)}% of dues</p>}
                   </div>
                   <div>
