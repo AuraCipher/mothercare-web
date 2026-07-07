@@ -39,6 +39,10 @@ export default function StudentDetailPage() {
   const [statusReason, setStatusReason] = useState('');
   const [statusLogs, setStatusLogs] = useState<any[]>([]);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [schoolTenures, setSchoolTenures] = useState<any[]>([]);
+  const [studentTenureReason, setStudentTenureReason] = useState('WITHDRAWN');
+  const [studentTenureNote, setStudentTenureNote] = useState('');
+  const [movementGroupId, setMovementGroupId] = useState('');
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
 
@@ -52,10 +56,28 @@ export default function StudentDetailPage() {
 
   useEffect(() => { loadData(); }, [id]);
   useEffect(() => { if (id) loadStatusLogs(); }, [id]);
+  useEffect(() => {
+    if (!id) return;
+    api.getStudentSchoolTenures(id).then((r) => setSchoolTenures(r.data || [])).catch(() => setSchoolTenures([]));
+  }, [id]);
+  useEffect(() => {
+    const bId = localStorage.getItem('activeBranchId');
+    const aId = localStorage.getItem('activeAYId');
+    if (!bId || !aId) return;
+    api.getSections(bId, aId).then((d) => {
+      if (d.success) {
+        setEditSections(d.data || []);
+        if (d.data?.length) setMovementGroupId((prev) => prev || d.data[0].id);
+      }
+    }).catch(() => {});
+  }, []);
 
   async function loadStatusLogs() {
     try { const res: any = await apiRequest(`/admin/students/${id}/status-logs`); if (res.success) setStatusLogs(res.data); } catch {}
   }
+  const refreshSchoolTenures = () => {
+    api.getStudentSchoolTenures(id).then((r) => setSchoolTenures(r.data || [])).catch(() => {});
+  };
 
   // ── Modal / form state ──────────────────────────────────
   const [editStudent, setEditStudent] = useState(false);
@@ -77,6 +99,12 @@ export default function StudentDetailPage() {
     const bId = localStorage.getItem('activeBranchId');
     const aId = localStorage.getItem('activeAYId');
     if (bId && aId) api.getSections(bId, aId).then(d => { if (d.success) setEditSections(d.data); }).catch(() => {});
+    if (bId && aId) api.getSections(bId, aId).then(d => {
+      if (d.success) {
+        setEditSections(d.data);
+        if (!movementGroupId && d.data?.length) setMovementGroupId(d.data[0].id);
+      }
+    }).catch(() => {});
   };
 
   // ── Contact ──
@@ -383,6 +411,52 @@ export default function StudentDetailPage() {
         </div>
         <div className="col-span-3 mt-3 rounded-lg border border-warm-card-border bg-warm-card p-3"><span className="text-[10px] tracking-wider text-warm-muted uppercase">Referred By</span><p className="mt-1 text-sm text-warm-cream">{s.referredBy || '—'}</p></div></> : null}
       </Section>
+
+      {/* ══════ 8: Student Status & Actions ══════ */}
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">School Tenure & Class Movement</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <select value={studentTenureReason} onChange={(e) => setStudentTenureReason(e.target.value)}
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream">
+              {['WITHDRAWN','GRADUATED','DECEASED','TRANSFERRED','OTHER'].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <input value={studentTenureNote} onChange={(e) => setStudentTenureNote(e.target.value)} placeholder="Note (optional)"
+              className="min-w-[200px] flex-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream" />
+            <button onClick={async () => {
+              await api.addStudentSchoolTenureJoin(id);
+              showToast('success', 'Rejoin recorded');
+              refreshSchoolTenures();
+            }} className="rounded-lg border border-green-700/30 px-2.5 py-1 text-xs text-green-400 hover:bg-green-900/20">Rejoin</button>
+            <button onClick={async () => {
+              await api.addStudentSchoolTenureLeave(id, { endReason: studentTenureReason, notes: studentTenureNote || undefined });
+              showToast('success', 'Leave recorded');
+              setStudentTenureNote('');
+              refreshSchoolTenures();
+            }} className="rounded-lg border border-yellow-700/30 px-2.5 py-1 text-xs text-yellow-400 hover:bg-yellow-900/20">Leave</button>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center gap-2 border-t border-warm-card-border/40 pt-3">
+            <select value={movementGroupId} onChange={(e) => setMovementGroupId(e.target.value)}
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream">
+              {editSections.map((sec: any) => <option key={sec.id} value={sec.id}>{sec.name}{sec.section ? ` — ${sec.section}` : ''}</option>)}
+            </select>
+            <button onClick={async () => {
+              if (!movementGroupId) return;
+              await api.addStudentClassMovement(id, { toGroupId: movementGroupId });
+              showToast('success', 'Class movement recorded');
+              loadData();
+            }} className="rounded-lg border border-blue-700/30 px-2.5 py-1 text-xs text-blue-300 hover:bg-blue-900/20">Move Class</button>
+          </div>
+          <div className="space-y-1">
+            {schoolTenures.length === 0 ? <p className="text-xs text-warm-muted">No tenure events yet.</p> : schoolTenures.map((t) => (
+              <div key={t.id} className="flex items-center justify-between rounded border border-warm-card-border/40 px-2 py-1.5 text-xs">
+                <span className="text-warm-cream">#{t.sequence} · Joined {new Date(t.joinedAt).toLocaleDateString()} {t.leftAt ? `→ Left ${new Date(t.leftAt).toLocaleDateString()}` : '→ Active'}</span>
+                <span className="text-warm-muted">{t.endReason || 'ACTIVE'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ══════ 8: Student Status & Actions ══════ */}
       <section className="mb-10">

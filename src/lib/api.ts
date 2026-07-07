@@ -194,6 +194,11 @@ export const api = {
       body: JSON.stringify(scopeBody(data)),
     }),
 
+  getFeeCarryForwardSources: (studentId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/admin/fees/carry-forward/sources/${studentId}${scopeQuery()}`,
+    ),
+
   // ─── API Keys (CEO only) ────────────────────────────
   getApiKeys: () =>
     apiRequest<{ success: boolean; data: any[] }>('/api-keys'),
@@ -820,4 +825,48 @@ export const api = {
 
   sendStaffCredentials: (userId: string) =>
     apiRequest(`/admin/staff/${userId}/send-credentials${scopeQuery()}`, { method: 'POST' }),
+
+  getBranchMemberTenures: (branchMemberId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/branch-members/${branchMemberId}/tenures${scopeQuery()}`),
+  addBranchMemberTenureJoin: (branchMemberId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
+    apiRequest(`/admin/branch-members/${branchMemberId}/tenures/join${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    }),
+  addBranchMemberTenureLeave: (branchMemberId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
+    apiRequest(`/admin/branch-members/${branchMemberId}/tenures/leave${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getTeacherTenures: (userId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/teachers/${userId}/tenures${scopeQuery()}`),
+  addTeacherTenureJoin: (userId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
+    apiRequest(`/admin/teachers/${userId}/tenures/join${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    }),
+  addTeacherTenureLeave: (userId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
+    apiRequest(`/admin/teachers/${userId}/tenures/leave${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getStudentSchoolTenures: (studentId: string) =>
+    apiRequest<{ success: boolean; data: any[] }>(`/admin/students/${studentId}/school-tenures${scopeQuery()}`),
+  addStudentSchoolTenureJoin: (studentId: string, data?: { joinedAt?: string }) =>
+    apiRequest(`/admin/students/${studentId}/school-tenures/join${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    }),
+  addStudentSchoolTenureLeave: (studentId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
+    apiRequest(`/admin/students/${studentId}/school-tenures/leave${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  addStudentClassMovement: (studentId: string, data: { toGroupId: string; effectiveAt?: string; reason?: string }) =>
+    apiRequest(`/admin/students/${studentId}/class-movements${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

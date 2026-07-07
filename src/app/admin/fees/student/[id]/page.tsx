@@ -3,6 +3,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { showToast } from '@/components/toast';
+import { api } from '@/lib/api';
 import { Printer, Download, ArrowLeft, Save, Plus, ChevronDown, ChevronRight, Trash2, Users } from 'lucide-react';
 import config from '@/config';
 import { printReceipt as upgradedPrintReceipt, downloadReceipt, receiptDataFromSnapshot } from '@/lib/receipt';
@@ -27,6 +28,12 @@ export default function StudentFeeDetailPage() {
   const [addExtraName, setAddExtraName] = useState('');
   const [addExtraAmt, setAddExtraAmt] = useState(0);
   const [showFamilyPay, setShowFamilyPay] = useState(false);
+  const [showCarryModal, setShowCarryModal] = useState(false);
+  const [carrySources, setCarrySources] = useState<any[]>([]);
+  const [carrySourceId, setCarrySourceId] = useState('');
+  const [carryTargetId, setCarryTargetId] = useState('');
+  const [carryNotes, setCarryNotes] = useState('');
+  const [carrying, setCarrying] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -57,6 +64,20 @@ export default function StudentFeeDetailPage() {
     setPayRef('');
     setLastReceipt(null);
     setShowPayModal(true);
+  };
+
+  const openCarryModal = async () => {
+    if (!params.id) return;
+    try {
+      const res = await api.getFeeCarryForwardSources(String(params.id));
+      setCarrySources(res.data || []);
+      setCarrySourceId(res.data?.[0]?.id || '');
+      const target = fees.find((f: any) => getMonthDue(f) > 0);
+      setCarryTargetId(target?.id || '');
+      setShowCarryModal(true);
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to load old dues');
+    }
   };
 
   const handleGoToAllocate = () => {
@@ -317,6 +338,10 @@ export default function StudentFeeDetailPage() {
           </div>
           {totalRemainingPaise > 0 && !isAyArchived && (
             <div className="flex flex-wrap gap-2 justify-end">
+              <button onClick={openCarryModal}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+                Carry Old Dues
+              </button>
               {data.family?.id && (
                 <button onClick={() => setShowFamilyPay(true)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-900/20 px-4 py-2.5 text-xs text-purple-300 hover:bg-purple-900/35 transition-colors">
@@ -698,6 +723,60 @@ export default function StudentFeeDetailPage() {
           token={token}
           ayId={ayId}
         />
+      )}
+
+      {showCarryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCarryModal(false)}>
+          <div className="rounded-xl border border-warm-card-border bg-[#24201e] p-6 w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-medium text-warm-cream mb-4">Carry Forward Outstanding Fee</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">From Archived Due</label>
+                <select value={carrySourceId} onChange={(e) => setCarrySourceId(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
+                  <option value="">Select archived due...</option>
+                  {carrySources.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.ayLabel} · {MONTHS[(s.month || 1) - 1]} {s.year} · {(s.remaining / 100).toLocaleString()} PKR</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">To Current AY Month</label>
+                <select value={carryTargetId} onChange={(e) => setCarryTargetId(e.target.value)} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
+                  <option value="">Select target month...</option>
+                  {fees.map((f: any) => <option key={f.id} value={f.id}>{MONTHS[(f.month || 1) - 1]} {f.year}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-muted/60 uppercase tracking-wider mb-1">Notes</label>
+                <input value={carryNotes} onChange={(e) => setCarryNotes(e.target.value)} placeholder="Optional note"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream" />
+              </div>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button
+                disabled={!carrySourceId || !carryTargetId || carrying}
+                onClick={async () => {
+                  setCarrying(true);
+                  try {
+                    await api.carryForwardFee({ fromStudentFeeId: carrySourceId, toStudentFeeId: carryTargetId, notes: carryNotes || undefined });
+                    showToast('success', 'Outstanding fee carried forward');
+                    setShowCarryModal(false);
+                    setCarryNotes('');
+                    loadData();
+                  } catch (e: any) {
+                    showToast('error', e.message || 'Carry forward failed');
+                  } finally {
+                    setCarrying(false);
+                  }
+                }}
+                className="flex-1 rounded-lg bg-warm-accent py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50"
+              >
+                {carrying ? 'Processing…' : 'Carry Forward'}
+              </button>
+              <button onClick={() => setShowCarryModal(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -96,6 +96,9 @@ export default function TeacherDetailPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPassError, setAdminPassError] = useState('');
   const passwordInputRef = useRef<HTMLInputElement>(null);
+  const [tenures, setTenures] = useState<any[]>([]);
+  const [tenureReason, setTenureReason] = useState('RESIGNED');
+  const [tenureNote, setTenureNote] = useState('');
 
   const generatePassword = () => {
     const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -208,6 +211,16 @@ export default function TeacherDetailPage() {
   };
 
   useEffect(() => { loadData(); }, [id]);
+
+  useEffect(() => {
+    if (!data?.userId) return;
+    api.getTeacherTenures(data.userId).then((r) => setTenures(r.data || [])).catch(() => setTenures([]));
+  }, [data?.userId]);
+
+  const refreshTenures = () => {
+    if (!data?.userId) return;
+    api.getTeacherTenures(data.userId).then((r) => setTenures(r.data || [])).catch(() => {});
+  };
 
   // Fetch teacher timetables when teacher data is available
   useEffect(() => {
@@ -503,6 +516,39 @@ export default function TeacherDetailPage() {
       </section>
 
 
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Join / Leave History</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
+          <div className="mb-3 flex gap-2">
+            <select value={tenureReason} onChange={(e) => setTenureReason(e.target.value)}
+              className="rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream">
+              {['RESIGNED','TERMINATED','TRANSFERRED','LEAVE','OTHER'].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <input value={tenureNote} onChange={(e) => setTenureNote(e.target.value)} placeholder="Note (optional)"
+              className="flex-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream" />
+            <button onClick={async () => {
+              await api.addTeacherTenureJoin(data.userId);
+              showToast('success', 'Rejoin recorded');
+              refreshTenures();
+            }} className="rounded-lg border border-green-700/30 px-2.5 py-1 text-xs text-green-400 hover:bg-green-900/20">Rejoin</button>
+            <button onClick={async () => {
+              await api.addTeacherTenureLeave(data.userId, { endReason: tenureReason, notes: tenureNote || undefined });
+              showToast('success', 'Leave recorded');
+              setTenureNote('');
+              refreshTenures();
+            }} className="rounded-lg border border-yellow-700/30 px-2.5 py-1 text-xs text-yellow-400 hover:bg-yellow-900/20">Leave</button>
+          </div>
+          <div className="space-y-1">
+            {tenures.length === 0 ? <p className="text-xs text-warm-muted">No tenure events yet.</p> : tenures.map((t) => (
+              <div key={t.id} className="flex items-center justify-between rounded border border-warm-card-border/40 px-2 py-1.5 text-xs">
+                <span className="text-warm-cream">#{t.sequence} · Joined {new Date(t.joinedAt).toLocaleDateString()} {t.leftAt ? `→ Left ${new Date(t.leftAt).toLocaleDateString()}` : '→ Active'}</span>
+                <span className="text-warm-muted">{t.endReason || 'ACTIVE'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ════════════════════════════════════════════
           Password Management
