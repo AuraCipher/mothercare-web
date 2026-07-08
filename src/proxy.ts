@@ -10,6 +10,11 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import {
+  decodeJwtPayload,
+  defaultLandingForRole,
+  sanitizePostLoginRedirect,
+} from '@/lib/teacher/auth-routing';
 
 const PUBLIC_ROUTES = [
   '/',
@@ -33,16 +38,23 @@ function isPublicRoute(pathname: string): boolean {
 
 function isProtectedRoute(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
-      || pathname === '/ceo' || pathname.startsWith('/ceo/');
+    || pathname === '/ceo' || pathname.startsWith('/ceo/')
+    || pathname === '/teacher' || pathname.startsWith('/teacher/');
 }
 
 function isAuthRoute(pathname: string): boolean {
   return pathname === '/login';
 }
 
+function roleFromToken(token: string | undefined): string | null {
+  if (!token) return null;
+  return decodeJwtPayload(token)?.role ?? null;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
+  const role = roleFromToken(token);
 
   // 1. If user has token and visits login, let the login page handle redirect
   if (isAuthRoute(pathname) && token) {
@@ -54,13 +66,29 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Protected routes — require token
+  // 3. Protected routes — require token + role-appropriate namespace
   if (isProtectedRoute(pathname)) {
     if (!token) {
       const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
+      const safeRedirect = sanitizePostLoginRedirect(pathname);
+      if (safeRedirect) loginUrl.searchParams.set('redirect', safeRedirect);
       return NextResponse.redirect(loginUrl);
     }
+
+    if (pathname.startsWith('/teacher') && role && role !== 'teacher') {
+      const dest = defaultLandingForRole(role);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+
+    if (pathname.startsWith('/admin') && role === 'teacher') {
+      return NextResponse.redirect(new URL('/teacher', request.url));
+    }
+
+    if (pathname.startsWith('/ceo') && role && role !== 'super_admin') {
+      const dest = defaultLandingForRole(role);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+
     return NextResponse.next();
   }
 
@@ -70,7 +98,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static assets, images, and favicon
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

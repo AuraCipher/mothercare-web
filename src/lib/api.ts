@@ -880,6 +880,14 @@ export const api = {
       `/me/permissions${scopeQuery(branchId ? { branchId } : undefined)}`,
     ),
 
+  meAcademicYear: () =>
+    apiRequest<{ success: boolean; data: { id: string; status: string; branchId: string; calendar?: { label: string } } }>(
+      '/me/academic-year',
+    ),
+
+  teacherBootstrap: () =>
+    apiRequest<{ success: boolean; data: any }>(`/teacher/bootstrap${scopeQuery()}`),
+
   getStaffList: (params?: { search?: string; status?: string }) =>
     apiRequest<{ success: boolean; data: any[]; meta: { total: number } }>(
       `/admin/staff${scopeQuery({

@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { firstAllowedPath } from '@/lib/staff-permissions';
+import {
+  decodeJwtPayload,
+  defaultLandingForRole,
+  sanitizePostLoginRedirect,
+} from '@/lib/teacher/auth-routing';
 
 async function resolveAdminLanding(token: string): Promise<string> {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return '/admin';
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = decodeJwtPayload(token);
+    if (!payload) return '/admin';
     const branchId = payload.branchIds?.[0];
     if (!branchId) return '/admin';
     localStorage.setItem('activeBranchId', branchId);
@@ -28,6 +32,9 @@ export function mapLoginErrorMessage(msg: string): string {
   }
   if (lower.includes('not enrolled in any active academic year')) {
     return 'No active academic-year enrollment found for this account. Contact school admin.';
+  }
+  if (lower.includes('teacher profile not found') || lower.includes('teacher branch membership')) {
+    return 'Teacher portal access is not set up. Contact school administration.';
   }
   return msg;
 }
@@ -52,13 +59,16 @@ export default function LoginPage() {
     }
 
     try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        if (payload.role === 'super_admin') {
-          router.replace('/ceo');
-        } else {
+      const payload = decodeJwtPayload(token);
+      if (payload) {
+        const landing = defaultLandingForRole(payload.role);
+        if (landing === '/admin') {
           resolveAdminLanding(token).then((path) => router.replace(path));
+        } else {
+          if (landing === '/teacher' && payload.branchIds?.[0]) {
+            localStorage.setItem('activeBranchId', payload.branchIds[0]);
+          }
+          router.replace(landing);
         }
         return;
       }
@@ -87,15 +97,22 @@ export default function LoginPage() {
 
         // Redirect based on role, or use the redirect param from proxy.ts
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect');
+        const redirect = sanitizePostLoginRedirect(params.get('redirect'));
 
         if (redirect) {
           router.push(redirect);
-        } else if (data.user?.role === 'super_admin') {
-          router.push('/ceo');
         } else {
-          const path = await resolveAdminLanding(data.token);
-          router.push(path);
+          const payload = decodeJwtPayload(data.token);
+          const landing = defaultLandingForRole(data.user?.role);
+          if (landing === '/admin') {
+            const path = await resolveAdminLanding(data.token);
+            router.push(path);
+          } else {
+            if (landing === '/teacher' && payload?.branchIds?.[0]) {
+              localStorage.setItem('activeBranchId', payload.branchIds[0]);
+            }
+            router.push(landing);
+          }
         }
       } else {
         setError(data.message || 'Invalid credentials');
