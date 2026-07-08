@@ -95,6 +95,14 @@ describe('Proxy route logic', () => {
       expect(isProtectedRoute('/teacher/my-classes')).toBe(true);
     });
 
+    it('returns true for nested teacher routes', () => {
+      expect(isProtectedRoute('/teacher/classes/g1')).toBe(true);
+      expect(isProtectedRoute('/teacher/subjects/a1')).toBe(true);
+      expect(isProtectedRoute('/teacher/timetable')).toBe(true);
+      expect(isProtectedRoute('/teacher/attendance')).toBe(true);
+      expect(isProtectedRoute('/teacher/profile')).toBe(true);
+    });
+
     it('returns false for /admin-settings', () => {
       expect(isProtectedRoute('/admin-settings')).toBe(false);
     });
