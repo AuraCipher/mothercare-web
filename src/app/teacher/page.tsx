@@ -106,7 +106,7 @@ export default function TeacherHomePage() {
               >
                 <p className="text-sm text-warm-cream">{a.title}</p>
                 <p className="teacher-break-text mt-1 line-clamp-2 text-xs text-warm-muted">
-                  {a.body}
+                  {a.content}
                 </p>
               </li>
             ))}

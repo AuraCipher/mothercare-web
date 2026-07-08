@@ -18,7 +18,8 @@ type AnnouncementRow = {
   mediaUrl: string | null;
   isPinned: boolean;
   createdAt: string;
-  scope: 'school';
+  scope: 'school' | 'class';
+  group: { id: string; label: string } | null;
   sender: { id: string; name: string; role: string };
 };
 
@@ -35,7 +36,7 @@ export default function TeacherAnnouncementsPage() {
   const [rows, setRows] = useState<AnnouncementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pinned'>('all');
+  const [filter, setFilter] = useState<'all' | 'pinned' | 'school' | 'class'>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,8 +44,8 @@ export default function TeacherAnnouncementsPage() {
     try {
       const res = await api.teacherAnnouncements();
       setRows(res.data || []);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load announcements');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load announcements');
       setRows([]);
     } finally {
       setLoading(false);
@@ -57,38 +58,36 @@ export default function TeacherAnnouncementsPage() {
 
   const filtered = useMemo(() => {
     if (filter === 'pinned') return rows.filter((r) => r.isPinned);
+    if (filter === 'school') return rows.filter((r) => r.scope === 'school');
+    if (filter === 'class') return rows.filter((r) => r.scope === 'class');
     return rows;
   }, [rows, filter]);
 
   if (!bootstrap) return null;
 
-  if (bootstrap.portal.isFrozen) {
-    return (
-      <TeacherPageShell title="Announcements" subtitle="School updates">
-        <TeacherAlert tone="warning">
-          {bootstrap.portal.freezeReason || 'Portal access is frozen.'}
-        </TeacherAlert>
-      </TeacherPageShell>
-    );
-  }
-
   return (
-    <TeacherPageShell title="Announcements" subtitle="School updates for your branch and academic year">
-      <div className="teacher-action-row">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`teacher-btn ${filter === 'all' ? 'teacher-btn--primary' : 'teacher-btn--secondary'}`}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('pinned')}
-          className={`teacher-btn ${filter === 'pinned' ? 'teacher-btn--primary' : 'teacher-btn--secondary'}`}
-        >
-          Pinned
-        </button>
+    <TeacherPageShell
+      title="Announcements"
+      subtitle="School-wide and class updates for your assigned groups (read-only)"
+    >
+      <div className="teacher-action-row flex-wrap">
+        {(
+          [
+            { id: 'all' as const, label: 'All' },
+            { id: 'school' as const, label: 'School-wide' },
+            { id: 'class' as const, label: 'My classes' },
+            { id: 'pinned' as const, label: 'Pinned' },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setFilter(opt.id)}
+            className={`teacher-btn ${filter === opt.id ? 'teacher-btn--primary' : 'teacher-btn--secondary'}`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -112,7 +111,9 @@ export default function TeacherAnnouncementsPage() {
           body={
             filter === 'pinned'
               ? 'No pinned announcements right now.'
-              : 'When administration posts updates, they will appear here.'
+              : filter === 'class'
+                ? 'No class-specific announcements for your assigned groups.'
+                : 'When administration posts updates, they will appear here.'
           }
         />
       ) : (
@@ -125,7 +126,9 @@ export default function TeacherAnnouncementsPage() {
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-medium text-warm-cream">{row.title}</h2>
                 {row.isPinned && <TeacherBadge tone="accent">Pinned</TeacherBadge>}
-                <TeacherBadge tone="neutral">School-wide</TeacherBadge>
+                <TeacherBadge tone={row.scope === 'school' ? 'neutral' : 'success'}>
+                  {row.scope === 'school' ? 'School-wide' : row.group?.label || 'Class'}
+                </TeacherBadge>
               </div>
               {row.content && (
                 <p className="teacher-break-text text-sm text-warm-muted">{row.content}</p>

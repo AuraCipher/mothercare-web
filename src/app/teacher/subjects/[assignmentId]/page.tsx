@@ -74,6 +74,7 @@ function TeacherSubjectContent() {
           assignments={data.assignments}
           classTeacherGroupIds={data.portal.classTeacherGroupIds}
           readOnly={data.portal.isReadOnly}
+          canMark={data.portal.teachersCanMarkAttendance}
           lockGroupId={assignment.groupId}
         />
       )}

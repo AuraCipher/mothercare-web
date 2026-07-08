@@ -18,6 +18,7 @@ function TeacherAttendanceContent() {
         assignments={data.assignments}
         classTeacherGroupIds={data.portal.classTeacherGroupIds}
         readOnly={data.portal.isReadOnly}
+        canMark={data.portal.teachersCanMarkAttendance}
         initialGroupId={initialGroupId}
       />
     </TeacherPageShell>

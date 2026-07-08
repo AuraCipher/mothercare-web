@@ -50,11 +50,14 @@ export function TeacherBootstrapProvider({ children }: { children: ReactNode }) 
 
     if (!academicYearId && branchId) {
       try {
-        const ayRes = await api.meAcademicYear();
-        if (ayRes.success && ayRes.data?.id) {
-          academicYearId = ayRes.data.id;
-          localStorage.setItem('activeAYId', ayRes.data.id);
-          if (ayRes.data.status) localStorage.setItem('activeAYStatus', ayRes.data.status);
+        const ayRes = await api.getAcademicYears(branchId);
+        if (ayRes.success && ayRes.data?.length) {
+          const active = ayRes.data.find((ay: { status: string }) => ay.status === 'ACTIVE');
+          if (active?.id) {
+            academicYearId = active.id;
+            localStorage.setItem('activeAYId', active.id);
+            if (active.status) localStorage.setItem('activeAYStatus', active.status);
+          }
         }
       } catch {
         /* handled below */

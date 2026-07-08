@@ -45,6 +45,8 @@ interface Props {
   initialGroupId?: string;
   /** When set, class selector is hidden and this group is fixed. */
   lockGroupId?: string;
+  /** When false, marking is disabled by branch policy or permissions. */
+  canMark?: boolean;
 }
 
 export function TeacherAttendancePanel({
@@ -53,6 +55,7 @@ export function TeacherAttendancePanel({
   readOnly,
   initialGroupId,
   lockGroupId,
+  canMark = true,
 }: Props) {
   const groupOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -79,7 +82,7 @@ export function TeacherAttendancePanel({
   const selected = groupOptions.find((a) => a.groupId === groupId);
   const isClassTeacher = groupId ? classTeacherGroupIds.includes(groupId) : false;
   const isSunday = isSundayToday();
-  const canEdit = !readOnly && canMarkToday && !isSunday;
+  const canEdit = !readOnly && canMark && canMarkToday && !isSunday;
 
   const load = useCallback(async () => {
     if (!groupId || !date) return;
@@ -218,6 +221,8 @@ export function TeacherAttendancePanel({
           <p className="teacher-break-text text-xs text-warm-muted">
             {readOnly
               ? 'Portal is read-only for this academic year.'
+              : !canMark
+                ? 'Attendance marking is disabled for your account or branch.'
               : isSunday
                 ? 'Attendance is not taken on Sundays.'
                 : 'Attendance cannot be marked right now.'}

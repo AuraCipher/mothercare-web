@@ -214,10 +214,8 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
 
   const handleSetActiveAY = (ayId: string) => {
     setActiveAYId(ayId);
-    localStorage.setItem('activeAYId', ayId);
     const ay = academicYears.find((a) => a.id === ayId);
-    if (ay) localStorage.setItem('activeAYStatus', ay.status);
-    setAyDropdownOpen(false);
+    if (ay) setAyDropdownOpen(false);
   };
 
   const handleApplyAY = async () => {
@@ -234,6 +232,8 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
   };
 
   const displayName = bootstrap?.user.name ?? user?.name;
+  const ayPendingApply =
+    Boolean(activeAYId && bootstrap?.academicYear.id && activeAYId !== bootstrap.academicYear.id);
 
   return (
     <div className="teacher-portal-root min-h-screen bg-[#1a1614]">
@@ -359,11 +359,16 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={handleApplyAY}
-                    disabled={busyApplyingAy}
+                    disabled={busyApplyingAy || !ayPendingApply}
                     className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Check size={13} /> {busyApplyingAy ? 'Applying…' : 'Apply year'}
+                    <Check size={13} /> {busyApplyingAy ? 'Applying…' : ayPendingApply ? 'Apply year' : 'Year applied'}
                   </button>
+                )}
+                {ayPendingApply && (
+                  <p className="mt-2 text-[10px] text-yellow-300">
+                    Selected year not applied yet — click Apply year to reload portal data.
+                  </p>
                 )}
               </div>
             )}

@@ -29,6 +29,10 @@ export interface TeacherBootstrapData {
     freezeReason?: string;
     assignmentCount: number;
     classTeacherGroupIds: string[];
+    isHod?: boolean;
+    teachersCanMarkAttendance?: boolean;
+    teachersCanEnterMarks?: boolean;
+    permissions?: Record<string, unknown>;
   };
   assignments: TeacherAssignment[];
 }
