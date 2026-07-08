@@ -44,6 +44,8 @@ export default function ExamDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [teacherMarksEntry, setTeacherMarksEntry] = useState(true);
+  const [savingTeacherMarks, setSavingTeacherMarks] = useState(false);
   const [structureSubtitle, setStructureSubtitle] = useState('Classes & subjects — generate on exam setup');
   const [marksSubtitle, setMarksSubtitle] = useState('Enter marks per class');
 
@@ -72,6 +74,7 @@ export default function ExamDetailPage() {
     setUseDateRange(!!e.endDate);
     setStartDate(toDateInput(e.startDate));
     setEndDate(toDateInput(e.endDate));
+    setTeacherMarksEntry(e.teacherMarksEntry !== false);
   }, []);
 
   const loadExam = useCallback(() => {
@@ -145,6 +148,7 @@ export default function ExamDetailPage() {
     try {
       const res = await api.updateResultExam(examId, { status: 'ACTIVE' });
       setExam(res.data);
+      populateForm(res.data);
       showToast('success', 'Exam published (Active)');
     } catch (e: any) {
       showToast('error', e.message || 'Cannot publish exam');
@@ -158,11 +162,26 @@ export default function ExamDetailPage() {
     try {
       const res = await api.updateResultExam(examId, { status: 'DRAFT' });
       setExam(res.data);
+      populateForm(res.data);
       showToast('success', 'Exam set to Draft');
     } catch (e: any) {
       showToast('error', e.message || 'Cannot unpublish');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handleTeacherMarksToggle = async (enabled: boolean) => {
+    setSavingTeacherMarks(true);
+    try {
+      const res = await api.updateResultExam(examId, { teacherMarksEntry: enabled });
+      setExam(res.data);
+      setTeacherMarksEntry(res.data.teacherMarksEntry !== false);
+      showToast('success', enabled ? 'Teachers can enter marks' : 'Teacher marks entry disabled');
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to update teacher marks setting');
+    } finally {
+      setSavingTeacherMarks(false);
     }
   };
 
@@ -256,7 +275,40 @@ export default function ExamDetailPage() {
 
           {isActive && (
             <p className="px-1 text-[11px] text-green-400/90">
-              Published — marks are read-only until set back to Draft.
+              Published (Active) — admin marks are read-only. Teachers cannot enter marks until set back to Draft.
+            </p>
+          )}
+
+          {!isActive && !isReadOnly && (
+            <div className="mx-1 rounded-lg border border-warm-card-border bg-warm-card/40 px-3 py-2.5">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={teacherMarksEntry}
+                  disabled={savingTeacherMarks || isActive}
+                  onChange={(e) => void handleTeacherMarksToggle(e.target.checked)}
+                />
+                <span className="min-w-0">
+                  <span className="block text-xs text-warm-cream">Allow teachers to enter marks</span>
+                  <span className="mt-0.5 block text-[10px] leading-relaxed text-warm-muted">
+                    While the exam is in Draft (build stage), assigned teachers can enter marks in the teacher portal.
+                    Publishing to Active always locks teacher entry.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {!isActive && teacherMarksEntry && (
+            <p className="px-1 text-[11px] text-warm-muted">
+              Draft — teachers can enter marks for this exam.
+            </p>
+          )}
+
+          {!isActive && !teacherMarksEntry && (
+            <p className="px-1 text-[11px] text-yellow-200/90">
+              Draft — teacher marks entry is disabled by admin.
             </p>
           )}
 

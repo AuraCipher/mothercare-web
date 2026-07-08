@@ -6,9 +6,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   BookOpen,
   Calendar,
+  CalendarDays,
   Check,
   CheckSquare,
   ChevronDown,
+  ClipboardList,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -16,7 +18,6 @@ import {
   Menu,
   User,
   X,
-  CalendarDays,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { href: '/teacher/my-classes', icon: BookOpen, label: 'My Classes' },
   { href: '/teacher/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/teacher/attendance', icon: CheckSquare, label: 'Attendance' },
+  { href: '/teacher/marks', icon: ClipboardList, label: 'Marks' },
   { href: '/teacher/profile', icon: User, label: 'Profile' },
 ] as const;
 

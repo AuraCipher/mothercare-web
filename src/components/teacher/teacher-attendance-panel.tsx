@@ -20,6 +20,15 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function isSundayToday() {
+  return new Date().getDay() === 0;
+}
+
+function formatDisplayDate(date: string) {
+  const d = new Date(`${date}T12:00:00`);
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function statusClass(status: string | null) {
   if (status === 'present') return 'border-green-500/40 bg-green-500/10 text-green-300';
   if (status === 'absent') return 'border-red-500/40 bg-red-500/10 text-red-300';
@@ -52,7 +61,8 @@ export function TeacherAttendancePanel({
   }, [assignments]);
 
   const [groupId, setGroupId] = useState(initialGroupId || groupOptions[0]?.groupId || '');
-  const [date, setDate] = useState(todayStr());
+  const today = todayStr();
+  const [date] = useState(today);
   const [records, setRecords] = useState<
     Array<{ studentId: string; name: string; rollNumber: string | null; status: string | null }>
   >([]);
@@ -61,10 +71,12 @@ export function TeacherAttendancePanel({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [lastLoadedHash, setLastLoadedHash] = useState('');
+  const [canMarkToday, setCanMarkToday] = useState(!isSundayToday());
 
   const selected = groupOptions.find((a) => a.groupId === groupId);
   const isClassTeacher = groupId ? classTeacherGroupIds.includes(groupId) : false;
-  const isFuture = date > todayStr();
+  const isSunday = isSundayToday();
+  const canEdit = !readOnly && canMarkToday && !isSunday;
 
   const load = useCallback(async () => {
     if (!groupId || !date) return;
@@ -80,6 +92,9 @@ export function TeacherAttendancePanel({
           status: r.status,
         }));
         setRecords(mapped);
+        if (typeof res.data.canMarkToday === 'boolean') {
+          setCanMarkToday(res.data.canMarkToday);
+        }
         setLastLoadedHash(JSON.stringify(mapped.map((r: { studentId: string; status: string | null }) => ({
           studentId: r.studentId,
           status: r.status,
@@ -103,19 +118,19 @@ export function TeacherAttendancePanel({
   }, [load]);
 
   const setStatus = (studentId: string, status: StatusValue) => {
-    if (readOnly || isFuture) return;
+    if (!canEdit) return;
     setRecords((prev) =>
       prev.map((r) => (r.studentId === studentId ? { ...r, status } : r)),
     );
   };
 
   const markAll = (status: StatusValue) => {
-    if (readOnly || isFuture) return;
+    if (!canEdit) return;
     setRecords((prev) => prev.map((r) => ({ ...r, status })));
   };
 
   const save = async () => {
-    if (!groupId || readOnly || isFuture) return;
+    if (!groupId || !canEdit) return;
     setSaving(true);
     setMessage('');
     setError('');
@@ -170,16 +185,13 @@ export function TeacherAttendancePanel({
               ))}
             </select>
           </label>
-          <label className="block min-w-0">
+          <div className="block min-w-0">
             <span className="text-xs text-warm-muted">Date</span>
-            <input
-              type="date"
-              value={date}
-              max={todayStr()}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full min-w-0 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
-            />
-          </label>
+            <p className="mt-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
+              {formatDisplayDate(today)}
+            </p>
+            <p className="mt-1 text-[11px] text-warm-muted">Attendance can only be marked for today.</p>
+          </div>
         </div>
 
         {selected && (
@@ -189,7 +201,17 @@ export function TeacherAttendancePanel({
           </p>
         )}
 
-        {!readOnly && !isFuture && (
+        {!canEdit && (
+          <p className="teacher-break-text text-xs text-warm-muted">
+            {readOnly
+              ? 'Portal is read-only for this academic year.'
+              : isSunday
+                ? 'Attendance is not taken on Sundays.'
+                : 'Attendance cannot be marked right now.'}
+          </p>
+        )}
+
+        {canEdit && (
           <div className="teacher-action-row">
             {STATUSES.map((s) => (
               <button
@@ -205,9 +227,9 @@ export function TeacherAttendancePanel({
         )}
       </div>
 
-      {isFuture && (
+      {isSunday && !readOnly && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
-          Future dates cannot be marked.
+          Attendance cannot be marked on Sundays.
         </div>
       )}
 
@@ -257,7 +279,7 @@ export function TeacherAttendancePanel({
                     <button
                       key={s.value}
                       type="button"
-                      disabled={readOnly || isFuture}
+                      disabled={!canEdit}
                       onClick={() => setStatus(student.studentId, s.value)}
                       className={`min-w-[2.5rem] rounded-lg border px-2 py-1.5 text-[11px] transition-colors ${active ? statusClass(s.value) : 'border-warm-card-border text-warm-muted hover:text-warm-cream'}`}
                     >
@@ -271,7 +293,7 @@ export function TeacherAttendancePanel({
         </div>
       )}
 
-      {!readOnly && !isFuture && records.length > 0 && (
+      {canEdit && records.length > 0 && (
         <button
           type="button"
           disabled={saving || !isDirty}

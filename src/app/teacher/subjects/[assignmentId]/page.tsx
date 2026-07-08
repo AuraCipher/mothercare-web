@@ -7,11 +7,12 @@ import {
   TeacherPageShell,
   TeacherStubNotice,
 } from '@/components/teacher/teacher-page-shell';
+import { TeacherQuickLink } from '@/components/teacher/teacher-ui';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { assignmentById } from '@/lib/teacher/scope';
 import { formatGroupLabel } from '@/lib/teacher/types';
 
-const STUB_SECTIONS = ['Students', 'Attendance', 'Marks', 'Materials'] as const;
+const STUB_SECTIONS = ['Students', 'Materials'] as const;
 
 export default function TeacherSubjectPage() {
   const params = useParams();
@@ -22,6 +23,8 @@ export default function TeacherSubjectPage() {
   const assignment = assignmentById(data.assignments, assignmentId);
   if (!assignment) return <TeacherAccessDenied />;
 
+  const marksHref = `/teacher/marks?groupId=${assignment.groupId}&subjectId=${assignment.subjectId}`;
+
   return (
     <TeacherPageShell
       title={assignment.subject.name}
@@ -30,21 +33,18 @@ export default function TeacherSubjectPage() {
       <div className="teacher-action-row text-xs">
         <Link
           href={`/teacher/attendance?groupId=${assignment.groupId}`}
-          className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-1.5 text-warm-cream"
+          className="teacher-btn teacher-btn--primary text-xs"
         >
           Mark attendance
         </Link>
-        <Link
-          href={`/teacher/classes/${assignment.groupId}`}
-          className="rounded-lg border border-warm-card-border px-3 py-1.5 text-warm-muted hover:text-warm-cream"
-        >
-          ← Class hub
+        <Link href={marksHref} className="teacher-btn teacher-btn--secondary text-xs">
+          Enter marks
         </Link>
         <Link
-          href="/teacher/my-classes"
-          className="rounded-lg border border-warm-card-border px-3 py-1.5 text-warm-muted hover:text-warm-cream"
+          href={`/teacher/classes/${assignment.groupId}`}
+          className="teacher-btn teacher-btn--ghost text-xs"
         >
-          All classes
+          ← Class hub
         </Link>
       </div>
 
@@ -72,6 +72,16 @@ export default function TeacherSubjectPage() {
       </div>
 
       <div className="teacher-grid-cards">
+        <TeacherQuickLink
+          href={marksHref}
+          title="Marks"
+          body="View and enter exam marks for this subject"
+        />
+        <TeacherQuickLink
+          href={`/teacher/attendance?groupId=${assignment.groupId}`}
+          title="Attendance"
+          body="Daily attendance for this class"
+        />
         {STUB_SECTIONS.map((section) => (
           <div
             key={section}
@@ -83,7 +93,7 @@ export default function TeacherSubjectPage() {
         ))}
       </div>
 
-      <TeacherStubNotice feature="Subject workflows (attendance entry, marks, student list)" />
+      <TeacherStubNotice feature="Student list and learning materials" />
     </TeacherPageShell>
   );
 }

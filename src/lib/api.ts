@@ -579,6 +579,7 @@ export const api = {
     startDate?: string;
     endDate?: string | null;
     status?: 'DRAFT' | 'ACTIVE';
+    teacherMarksEntry?: boolean;
   }) =>
     apiRequest(`/admin/result/exams/${examId}`, {
       method: 'PATCH',
@@ -915,6 +916,27 @@ export const api = {
 
   teacherProfile: () =>
     apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`),
+
+  teacherMarksSubjects: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/teacher/marks/subjects${scopeQuery()}`),
+
+  teacherMarksGrid: (examClassSubjectId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/teacher/marks/grid/${examClassSubjectId}${scopeQuery()}`,
+    ),
+
+  teacherSaveMarks: (
+    examClassSubjectId: string,
+    body: {
+      totalMarks?: number;
+      passingMarks?: number;
+      entries: Array<{ studentId: string; marksObtained?: number | null; isAbsent?: boolean }>;
+    },
+  ) =>
+    apiRequest(`/teacher/marks/grid/${examClassSubjectId}${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(body)),
+    }),
 
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     apiRequest('/auth/password', {
