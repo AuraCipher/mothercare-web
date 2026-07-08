@@ -14,6 +14,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   MapPin,
   Menu,
   User,
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: '/teacher/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/teacher/attendance', icon: CheckSquare, label: 'Attendance' },
   { href: '/teacher/marks', icon: ClipboardList, label: 'Marks' },
+  { href: '/teacher/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/teacher/profile', icon: User, label: 'Profile' },
 ] as const;
 
