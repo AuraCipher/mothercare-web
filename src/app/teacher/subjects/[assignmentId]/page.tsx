@@ -8,6 +8,7 @@ import {
   TeacherPageShell,
 } from '@/components/teacher/teacher-page-shell';
 import { TeacherQuickLink } from '@/components/teacher/teacher-ui';
+import { TeacherSubjectTabs } from '@/components/teacher/teacher-subject-tabs';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { assignmentById } from '@/lib/teacher/scope';
 import { formatGroupLabel } from '@/lib/teacher/types';
@@ -18,55 +19,49 @@ export default function TeacherSubjectPage() {
   const assignmentId = typeof params.assignmentId === 'string' ? params.assignmentId : '';
   const { data } = useTeacherBootstrap();
   const [students, setStudents] = useState<any[]>([]);
+  const [showParentContacts, setShowParentContacts] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [studentsError, setStudentsError] = useState('');
-  if (!data) return null;
 
-  const assignment = assignmentById(data.assignments, assignmentId);
-  if (!assignment) return <TeacherAccessDenied />;
-
-  const marksHref = `/teacher/marks?groupId=${assignment.groupId}&subjectId=${assignment.subjectId}`;
-  const classHubHref = `/teacher/classes/${assignment.groupId}`;
+  const assignment = data ? assignmentById(data.assignments, assignmentId) : undefined;
   const rosterPreview = useMemo(() => students.slice(0, 8), [students]);
 
   useEffect(() => {
+    if (!assignment) return;
     setLoadingStudents(true);
     setStudentsError('');
     api
       .teacherClassStudents(assignment.groupId)
       .then((res) => {
-        if (res.success) setStudents(res.data.students || []);
-        else setStudentsError(res.message || 'Unable to load students');
+        if (res.success) {
+          setStudents(res.data.students || []);
+          setShowParentContacts(!!res.data.showParentContacts);
+        } else setStudentsError(res.message || 'Unable to load students');
       })
       .catch(() => {
         setStudents([]);
         setStudentsError('Unable to load students');
       })
       .finally(() => setLoadingStudents(false));
-  }, [assignment.groupId]);
+  }, [assignment?.groupId]);
+
+  if (!data) return null;
+  if (!assignment) return <TeacherAccessDenied />;
+
+  const marksHref = `/teacher/marks?groupId=${assignment.groupId}&subjectId=${assignment.subjectId}`;
+  const classHubHref = `/teacher/classes/${assignment.groupId}`;
 
   return (
     <TeacherPageShell
       title={assignment.subject.name}
       subtitle={formatGroupLabel(assignment.group)}
     >
-      <div className="teacher-action-row text-xs">
-        <Link
-          href={`/teacher/attendance?groupId=${assignment.groupId}`}
-          className="teacher-btn teacher-btn--primary text-xs"
-        >
-          Mark attendance
-        </Link>
-        <Link href={marksHref} className="teacher-btn teacher-btn--secondary text-xs">
-          Enter marks
-        </Link>
-        <Link
-          href={classHubHref}
-          className="teacher-btn teacher-btn--ghost text-xs"
-        >
-          ← Class hub
-        </Link>
-      </div>
+      <TeacherSubjectTabs
+        active="students"
+        assignmentId={assignment.id}
+        groupId={assignment.groupId}
+        subjectId={assignment.subjectId}
+      />
 
       <div className="teacher-card rounded-xl border border-warm-card-border bg-warm-card p-4">
         <dl className="teacher-dl-grid text-sm">
@@ -121,6 +116,12 @@ export default function TeacherSubjectPage() {
           </Link>
         </div>
 
+        {showParentContacts && (
+          <p className="mb-3 text-[11px] text-warm-muted">
+            Parent contact numbers are visible per school policy.
+          </p>
+        )}
+
         {loadingStudents ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -141,6 +142,16 @@ export default function TeacherSubjectPage() {
                   <div className="min-w-0">
                     <p className="teacher-card__title truncate text-sm text-warm-cream">{s.name}</p>
                     <p className="text-xs text-warm-muted">Roll {s.rollNumber || '—'}</p>
+                    {showParentContacts && s.parentContacts?.length > 0 && (
+                      <p className="mt-1 text-[11px] text-warm-muted">
+                        {s.parentContacts.map((p: any, i: number) => (
+                          <span key={i}>
+                            {i > 0 ? ' · ' : ''}
+                            {p.relation}: {p.phone || p.whatsapp || '—'}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}

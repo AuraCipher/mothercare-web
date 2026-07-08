@@ -85,6 +85,17 @@ function TeacherMarksContent() {
       title="Marks"
       subtitle="Enter exam marks for your assigned subjects"
     >
+      {data.portal.isHod && (
+        <div className="mb-4">
+          <Link
+            href="/teacher/hod/marks"
+            className="inline-flex rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-2 text-xs text-warm-cream"
+          >
+            Department marks (HOD view)
+          </Link>
+        </div>
+      )}
+
       {data.portal.isReadOnly && (
         <TeacherAlert tone="warning">Portal is read-only for this academic year.</TeacherAlert>
       )}

@@ -17,6 +17,7 @@ import {
   Megaphone,
   MapPin,
   Menu,
+  Bell,
   User,
   X,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { href: '/teacher/attendance', icon: CheckSquare, label: 'Attendance' },
   { href: '/teacher/marks', icon: ClipboardList, label: 'Marks' },
   { href: '/teacher/announcements', icon: Megaphone, label: 'Announcements' },
+  { href: '/teacher/notifications', icon: Bell, label: 'Notifications' },
   { href: '/teacher/profile', icon: User, label: 'Profile' },
 ] as const;
 

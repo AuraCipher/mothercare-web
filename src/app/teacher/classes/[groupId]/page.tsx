@@ -17,6 +17,7 @@ export default function TeacherClassHubPage() {
   const groupId = typeof params.groupId === 'string' ? params.groupId : '';
   const { data } = useTeacherBootstrap();
   const [students, setStudents] = useState<any[]>([]);
+  const [showParentContacts, setShowParentContacts] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [studentsError, setStudentsError] = useState('');
 
@@ -27,8 +28,10 @@ export default function TeacherClassHubPage() {
     api
       .teacherClassStudents(groupId)
       .then((res) => {
-        if (res.success) setStudents(res.data.students || []);
-        else setStudentsError(res.message || 'Unable to load students');
+        if (res.success) {
+          setStudents(res.data.students || []);
+          setShowParentContacts(!!res.data.showParentContacts);
+        } else setStudentsError(res.message || 'Unable to load students');
       })
       .catch(() => {
         setStudents([]);
@@ -61,6 +64,12 @@ export default function TeacherClassHubPage() {
         >
           Mark attendance
         </Link>
+        <Link
+          href="/teacher/announcements"
+          className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream"
+        >
+          Announcements
+        </Link>
       </div>
 
       <div className="teacher-grid-cards">
@@ -82,6 +91,9 @@ export default function TeacherClassHubPage() {
       <div className="teacher-card rounded-xl border border-warm-card-border bg-warm-card p-4">
         <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
           <h2 className="text-sm font-medium text-warm-cream">Students ({students.length})</h2>
+          {showParentContacts && (
+            <span className="text-[10px] text-warm-muted">Parent contacts enabled</span>
+          )}
         </div>
         {loadingStudents ? (
           <div className="space-y-2">
@@ -102,6 +114,16 @@ export default function TeacherClassHubPage() {
                 <div className="min-w-0">
                   <p className="teacher-card__title truncate text-sm text-warm-cream">{s.name}</p>
                   <p className="text-xs text-warm-muted">Roll {s.rollNumber || '—'}</p>
+                  {showParentContacts && s.parentContacts?.length > 0 && (
+                    <p className="mt-1 text-[11px] text-warm-muted">
+                      {s.parentContacts.map((p: any, i: number) => (
+                        <span key={i}>
+                          {i > 0 ? ' · ' : ''}
+                          {p.relation}: {p.phone || p.whatsapp || '—'}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}

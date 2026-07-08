@@ -24,13 +24,17 @@ export function TeacherPageError({ message }: { message: string }) {
   );
 }
 
-export function TeacherAccessDenied({ backHref = '/teacher/my-classes' }: { backHref?: string }) {
+export function TeacherAccessDenied({
+  backHref = '/teacher/my-classes',
+  message = 'You are not assigned to this class or subject.',
+}: {
+  backHref?: string;
+  message?: string;
+}) {
   return (
     <div className="teacher-page">
       <div className="rounded-xl border border-warm-card-border bg-warm-card p-6 text-center sm:p-8">
-        <p className="teacher-break-text text-sm text-warm-cream">
-          You are not assigned to this class or subject.
-        </p>
+        <p className="teacher-break-text text-sm text-warm-cream">{message}</p>
         <Link
           href={backHref}
           className="mt-4 inline-block text-xs text-warm-muted underline hover:text-warm-cream"

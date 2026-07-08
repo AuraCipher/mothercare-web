@@ -15,6 +15,9 @@ interface BranchDetail {
   phone: string | null;
   email: string | null;
   isActive: boolean;
+  teacherParentContactEnabled?: boolean;
+  teachersCanMarkAttendance?: boolean;
+  teachersCanEnterMarks?: boolean;
   _count: { academicYears: number; branchMembers: number };
   academicYears: { id: string; status: string }[];
 }
@@ -59,6 +62,12 @@ export default function BranchDetailPage() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const [creatingAy, setCreatingAy] = useState(false);
   const [createAyError, setCreateAyError] = useState('');
+  const [portalSettings, setPortalSettings] = useState({
+    teacherParentContactEnabled: false,
+    teachersCanMarkAttendance: true,
+    teachersCanEnterMarks: true,
+  });
+  const [savingPortalSettings, setSavingPortalSettings] = useState(false);
 
   // Confirm modal
   const [confirm, setConfirm] = useState<{
@@ -83,6 +92,11 @@ export default function BranchDetailPage() {
         api.getAcademicYears(branchId, statusFilter || undefined),
       ]);
       setBranch(branchData.data);
+      setPortalSettings({
+        teacherParentContactEnabled: !!branchData.data.teacherParentContactEnabled,
+        teachersCanMarkAttendance: branchData.data.teachersCanMarkAttendance !== false,
+        teachersCanEnterMarks: branchData.data.teachersCanEnterMarks !== false,
+      });
       setAcademicYears(ayData.data || []);
     } catch (e: any) {
       setError(e.message || 'Failed to load branch data');
@@ -204,6 +218,20 @@ export default function BranchDetailPage() {
     );
   };
 
+  const handleSavePortalSettings = async () => {
+    if (!branch) return;
+    setSavingPortalSettings(true);
+    try {
+      await api.updateBranch(branch.id, portalSettings);
+      showToast('success', 'Teacher portal settings saved');
+      loadData();
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to save settings');
+    } finally {
+      setSavingPortalSettings(false);
+    }
+  };
+
   if (loading && !branch) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
@@ -267,6 +295,59 @@ export default function BranchDetailPage() {
             {branch!.email && <span>✉️ {branch!.email}</span>}
           </div>
         )}
+      </div>
+
+      <div className="mb-8 rounded-xl border border-warm-card-border bg-warm-card p-5">
+        <h2 className="mb-3 text-sm font-medium text-warm-cream">Teacher portal policy</h2>
+        <div className="space-y-3 text-sm">
+          <label className="flex items-center gap-2 text-warm-cream">
+            <input
+              type="checkbox"
+              checked={portalSettings.teacherParentContactEnabled}
+              onChange={(e) =>
+                setPortalSettings((s) => ({
+                  ...s,
+                  teacherParentContactEnabled: e.target.checked,
+                }))
+              }
+            />
+            Enable parent contact numbers for permitted teachers
+          </label>
+          <label className="flex items-center gap-2 text-warm-cream">
+            <input
+              type="checkbox"
+              checked={portalSettings.teachersCanMarkAttendance}
+              onChange={(e) =>
+                setPortalSettings((s) => ({
+                  ...s,
+                  teachersCanMarkAttendance: e.target.checked,
+                }))
+              }
+            />
+            Teachers can mark attendance
+          </label>
+          <label className="flex items-center gap-2 text-warm-cream">
+            <input
+              type="checkbox"
+              checked={portalSettings.teachersCanEnterMarks}
+              onChange={(e) =>
+                setPortalSettings((s) => ({
+                  ...s,
+                  teachersCanEnterMarks: e.target.checked,
+                }))
+              }
+            />
+            Teachers can enter marks
+          </label>
+        </div>
+        <button
+          type="button"
+          onClick={handleSavePortalSettings}
+          disabled={savingPortalSettings}
+          className="mt-4 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] disabled:opacity-60"
+        >
+          {savingPortalSettings ? 'Saving…' : 'Save portal policy'}
+        </button>
       </div>
 
       {/* Academic Years section */}

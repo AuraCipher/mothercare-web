@@ -105,7 +105,15 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  updateBranch: (id: string, data: { name?: string; address?: string; phone?: string; email?: string }) =>
+  updateBranch: (id: string, data: {
+    name?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    teacherParentContactEnabled?: boolean;
+    teachersCanMarkAttendance?: boolean;
+    teachersCanEnterMarks?: boolean;
+  }) =>
     apiRequest(`/admin/branches/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -462,6 +470,8 @@ export const api = {
     fatherName?: string; cardId?: string; severeDisease?: string; experience?: string; bio?: string;
     profilePhotoId?: string;
     portalAccess?: 'FULL' | 'READ_ONLY' | 'FROZEN';
+    canViewParentContact?: boolean;
+    hodParentContactScope?: 'ASSIGNED_ONLY' | 'DEPARTMENT_ALL';
   }) =>
     apiRequest(`/admin/teachers/${id}`, {
       method: 'PUT',
@@ -947,6 +957,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(scopeBody(body)),
     }),
+
+  teacherHodDepartment: () =>
+    apiRequest<{ success: boolean; data: any }>(`/teacher/hod/department${scopeQuery()}`),
+
+  teacherHodMarksSubjects: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/teacher/hod/marks/subjects${scopeQuery()}`),
+
+  teacherNotifications: (opts?: { unreadOnly?: boolean; limit?: number }) =>
+    apiRequest<{ success: boolean; data: { items: any[]; unreadCount: number } }>(
+      `/teacher/notifications${scopeQuery({
+        unreadOnly: opts?.unreadOnly ? 'true' : undefined,
+        limit: opts?.limit ? String(opts.limit) : undefined,
+      })}`,
+    ),
+
+  teacherMarkNotificationRead: (id: string) =>
+    apiRequest(`/teacher/notifications/${id}/read${scopeQuery()}`, { method: 'PATCH' }),
+
+  teacherMarkAllNotificationsRead: () =>
+    apiRequest(`/teacher/notifications/read-all${scopeQuery()}`, { method: 'POST' }),
 
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     apiRequest('/auth/password', {
