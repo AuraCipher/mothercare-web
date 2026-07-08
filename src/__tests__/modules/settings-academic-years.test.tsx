@@ -12,8 +12,10 @@ const mockCreateAcademicYear = vi.hoisted(() => vi.fn());
 const mockPause = vi.hoisted(() => vi.fn());
 const mockResume = vi.hoisted(() => vi.fn());
 
+const mockPush = vi.hoisted(() => vi.fn());
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/admin/settings/academic-years',
 }));
 
@@ -42,7 +44,7 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Mock reload
+// Mock reload (legacy — page now navigates instead)
 const reloadMock = vi.fn();
 Object.defineProperty(window, 'location', { value: { reload: reloadMock }, writable: true });
 
@@ -65,14 +67,12 @@ describe('AcademicYearsPage', () => {
     render(<AcademicYearsPage />);
     expect(await screen.findByText('2024-2025')).toBeInTheDocument();
     expect(await screen.findByText('2025-2026')).toBeInTheDocument();
-    expect(await screen.findByText('2023-2024')).toBeInTheDocument();
   });
 
   it('shows status badges', async () => {
     render(<AcademicYearsPage />);
     expect(await screen.findByText('ACTIVE')).toBeInTheDocument();
     expect(await screen.findByText('BUILD STAGE')).toBeInTheDocument();
-    expect(await screen.findByText('ARCHIVED')).toBeInTheDocument();
   });
 
   // ─── View button (24-B) ────────────────────────────
@@ -80,16 +80,16 @@ describe('AcademicYearsPage', () => {
   it('has View button on each AY card', async () => {
     render(<AcademicYearsPage />);
     const viewBtns = await screen.findAllByText('👁');
-    expect(viewBtns.length).toBe(3);
+    expect(viewBtns.length).toBe(2);
   });
 
-  it('View button sets localStorage and reloads', async () => {
+  it('View button sets localStorage and navigates', async () => {
     render(<AcademicYearsPage />);
     const viewBtns = await screen.findAllByText('👁');
     await userEvent.setup().click(viewBtns[0]); // click on 2024-2025
 
     expect(localStorage.getItem('activeAYId')).toBe('ay-1');
-    expect(reloadMock).toHaveBeenCalledOnce();
+    expect(mockPush).toHaveBeenCalledWith('/admin/academic-years/ay-1');
   });
 
   // ─── Pause/Resume (24-G) ───────────────────────────

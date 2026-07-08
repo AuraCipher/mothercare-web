@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 
 const mockGetStudent = vi.hoisted(() => vi.fn());
 const mockGetSectionSubjects = vi.hoisted(() => vi.fn());
+const mockGetStudentSchoolTenures = vi.hoisted(() => vi.fn());
+const mockGetSections = vi.hoisted(() => vi.fn());
 const mockUpdateStudent = vi.hoisted(() => vi.fn());
 const mockPush = vi.hoisted(() => vi.fn());
 const mockApiRequest = vi.hoisted(() => vi.fn());
@@ -15,14 +17,20 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  api: { getStudent: mockGetStudent, updateStudent: mockUpdateStudent, getSectionSubjects: mockGetSectionSubjects },
+  api: {
+    getStudent: mockGetStudent,
+    updateStudent: mockUpdateStudent,
+    getSectionSubjects: mockGetSectionSubjects,
+    getStudentSchoolTenures: mockGetStudentSchoolTenures,
+    getSections: mockGetSections,
+  },
   apiRequest: mockApiRequest,
 }));
 
 vi.mock('@/components/toast', () => ({ showToast: vi.fn() }));
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1' };
+  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
   return { getItem: (k: string) => store[k] || null, setItem: () => {}, removeItem: () => {}, clear: () => {} };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
@@ -56,7 +64,13 @@ const mockSubjects = [
 import StudentDetailPage from '@/app/admin/students/[id]/page';
 
 describe('StudentDetailPage — header', () => {
-  beforeEach(() => { vi.clearAllMocks(); mockGetStudent.mockResolvedValue({ success: true, data: baseStudent }); mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetStudent.mockResolvedValue({ success: true, data: baseStudent });
+    mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects });
+    mockGetStudentSchoolTenures.mockResolvedValue({ data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [] });
+  });
 
   it('shows student name', async () => {
     render(<StudentDetailPage />);
@@ -79,7 +93,13 @@ describe('StudentDetailPage — header', () => {
 });
 
 describe('StudentDetailPage — 7 sections', () => {
-  beforeEach(() => { vi.clearAllMocks(); mockGetStudent.mockResolvedValue({ success: true, data: baseStudent }); mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetStudent.mockResolvedValue({ success: true, data: baseStudent });
+    mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects });
+    mockGetStudentSchoolTenures.mockResolvedValue({ data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [] });
+  });
 
   it('renders all 7 section headers', async () => {
     render(<StudentDetailPage />);

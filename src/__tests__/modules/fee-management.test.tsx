@@ -602,21 +602,21 @@ describe('FeeReportsPage', () => {
     global.fetch = mockFetch({ success: true, data: {} });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Summary')).toBeInTheDocument();
+    expect(await screen.findByText('Standard')).toBeInTheDocument();
   });
 
   it('shows Defaulters tab', async () => {
     global.fetch = mockFetch({ success: true, data: {} });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('Defaulters')).toBeInTheDocument();
+    expect(await screen.findByText('Defaulter List')).toBeInTheDocument();
   });
 
   it('shows By Class tab', async () => {
     global.fetch = mockFetch({ success: true, data: {} });
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('By Class')).toBeInTheDocument();
+    expect(await screen.findByText('Class Summary')).toBeInTheDocument();
   });
 
   it('shows Payment Methods tab', async () => {
@@ -627,10 +627,25 @@ describe('FeeReportsPage', () => {
   });
 
   it('renders summary stats cards', async () => {
-    global.fetch = mockFetch(mockAnalytics({ totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000, pendingCount: 45, totalStudents: 100, collectionRate: 60 }));
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/sections')) {
+        return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [] }) } as Response);
+      }
+      if (url.includes('/students')) {
+        return Promise.resolve({ json: () => Promise.resolve({ success: true, data: [], meta: { totalPages: 1 } }) } as Response);
+      }
+      return Promise.resolve({
+        json: () => Promise.resolve(mockAnalytics({
+          totalDue: 50000000, totalCollected: 30000000, outstanding: 20000000,
+          pendingCount: 45, totalStudents: 100, collectionRate: 60,
+        })),
+      } as Response);
+    }) as typeof fetch;
     const { default: FeeReportsPage } = await import('@/app/admin/fees/reports/page');
     render(<FeeReportsPage />);
-    expect(await screen.findByText('500,000')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('Generate Report'));
+    expect(await screen.findByText('500,000 PKR')).toBeInTheDocument();
   });
 });
 

@@ -6,16 +6,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../helpers/test-utils';
 
 const mockGetStudent = vi.hoisted(() => vi.fn());
+const mockGetStudentSchoolTenures = vi.hoisted(() => vi.fn());
+const mockGetSections = vi.hoisted(() => vi.fn());
 const mockRequest = vi.hoisted(() => vi.fn());
 const mockPush = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   useParams: () => ({ id: 's1' }),
+  usePathname: () => '/admin/students/s1',
 }));
 
 vi.mock('@/lib/api', () => ({
-  api: { getStudent: mockGetStudent },
+  api: {
+    getStudent: mockGetStudent,
+    getStudentSchoolTenures: mockGetStudentSchoolTenures,
+    getSections: mockGetSections,
+  },
   apiRequest: mockRequest,
 }));
 
@@ -41,6 +48,8 @@ describe('StudentDetailPage — Status Management', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetStudent.mockResolvedValue({ success: true, data: mockStudent });
+    mockGetStudentSchoolTenures.mockResolvedValue({ data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [] });
     mockRequest.mockResolvedValue({ success: true, data: [], message: 'OK' });
     global.fetch = vi.fn(() => Promise.resolve({ json: () => Promise.resolve({ success: true }) })) as any;
   });

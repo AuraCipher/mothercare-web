@@ -4,18 +4,21 @@ import userEvent from '@testing-library/user-event';
 
 const mockGetTeacher = vi.hoisted(() => vi.fn());
 const mockGetTeacherTimetables = vi.hoisted(() => vi.fn());
+const mockGetTeacherTenures = vi.hoisted(() => vi.fn());
 const mockDeactivateTeacher = vi.hoisted(() => vi.fn());
 const mockReactivateTeacher = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
   useParams: () => ({ id: 'tp-1' }),
+  usePathname: () => '/admin/teachers/tp-1',
 }));
 
 vi.mock('@/lib/api', () => ({
   api: {
     getTeacher: mockGetTeacher,
     getTeacherTimetables: mockGetTeacherTimetables,
+    getTeacherTenures: mockGetTeacherTenures,
     deleteTeacher: vi.fn(),
     deactivateTeacher: mockDeactivateTeacher,
     reactivateTeacher: mockReactivateTeacher,
@@ -28,7 +31,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt' };
+  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
   return {
     getItem: (key: string) => store[key] || null,
     setItem: (key: string, value: string) => { store[key] = value; },
@@ -71,6 +74,7 @@ describe('TeacherDetailPage — rendering', () => {
     vi.clearAllMocks();
     mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
     mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
   });
 
   it('renders teacher name', async () => {
@@ -141,6 +145,7 @@ describe('TeacherDetailPage — rendering', () => {
 describe('TeacherDetailPage — assignments section', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
     mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
@@ -165,6 +170,7 @@ describe('TeacherDetailPage — assignments section', () => {
 describe('TeacherDetailPage — deactivate/reactivate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
     mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
@@ -194,6 +200,7 @@ describe('TeacherDetailPage — deactivate/reactivate', () => {
 describe('TeacherDetailPage — loading & error', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
     mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
@@ -217,6 +224,8 @@ describe('TeacherDetailPage — assignment management', () => {
     localStorage.setItem('activeBranchId', 'branch-1');
     localStorage.setItem('activeAYId', 'ay-1');
     mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
+    mockGetTeacherTimetables.mockResolvedValue({ success: true, data: [] });
   });
 
   afterEach(() => {
@@ -314,6 +323,7 @@ describe('TeacherDetailPage — teacher timetables', () => {
     vi.clearAllMocks();
     localStorage.setItem('activeBranchId', 'branch-1');
     mockGetTeacher.mockResolvedValue({ success: true, data: mockTeacherData });
+    mockGetTeacherTenures.mockResolvedValue({ data: [] });
     mockGetTeacherTimetables.mockResolvedValue({ success: true, data: mockTimetableData });
   });
 

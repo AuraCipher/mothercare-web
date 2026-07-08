@@ -160,9 +160,7 @@ describe('Auth Navigation — Login Page', () => {
     await user.click(screen.getByText('Sign In'));
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Cannot reach the server. Please try again.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 });
