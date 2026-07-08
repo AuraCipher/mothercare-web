@@ -948,6 +948,16 @@ export const api = {
   teacherProfile: () =>
     apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`),
 
+  teacherUpdateProfile: (body: {
+    phone?: string | null;
+    emergencyContact?: string | null;
+    address?: string | null;
+  }) =>
+    apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`, {
+      method: 'PUT',
+      body: JSON.stringify(scopeBody(body)),
+    }),
+
   teacherAnnouncements: () =>
     apiRequest<{ success: boolean; data: any[] }>(`/teacher/announcements${scopeQuery()}`),
 

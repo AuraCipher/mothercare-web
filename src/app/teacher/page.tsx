@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { AssignmentCard } from '@/components/teacher/assignment-card';
-import { TeacherPageShell } from '@/components/teacher/teacher-page-shell';
+import { TeacherNoAssignmentsState, TeacherPageShell } from '@/components/teacher/teacher-page-shell';
 import {
   TeacherQuickLink,
   TeacherSection,
@@ -130,9 +130,7 @@ export default function TeacherHomePage() {
           </div>
         </TeacherSection>
       ) : (
-        <div className="teacher-card rounded-xl border border-warm-card-border bg-warm-card p-6 text-center text-sm text-warm-muted sm:p-8">
-          No classes assigned yet. Contact school administration.
-        </div>
+        <TeacherNoAssignmentsState />
       )}
 
       <TeacherSection title="Quick actions">

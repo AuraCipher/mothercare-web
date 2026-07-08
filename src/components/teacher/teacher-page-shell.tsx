@@ -46,6 +46,30 @@ export function TeacherAccessDenied({
   );
 }
 
+export function TeacherFrozenState({ reason }: { reason?: string }) {
+  return (
+    <div className="teacher-page flex min-h-[50vh] items-center justify-center">
+      <div className="max-w-md rounded-xl border border-warm-card-border bg-warm-card p-8 text-center">
+        <p className="text-lg font-light text-warm-cream">Portal access frozen</p>
+        <p className="teacher-break-text mt-3 text-sm text-warm-muted">
+          {reason || 'Your teacher portal access has been paused by school administration.'}
+        </p>
+        <p className="mt-4 text-xs text-warm-muted">You can still sign out from the menu.</p>
+      </div>
+    </div>
+  );
+}
+
+export function TeacherNoAssignmentsState() {
+  return (
+    <div className="rounded-xl border border-dashed border-warm-card-border bg-warm-card/50 p-8 text-center">
+      <p className="text-sm text-warm-cream">No classes assigned</p>
+      <p className="teacher-break-text mt-2 text-xs text-warm-muted">
+        Contact school administration to assign you to classes for this academic year.
+      </p>
+    </div>
+  );
+}
 export function TeacherStubNotice({ feature }: { feature: string }) {
   return (
     <div className="teacher-break-text rounded-lg border border-dashed border-warm-card-border bg-warm-card/50 px-4 py-3 text-xs text-warm-muted">
@@ -66,6 +90,9 @@ export function TeacherPageShell({ title, subtitle, children }: TeacherPageShell
   if (loading) return <TeacherPageLoading />;
   if (error) return <TeacherPageError message={error} />;
   if (!data) return null;
+  if (data.portal.isFrozen) {
+    return <TeacherFrozenState reason={data.portal.freezeReason} />;
+  }
 
   return (
     <div className="teacher-page space-y-5 sm:space-y-6">

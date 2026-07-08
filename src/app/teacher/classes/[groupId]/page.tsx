@@ -7,6 +7,11 @@ import {
   TeacherAccessDenied,
   TeacherPageShell,
 } from '@/components/teacher/teacher-page-shell';
+import {
+  attendanceStatusClass,
+  attendanceStatusLabel,
+} from '@/components/teacher/teacher-subject-tabs';
+import { TeacherStatCard } from '@/components/teacher/teacher-ui';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { assignmentsForGroup, canAccessGroup } from '@/lib/teacher/scope';
 import { formatGroupLabel } from '@/lib/teacher/types';
@@ -17,6 +22,7 @@ export default function TeacherClassHubPage() {
   const groupId = typeof params.groupId === 'string' ? params.groupId : '';
   const { data } = useTeacherBootstrap();
   const [students, setStudents] = useState<any[]>([]);
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
   const [showParentContacts, setShowParentContacts] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [studentsError, setStudentsError] = useState('');
@@ -30,6 +36,7 @@ export default function TeacherClassHubPage() {
       .then((res) => {
         if (res.success) {
           setStudents(res.data.students || []);
+          setAttendanceSummary(res.data.attendanceSummary ?? null);
           setShowParentContacts(!!res.data.showParentContacts);
         } else setStudentsError(res.message || 'Unable to load students');
       })
@@ -57,6 +64,26 @@ export default function TeacherClassHubPage() {
       title={formatGroupLabel(group)}
       subtitle={isClassTeacher ? 'You are the class teacher for this group' : 'Your subjects in this class'}
     >
+      {attendanceSummary && (
+        <div className="teacher-stat-grid">
+          <TeacherStatCard
+            label="Today's attendance"
+            value={`${attendanceSummary.markedToday}/${attendanceSummary.studentCount}`}
+            hint="Marked today"
+          />
+          <TeacherStatCard label="Present" value={attendanceSummary.presentToday} />
+          <TeacherStatCard label="Absent" value={attendanceSummary.absentToday} />
+          <TeacherStatCard
+            label="30-day rate"
+            value={
+              attendanceSummary.attendanceRate30d != null
+                ? `${attendanceSummary.attendanceRate30d}%`
+                : '—'
+            }
+          />
+        </div>
+      )}
+
       <div className="teacher-action-row">
         <Link
           href={`/teacher/attendance?groupId=${groupId}`}
@@ -125,6 +152,9 @@ export default function TeacherClassHubPage() {
                     </p>
                   )}
                 </div>
+                <span className={`shrink-0 text-xs ${attendanceStatusClass(s.todayAttendance)}`}>
+                  {attendanceStatusLabel(s.todayAttendance)}
+                </span>
               </li>
             ))}
           </ul>

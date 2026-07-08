@@ -43,6 +43,8 @@ interface Props {
   classTeacherGroupIds: string[];
   readOnly: boolean;
   initialGroupId?: string;
+  /** When set, class selector is hidden and this group is fixed. */
+  lockGroupId?: string;
 }
 
 export function TeacherAttendancePanel({
@@ -50,6 +52,7 @@ export function TeacherAttendancePanel({
   classTeacherGroupIds,
   readOnly,
   initialGroupId,
+  lockGroupId,
 }: Props) {
   const groupOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -60,7 +63,7 @@ export function TeacherAttendancePanel({
     });
   }, [assignments]);
 
-  const [groupId, setGroupId] = useState(initialGroupId || groupOptions[0]?.groupId || '');
+  const [groupId, setGroupId] = useState(lockGroupId || initialGroupId || groupOptions[0]?.groupId || '');
   const today = todayStr();
   const [date] = useState(today);
   const [records, setRecords] = useState<
@@ -110,8 +113,9 @@ export function TeacherAttendancePanel({
   }, [groupId, date]);
 
   useEffect(() => {
-    if (initialGroupId) setGroupId(initialGroupId);
-  }, [initialGroupId]);
+    if (lockGroupId) setGroupId(lockGroupId);
+    else if (initialGroupId) setGroupId(initialGroupId);
+  }, [initialGroupId, lockGroupId]);
 
   useEffect(() => {
     load();
@@ -171,20 +175,29 @@ export function TeacherAttendancePanel({
     <div className="space-y-4">
       <div className="teacher-card space-y-3 rounded-xl border border-warm-card-border bg-warm-card p-4">
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-          <label className="block min-w-0">
-            <span className="text-xs text-warm-muted">Class</span>
-            <select
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="mt-1 w-full min-w-0 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
-            >
-              {groupOptions.map((a) => (
-                <option key={a.groupId} value={a.groupId}>
-                  {formatGroupLabel(a.group)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!lockGroupId ? (
+            <label className="block min-w-0">
+              <span className="text-xs text-warm-muted">Class</span>
+              <select
+                value={groupId}
+                onChange={(e) => setGroupId(e.target.value)}
+                className="mt-1 w-full min-w-0 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
+              >
+                {groupOptions.map((a) => (
+                  <option key={a.groupId} value={a.groupId}>
+                    {formatGroupLabel(a.group)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="block min-w-0">
+              <span className="text-xs text-warm-muted">Class</span>
+              <p className="mt-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
+                {selected ? formatGroupLabel(selected.group) : '—'}
+              </p>
+            </div>
+          )}
           <div className="block min-w-0">
             <span className="text-xs text-warm-muted">Date</span>
             <p className="mt-1 rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream">
