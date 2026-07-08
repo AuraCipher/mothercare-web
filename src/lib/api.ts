@@ -888,6 +888,40 @@ export const api = {
   teacherBootstrap: () =>
     apiRequest<{ success: boolean; data: any }>(`/teacher/bootstrap${scopeQuery()}`),
 
+  teacherTimetable: () =>
+    apiRequest<{ success: boolean; data: { timetableName: string; slots: any[] } }>(
+      `/teacher/timetable${scopeQuery()}`,
+    ),
+
+  teacherClassStudents: (groupId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/teacher/classes/${groupId}/students${scopeQuery()}`,
+    ),
+
+  teacherAttendance: (groupId: string, date: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/teacher/attendance${scopeQuery({ groupId, date })}`,
+    ),
+
+  teacherSaveAttendance: (body: {
+    groupId: string;
+    date: string;
+    records: Array<{ studentId: string; status: string; note?: string | null }>;
+  }) =>
+    apiRequest(`/teacher/attendance/batch${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(body)),
+    }),
+
+  teacherProfile: () =>
+    apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`),
+
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
+    apiRequest('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    }),
+
   getStaffList: (params?: { search?: string; status?: string }) =>
     apiRequest<{ success: boolean; data: any[]; meta: { total: number } }>(
       `/admin/staff${scopeQuery({

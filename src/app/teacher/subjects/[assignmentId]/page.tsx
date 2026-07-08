@@ -29,6 +29,12 @@ export default function TeacherSubjectPage() {
     >
       <div className="teacher-action-row text-xs">
         <Link
+          href={`/teacher/attendance?groupId=${assignment.groupId}`}
+          className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-1.5 text-warm-cream"
+        >
+          Mark attendance
+        </Link>
+        <Link
           href={`/teacher/classes/${assignment.groupId}`}
           className="rounded-lg border border-warm-card-border px-3 py-1.5 text-warm-muted hover:text-warm-cream"
         >

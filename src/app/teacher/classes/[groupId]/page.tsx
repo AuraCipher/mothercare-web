@@ -1,20 +1,42 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   TeacherAccessDenied,
   TeacherPageShell,
-  TeacherStubNotice,
 } from '@/components/teacher/teacher-page-shell';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { assignmentsForGroup, canAccessGroup } from '@/lib/teacher/scope';
 import { formatGroupLabel } from '@/lib/teacher/types';
+import { api } from '@/lib/api';
 
 export default function TeacherClassHubPage() {
   const params = useParams();
   const groupId = typeof params.groupId === 'string' ? params.groupId : '';
   const { data } = useTeacherBootstrap();
+  const [students, setStudents] = useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [studentsError, setStudentsError] = useState('');
+
+  useEffect(() => {
+    if (!groupId || !data || !canAccessGroup(data.assignments, groupId)) return;
+    setLoadingStudents(true);
+    setStudentsError('');
+    api
+      .teacherClassStudents(groupId)
+      .then((res) => {
+        if (res.success) setStudents(res.data.students || []);
+        else setStudentsError(res.message || 'Unable to load students');
+      })
+      .catch(() => {
+        setStudents([]);
+        setStudentsError('Unable to load students');
+      })
+      .finally(() => setLoadingStudents(false));
+  }, [groupId, data]);
+
   if (!data) return null;
 
   if (!canAccessGroup(data.assignments, groupId)) {
@@ -32,6 +54,15 @@ export default function TeacherClassHubPage() {
       title={formatGroupLabel(group)}
       subtitle={isClassTeacher ? 'You are the class teacher for this group' : 'Your subjects in this class'}
     >
+      <div className="teacher-action-row">
+        <Link
+          href={`/teacher/attendance?groupId=${groupId}`}
+          className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-2 text-xs text-warm-cream"
+        >
+          Mark attendance
+        </Link>
+      </div>
+
       <div className="teacher-grid-cards">
         {groupAssignments.map((assignment) => (
           <Link
@@ -48,7 +79,35 @@ export default function TeacherClassHubPage() {
         ))}
       </div>
 
-      <TeacherStubNotice feature="Class roster, announcements, and class-wide reports" />
+      <div className="teacher-card rounded-xl border border-warm-card-border bg-warm-card p-4">
+        <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-warm-cream">Students ({students.length})</h2>
+        </div>
+        {loadingStudents ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-warm-card/60" />
+            ))}
+          </div>
+        ) : studentsError ? (
+          <div className="teacher-break-text rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {studentsError}
+          </div>
+        ) : students.length === 0 ? (
+          <p className="text-sm text-warm-muted">No active students in this class.</p>
+        ) : (
+          <ul className="divide-y divide-warm-card-border">
+            {students.map((s) => (
+              <li key={s.id} className="flex min-w-0 items-center justify-between gap-2 py-2.5">
+                <div className="min-w-0">
+                  <p className="teacher-card__title truncate text-sm text-warm-cream">{s.name}</p>
+                  <p className="text-xs text-warm-muted">Roll {s.rollNumber || '—'}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </TeacherPageShell>
   );
 }

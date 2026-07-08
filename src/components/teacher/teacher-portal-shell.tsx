@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -70,6 +70,7 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [activeAYId, setActiveAYId] = useState<string | null>(null);
   const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
+  const [busyApplyingAy, setBusyApplyingAy] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -133,20 +134,49 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const handleSignOut = useCallback(async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* ignore */
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('activeBranchId');
+    localStorage.removeItem('activeAYId');
+    localStorage.removeItem('activeAYStatus');
+    document.cookie = 'token=; path=/; max-age=0';
+    router.push('/login');
+  }, [router]);
+
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'token' && !e.newValue) handleSignOut();
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  });
+  }, [handleSignOut]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setBranchDropdownOpen(false);
+    setAyDropdownOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
     const prev = document.body.style.overflow;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        setBranchDropdownOpen(false);
+        setAyDropdownOpen(false);
+      }
+    };
     document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [menuOpen]);
 
@@ -186,24 +216,15 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
 
   const handleApplyAY = async () => {
     if (!activeAYId) return;
+    setBusyApplyingAy(true);
     localStorage.setItem('activeAYId', activeAYId);
     if (activeAY) localStorage.setItem('activeAYStatus', activeAY.status);
     setMenuOpen(false);
-    await reload();
-  };
-
-  const handleSignOut = async () => {
     try {
-      await api.logout();
-    } catch {
-      /* ignore */
+      await reload();
+    } finally {
+      setBusyApplyingAy(false);
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('activeBranchId');
-    localStorage.removeItem('activeAYId');
-    localStorage.removeItem('activeAYStatus');
-    document.cookie = 'token=; path=/; max-age=0';
-    router.push('/login');
   };
 
   const displayName = bootstrap?.user.name ?? user?.name;
@@ -390,9 +411,10 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={handleApplyAY}
-                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76]"
+                    disabled={busyApplyingAy}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Check size={13} /> Go
+                    <Check size={13} /> {busyApplyingAy ? 'Applying…' : 'Apply year'}
                   </button>
                 )}
               </div>
