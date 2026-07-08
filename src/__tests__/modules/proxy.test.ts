@@ -24,7 +24,8 @@ describe('Proxy route logic', () => {
 
   function isProtectedRoute(pathname: string): boolean {
     return pathname === '/admin' || pathname.startsWith('/admin/')
-        || pathname === '/ceo' || pathname.startsWith('/ceo/');
+        || pathname === '/ceo' || pathname.startsWith('/ceo/')
+        || pathname === '/teacher' || pathname.startsWith('/teacher/');
   }
 
   function isAuthRoute(pathname: string): boolean {
@@ -63,6 +64,10 @@ describe('Proxy route logic', () => {
     it('returns false for /ceo/branches', () => {
       expect(isPublicRoute('/ceo/branches')).toBe(false);
     });
+
+    it('returns false for /teacher', () => {
+      expect(isPublicRoute('/teacher')).toBe(false);
+    });
   });
 
   describe('isProtectedRoute', () => {
@@ -80,6 +85,14 @@ describe('Proxy route logic', () => {
 
     it('returns true for /ceo/branches', () => {
       expect(isProtectedRoute('/ceo/branches')).toBe(true);
+    });
+
+    it('returns true for /teacher', () => {
+      expect(isProtectedRoute('/teacher')).toBe(true);
+    });
+
+    it('returns true for /teacher/my-classes', () => {
+      expect(isProtectedRoute('/teacher/my-classes')).toBe(true);
     });
 
     it('returns false for /admin-settings', () => {
