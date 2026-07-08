@@ -26,6 +26,7 @@ import ToastContainer from '@/components/toast';
 import { decodeJwtPayload } from '@/lib/teacher/auth-routing';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { academicYearBanner } from '@/lib/teacher/types';
+import { isNavAllowed } from '@/lib/teacher/permissions';
 
 interface BranchMember {
   id: string;
@@ -430,7 +431,13 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
               Navigation
             </p>
             <div className="space-y-0.5">
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.filter((item) =>
+                isNavAllowed(
+                  item.href,
+                  bootstrap?.portal?.permissions,
+                  bootstrap?.portal?.isHod,
+                ),
+              ).map((item) => {
                 const Icon = item.icon;
                 const active = isNavActive(pathname, item.href);
                 return (

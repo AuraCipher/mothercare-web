@@ -15,6 +15,7 @@ import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 import PayrollHistoryPanel from '@/components/payroll-history-panel';
+import { TeacherPermissionsPanel } from '@/components/admin/teacher-permissions-panel';
 import config from '@/config';
 
 interface TeacherDetail {
@@ -103,10 +104,11 @@ export default function TeacherDetailPage() {
   const [tenures, setTenures] = useState<any[]>([]);
   const [tenureReason, setTenureReason] = useState('RESIGNED');
   const [tenureNote, setTenureNote] = useState('');
-  const [portalAccess, setPortalAccess] = useState<'FULL' | 'READ_ONLY' | 'FROZEN'>('FULL');
-  const [canViewParentContact, setCanViewParentContact] = useState(false);
-  const [hodParentContactScope, setHodParentContactScope] = useState<'ASSIGNED_ONLY' | 'DEPARTMENT_ALL'>('ASSIGNED_ONLY');
-  const [savingPortalAccess, setSavingPortalAccess] = useState(false);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveBranchId(localStorage.getItem('activeBranchId'));
+  }, []);
 
   const generatePassword = () => {
     const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -216,9 +218,6 @@ export default function TeacherDetailPage() {
       .then((d) => {
         if (d.success) {
           setData(d.data);
-          setPortalAccess(d.data.portalAccess || 'FULL');
-          setCanViewParentContact(!!d.data.canViewParentContact);
-          setHodParentContactScope(d.data.hodParentContactScope || 'ASSIGNED_ONLY');
         }
       })
       .catch(e => setError(e.message || 'Failed to load teacher'))
@@ -355,26 +354,6 @@ export default function TeacherDetailPage() {
       setSections(secData.data || []);
       setSubjects(subjData.data || []);
     } catch {}
-  };
-
-  const handleSavePortalAccess = async () => {
-    if (!data) return;
-    setSavingPortalAccess(true);
-    try {
-      const res = await api.updateTeacher(data.id, {
-        portalAccess,
-        canViewParentContact,
-        hodParentContactScope,
-      });
-      if (res.success) {
-        showToast('success', 'Portal access updated');
-        loadData();
-      }
-    } catch (e: any) {
-      showToast('error', e.message || 'Failed to update portal access');
-    } finally {
-      setSavingPortalAccess(false);
-    }
   };
 
   const handleEndAssignment = (a: Assignment) => {
@@ -681,61 +660,7 @@ export default function TeacherDetailPage() {
         </div>
       </section>
 
-      {/* Portal access */}
-      <section className="mb-10">
-        <h2 className="mb-3 text-sm font-medium text-warm-cream">Teacher portal access</h2>
-        <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
-          <label className="block text-xs text-warm-muted">Portal mode</label>
-          <select
-            value={portalAccess}
-            onChange={(e) => setPortalAccess(e.target.value as 'FULL' | 'READ_ONLY' | 'FROZEN')}
-            className="mt-1 w-full max-w-xs rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
-          >
-            <option value="FULL">Full — read and write</option>
-            <option value="READ_ONLY">Read only — view classes, no attendance/marks</option>
-            <option value="FROZEN">Frozen — login only, portal blocked</option>
-          </select>
-          <p className="mt-2 text-[11px] text-warm-muted">
-            Use read-only during audits or frozen when the teacher should not access portal data.
-          </p>
-
-          <div className="mt-4 border-t border-warm-card-border pt-4">
-            <label className="flex items-center gap-2 text-sm text-warm-cream">
-              <input
-                type="checkbox"
-                checked={canViewParentContact}
-                onChange={(e) => setCanViewParentContact(e.target.checked)}
-                className="rounded border-warm-card-border"
-              />
-              Allow parent contact numbers in portal
-            </label>
-            <p className="mt-1 text-[11px] text-warm-muted">
-              Requires branch-level parent contact to be enabled. Class teachers see their class;
-              HOD scope below applies for department heads.
-            </p>
-            <label className="mt-3 block text-xs text-warm-muted">HOD parent contact scope</label>
-            <select
-              value={hodParentContactScope}
-              onChange={(e) =>
-                setHodParentContactScope(e.target.value as 'ASSIGNED_ONLY' | 'DEPARTMENT_ALL')
-              }
-              className="mt-1 w-full max-w-xs rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
-            >
-              <option value="ASSIGNED_ONLY">Assigned classes only</option>
-              <option value="DEPARTMENT_ALL">All classes in HOD department</option>
-            </select>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSavePortalAccess}
-            disabled={savingPortalAccess}
-            className="mt-3 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] disabled:opacity-60"
-          >
-            {savingPortalAccess ? 'Saving…' : 'Save portal access'}
-          </button>
-        </div>
-      </section>
+      <TeacherPermissionsPanel teacherProfileId={id} branchId={activeBranchId} />
 
       {/* Assignments */}
       <section className="mb-10">

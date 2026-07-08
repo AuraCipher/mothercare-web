@@ -451,6 +451,20 @@ export const api = {
   getTeacher: (id: string) =>
     apiRequest<{ success: boolean; data: any }>(`/admin/teachers/${id}`),
 
+  getTeacherPortalPermissions: (teacherProfileId: string, branchId: string) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/admin/teachers/${teacherProfileId}/portal-permissions?branchId=${encodeURIComponent(branchId)}`,
+    ),
+
+  updateTeacherPortalPermissions: (
+    teacherProfileId: string,
+    data: { portalAccess?: 'FULL' | 'READ_ONLY' | 'FROZEN'; portalPermissions?: Record<string, unknown> },
+  ) =>
+    apiRequest(`/admin/teachers/${teacherProfileId}/portal-permissions`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   createTeacher: (data: {
     userId?: string; name?: string; email?: string; username?: string; password?: string; branchId?: string;
     employeeId?: string; qualification?: string; specialization?: string;
