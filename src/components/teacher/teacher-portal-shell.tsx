@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
-  MapPin,
   Menu,
   Bell,
   User,
@@ -255,12 +254,6 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="teacher-portal-header__end flex items-center gap-2 sm:gap-3">
-          {activeBranch && (
-            <div className="hidden min-w-0 max-w-[9rem] items-center gap-1.5 text-xs text-warm-muted md:flex">
-              <MapPin size={12} className="shrink-0 text-warm-accent" />
-              <span className="truncate">{activeBranch.name}</span>
-            </div>
-          )}
           <span className="hidden max-w-[8rem] truncate text-xs text-warm-muted md:block">{displayName}</span>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warm-accent sm:px-2.5">
             <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-warm-accent" />
@@ -289,58 +282,6 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
                 </p>
               )}
             </div>
-
-            {branches.length > 0 && (
-              <div className="mb-6">
-                <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-warm-muted">
-                  Active Branch
-                </p>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                    className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-warm-card-border bg-warm-card px-3 py-2 text-xs text-warm-cream transition-colors hover:border-warm-accent/50"
-                  >
-                    <span className="flex min-w-0 flex-1 items-center gap-2">
-                      <MapPin size={13} className="shrink-0 text-warm-accent" />
-                      <span className="truncate">{activeBranch?.name || 'Select branch…'}</span>
-                    </span>
-                    <ChevronDown
-                      size={13}
-                      className={`shrink-0 text-warm-muted transition-transform duration-200 ${branchDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                  {branchDropdownOpen && (
-                    <div className="mt-1 rounded-lg border border-warm-card-border bg-[#2d2826] py-1 shadow-xl">
-                      {branches.map((b) => (
-                        <button
-                          key={b.branch.id}
-                          type="button"
-                          onClick={() => handleSetActiveBranch(b.branch.id)}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${
-                            activeBranchId === b.branch.id
-                              ? 'text-warm-accent'
-                              : 'text-warm-muted hover:bg-warm-card hover:text-warm-cream'
-                          }`}
-                        >
-                          <div className="flex min-w-0 flex-col items-start text-left">
-                            <span className="teacher-dropdown-item__row">
-                              {activeBranchId === b.branch.id && (
-                                <Check size={12} className="shrink-0 text-warm-accent" />
-                              )}
-                              <span className="teacher-break-text">{b.branch.name}</span>
-                            </span>
-                            <span className="mt-0.5 truncate text-[9px] text-warm-muted/60">
-                              {b.branch.code} · {b.role}
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {academicYears.length > 0 && (
               <div className="mb-6">

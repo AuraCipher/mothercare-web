@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edit3, Eye, Lock, Save, Shield, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import {
+  TEACHER_PERMISSION_PRESETS,
+  type PermissionPresetId,
+} from '@/lib/admin/teacher-permission-presets';
 
 type PermLevel = 'inherit' | 'allow' | 'deny';
 type PortalAccess = 'FULL' | 'READ_ONLY' | 'FROZEN';
@@ -80,6 +84,7 @@ export function TeacherPermissionsPanel({
   const [portalAccess, setPortalAccess] = useState<PortalAccess>('FULL');
   const [stored, setStored] = useState<Record<string, Record<string, string>>>({});
   const [hodScope, setHodScope] = useState<'ASSIGNED_ONLY' | 'DEPARTMENT_ALL'>('ASSIGNED_ONLY');
+  const [selectedPreset, setSelectedPreset] = useState<PermissionPresetId | ''>('');
 
   const load = useCallback(async () => {
     if (!branchId) return;
@@ -131,6 +136,16 @@ export function TeacherPermissionsPanel({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleApplyPreset = (presetId: PermissionPresetId) => {
+    const preset = TEACHER_PERMISSION_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setPortalAccess(preset.portalAccess);
+    setStored(preset.portalPermissions as Record<string, Record<string, string>>);
+    setHodScope(preset.portalPermissions.parentContact?.hodScope ?? 'ASSIGNED_ONLY');
+    setSelectedPreset(presetId);
+    showToast('success', `Applied “${preset.label}” — review and Save`);
   };
 
   const effectiveLabel = (groupId: string) => {
@@ -237,6 +252,40 @@ export function TeacherPermissionsPanel({
                   {data.options.portalModes.find((m) => m.value === portalAccess)?.description}
                 </p>
               </div>
+
+              {editing && (
+                <div className="mb-6 rounded-lg border border-warm-accent/20 bg-warm-accent/5 p-3">
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-warm-muted">
+                    Recommended template
+                  </p>
+                  <select
+                    value={selectedPreset}
+                    onChange={(e) => {
+                      const id = e.target.value as PermissionPresetId | '';
+                      if (id) handleApplyPreset(id);
+                      else setSelectedPreset('');
+                    }}
+                    className="w-full max-w-md rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
+                  >
+                    <option value="">— Pick a template —</option>
+                    {TEACHER_PERMISSION_PRESETS.filter(
+                      (p) => p.id !== 'hod' || data.isHod,
+                    ).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedPreset && (
+                    <p className="mt-2 text-[11px] text-warm-muted">
+                      {TEACHER_PERMISSION_PRESETS.find((p) => p.id === selectedPreset)?.summary}
+                    </p>
+                  )}
+                  <p className="mt-2 text-[10px] text-warm-muted/80">
+                    Templates fill the form below. You can still tweak individual items before Save.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-4">
                 {visibleCatalog.map((group) => (
