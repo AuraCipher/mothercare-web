@@ -24,6 +24,9 @@ export interface TeacherBootstrapData {
   portal: {
     isReadOnly: boolean;
     canWrite: boolean;
+    portalAccess: 'FULL' | 'READ_ONLY' | 'FROZEN';
+    isFrozen: boolean;
+    freezeReason?: string;
     assignmentCount: number;
     classTeacherGroupIds: string[];
   };

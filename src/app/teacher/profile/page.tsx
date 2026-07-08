@@ -84,7 +84,9 @@ export default function TeacherProfilePage() {
           </div>
           <div>
             <dt className="text-xs text-warm-muted">Portal access</dt>
-            <dd className="text-warm-cream">{data.portal.isReadOnly ? 'Read only' : 'Read & write'}</dd>
+            <dd className="text-warm-cream">
+              {data.portal.portalAccess || (data.portal.isReadOnly ? 'Read only' : 'Full')}
+            </dd>
           </div>
         </dl>
       </div>

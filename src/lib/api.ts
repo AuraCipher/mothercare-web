@@ -461,6 +461,7 @@ export const api = {
     address?: string; dateOfBirth?: string; gender?: string; bloodGroup?: string;
     fatherName?: string; cardId?: string; severeDisease?: string; experience?: string; bio?: string;
     profilePhotoId?: string;
+    portalAccess?: 'FULL' | 'READ_ONLY' | 'FROZEN';
   }) =>
     apiRequest(`/admin/teachers/${id}`, {
       method: 'PUT',
@@ -503,6 +504,12 @@ export const api = {
 
   deleteAssignment: (id: string) =>
     apiRequest(`/admin/assignments/${id}`, { method: 'DELETE' }),
+
+  endAssignment: (id: string, validTo?: string) =>
+    apiRequest(`/admin/assignments/${id}/end`, {
+      method: 'POST',
+      body: JSON.stringify(validTo ? { validTo } : {}),
+    }),
 
   // ─── Exam Sessions (separate module — read-only from Result & Grade hub) ──
   getExamSessions: () =>
@@ -916,6 +923,9 @@ export const api = {
 
   teacherProfile: () =>
     apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`),
+
+  teacherAnnouncements: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/teacher/announcements${scopeQuery()}`),
 
   teacherMarksSubjects: () =>
     apiRequest<{ success: boolean; data: any[] }>(`/teacher/marks/subjects${scopeQuery()}`),

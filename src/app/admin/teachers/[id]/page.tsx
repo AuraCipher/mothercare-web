@@ -36,6 +36,7 @@ interface TeacherDetail {
   severeDisease: string | null;
   experience: string | null;
   bio: string | null;
+  portalAccess?: 'FULL' | 'READ_ONLY' | 'FROZEN';
   createdAt: string;
   user: { id: string; name: string; email: string | null; phone: string | null; username: string | null; role: string; status: string; profilePhotoId: string | null };
   assignments: Assignment[];
@@ -100,6 +101,8 @@ export default function TeacherDetailPage() {
   const [tenures, setTenures] = useState<any[]>([]);
   const [tenureReason, setTenureReason] = useState('RESIGNED');
   const [tenureNote, setTenureNote] = useState('');
+  const [portalAccess, setPortalAccess] = useState<'FULL' | 'READ_ONLY' | 'FROZEN'>('FULL');
+  const [savingPortalAccess, setSavingPortalAccess] = useState(false);
 
   const generatePassword = () => {
     const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -206,7 +209,12 @@ export default function TeacherDetailPage() {
   const loadData = () => {
     setLoading(true);
     api.getTeacher(id)
-      .then(d => { if (d.success) setData(d.data); })
+      .then((d) => {
+        if (d.success) {
+          setData(d.data);
+          setPortalAccess(d.data.portalAccess || 'FULL');
+        }
+      })
       .catch(e => setError(e.message || 'Failed to load teacher'))
       .finally(() => setLoading(false));
   };
@@ -341,6 +349,41 @@ export default function TeacherDetailPage() {
       setSections(secData.data || []);
       setSubjects(subjData.data || []);
     } catch {}
+  };
+
+  const handleSavePortalAccess = async () => {
+    if (!data) return;
+    setSavingPortalAccess(true);
+    try {
+      const res = await api.updateTeacher(data.id, { portalAccess });
+      if (res.success) {
+        showToast('success', 'Portal access updated');
+        loadData();
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to update portal access');
+    } finally {
+      setSavingPortalAccess(false);
+    }
+  };
+
+  const handleEndAssignment = (a: Assignment) => {
+    setConfirm({
+      open: true,
+      title: 'End assignment?',
+      message: `End "${a.subject.name}" for ${a.group.name}${a.group.section ? ` — ${a.group.section}` : ''}? The teacher will lose portal access to this class immediately.`,
+      variant: 'warning',
+      confirmLabel: 'End assignment',
+      action: async () => {
+        try {
+          await api.endAssignment(a.id);
+          showToast('success', 'Assignment ended');
+          loadData();
+        } catch (e: any) {
+          showToast('error', e.message || 'Failed to end assignment');
+        }
+      },
+    });
   };
 
   const handleDeleteAssignment = (a: Assignment) => {
@@ -628,6 +671,34 @@ export default function TeacherDetailPage() {
         </div>
       </section>
 
+      {/* Portal access */}
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-medium text-warm-cream">Teacher portal access</h2>
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
+          <label className="block text-xs text-warm-muted">Portal mode</label>
+          <select
+            value={portalAccess}
+            onChange={(e) => setPortalAccess(e.target.value as 'FULL' | 'READ_ONLY' | 'FROZEN')}
+            className="mt-1 w-full max-w-xs rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream"
+          >
+            <option value="FULL">Full — read and write</option>
+            <option value="READ_ONLY">Read only — view classes, no attendance/marks</option>
+            <option value="FROZEN">Frozen — login only, portal blocked</option>
+          </select>
+          <p className="mt-2 text-[11px] text-warm-muted">
+            Use read-only during audits or frozen when the teacher should not access portal data.
+          </p>
+          <button
+            type="button"
+            onClick={handleSavePortalAccess}
+            disabled={savingPortalAccess}
+            className="mt-3 rounded-lg bg-warm-accent px-3 py-1.5 text-xs font-medium text-[#1a1614] disabled:opacity-60"
+          >
+            {savingPortalAccess ? 'Saving…' : 'Save portal access'}
+          </button>
+        </div>
+      </section>
+
       {/* Assignments */}
       <section className="mb-10">
         <div className="mb-4 flex items-center justify-between">
@@ -674,6 +745,9 @@ export default function TeacherDetailPage() {
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEditAssignment(a)} title="Edit" className="rounded p-1 text-warm-muted hover:text-warm-cream transition-colors">
                           <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleEndAssignment(a)} title="End assignment" className="rounded px-1.5 py-0.5 text-[10px] text-warm-muted hover:text-yellow-300 transition-colors">
+                          End
                         </button>
                         <button onClick={() => handleDeleteAssignment(a)} title="Delete" className="rounded p-1 text-warm-muted hover:text-red transition-colors">
                           <Trash2 size={13} />
