@@ -96,7 +96,7 @@ describe('NewStudentPage — rendering', () => {
 describe('NewStudentPage — validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSections.mockResolvedValue({ success: true, data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [{ id: 'g-1', name: 'Class 5', section: 'A' }] });
   });
 
   it('shows toast when name is empty on submit', async () => {
@@ -105,33 +105,42 @@ describe('NewStudentPage — validation', () => {
     expect(mockShowToast).toHaveBeenCalledWith('error', 'Student name is required');
   });
 
-  it.skip('calls createStudent on valid submit', async () => {
+  it('calls createStudent on valid submit', async () => {
     mockCreateStudent.mockResolvedValue({ success: true, data: { id: 's-1' } });
     render(<NewStudentPage />);
     const nameInput = await screen.findByPlaceholderText('e.g. Ali Hassan');
     fireEvent.change(nameInput, { target: { value: 'Test Student' } });
+    const classOption = await screen.findByRole('option', { name: 'Class 5 — A' });
+    const classSelect = classOption.parentElement as HTMLSelectElement;
+    fireEvent.change(classSelect, { target: { value: 'g-1' } });
     fireEvent.click(screen.getByText('Create Student'));
     await waitFor(() => {
       expect(mockCreateStudent).toHaveBeenCalled();
     });
   });
 
-  it.skip('navigates to detail page after creation', async () => {
+  it('navigates to detail page after creation', async () => {
     mockCreateStudent.mockResolvedValue({ success: true, data: { id: 's-1' } });
     render(<NewStudentPage />);
     const nameInput = await screen.findByPlaceholderText('e.g. Ali Hassan');
     fireEvent.change(nameInput, { target: { value: 'Test Student' } });
+    const classOption = await screen.findByRole('option', { name: 'Class 5 — A' });
+    const classSelect = classOption.parentElement as HTMLSelectElement;
+    fireEvent.change(classSelect, { target: { value: 'g-1' } });
     fireEvent.click(screen.getByText('Create Student'));
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/admin/students/s-1');
     });
   });
 
-  it.skip('shows error toast on failed creation', async () => {
+  it('shows error toast on failed creation', async () => {
     mockCreateStudent.mockRejectedValue(new Error('Server error'));
     render(<NewStudentPage />);
     const nameInput = await screen.findByPlaceholderText('e.g. Ali Hassan');
     fireEvent.change(nameInput, { target: { value: 'Test Student' } });
+    const classOption = await screen.findByRole('option', { name: 'Class 5 — A' });
+    const classSelect = classOption.parentElement as HTMLSelectElement;
+    fireEvent.change(classSelect, { target: { value: 'g-1' } });
     fireEvent.click(screen.getByText('Create Student'));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('error', 'Server error');

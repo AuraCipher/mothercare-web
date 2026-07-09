@@ -1,37 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { isAuthRoute, isProtectedRoute, isPublicRoute } from '@/proxy';
 
 describe('Proxy route logic', () => {
-  // Replicate the pure functions from proxy.ts for testing
-  const PUBLIC_ROUTES = [
-    '/',
-    '/login',
-    '/about',
-    '/academics',
-    '/admission',
-    '/news',
-    '/blog',
-    '/reviews',
-    '/contact',
-    '/resources',
-  ];
-
-  function isPublicRoute(pathname: string): boolean {
-    if (PUBLIC_ROUTES.includes(pathname)) return true;
-    return PUBLIC_ROUTES.some(
-      (route) => route !== '/' && pathname.startsWith(route + '/'),
-    );
-  }
-
-  function isProtectedRoute(pathname: string): boolean {
-    return pathname === '/admin' || pathname.startsWith('/admin/')
-        || pathname === '/ceo' || pathname.startsWith('/ceo/')
-        || pathname === '/teacher' || pathname.startsWith('/teacher/');
-  }
-
-  function isAuthRoute(pathname: string): boolean {
-    return pathname === '/login';
-  }
-
   describe('isPublicRoute', () => {
     it('returns true for root path', () => {
       expect(isPublicRoute('/')).toBe(true);
@@ -68,6 +38,10 @@ describe('Proxy route logic', () => {
     it('returns false for /teacher', () => {
       expect(isPublicRoute('/teacher')).toBe(false);
     });
+
+    it('returns false for /student', () => {
+      expect(isPublicRoute('/student')).toBe(false);
+    });
   });
 
   describe('isProtectedRoute', () => {
@@ -101,6 +75,11 @@ describe('Proxy route logic', () => {
       expect(isProtectedRoute('/teacher/timetable')).toBe(true);
       expect(isProtectedRoute('/teacher/attendance')).toBe(true);
       expect(isProtectedRoute('/teacher/profile')).toBe(true);
+    });
+
+    it('returns true for /student and nested student routes', () => {
+      expect(isProtectedRoute('/student')).toBe(true);
+      expect(isProtectedRoute('/student/fees')).toBe(true);
     });
 
     it('returns false for /admin-settings', () => {

@@ -16,7 +16,7 @@ import {
   sanitizePostLoginRedirect,
 } from '@/lib/teacher/auth-routing';
 
-const PUBLIC_ROUTES = [
+export const PUBLIC_ROUTES = [
   '/',
   '/login',
   '/about',
@@ -29,21 +29,21 @@ const PUBLIC_ROUTES = [
   '/resources',
 ];
 
-function isPublicRoute(pathname: string): boolean {
+export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   return PUBLIC_ROUTES.some(
     (route) => route !== '/' && pathname.startsWith(route + '/'),
   );
 }
 
-function isProtectedRoute(pathname: string): boolean {
+export function isProtectedRoute(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
     || pathname === '/ceo' || pathname.startsWith('/ceo/')
     || pathname === '/teacher' || pathname.startsWith('/teacher/')
     || pathname === '/student' || pathname.startsWith('/student/');
 }
 
-function isAuthRoute(pathname: string): boolean {
+export function isAuthRoute(pathname: string): boolean {
   return pathname === '/login';
 }
 
