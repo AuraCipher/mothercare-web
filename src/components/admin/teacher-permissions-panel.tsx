@@ -143,7 +143,7 @@ export function TeacherPermissionsPanel({
     if (!preset) return;
     setPortalAccess(preset.portalAccess);
     setStored(preset.portalPermissions as Record<string, Record<string, string>>);
-    setHodScope(preset.portalPermissions.parentContact?.hodScope ?? 'ASSIGNED_ONLY');
+    setHodScope((preset.portalPermissions.parentContact?.hodScope ?? 'ASSIGNED_ONLY') as 'ASSIGNED_ONLY' | 'DEPARTMENT_ALL');
     setSelectedPreset(presetId);
     showToast('success', `Applied “${preset.label}” — review and Save`);
   };

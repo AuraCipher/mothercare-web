@@ -39,7 +39,7 @@ export default function StudentTimetablePage() {
     api
       .studentTimetable()
       .then((res) => {
-        if (res.success) setData(res.data);
+        if (res.success && res.data) setData(res.data as typeof data);
         else setError(res.message || 'Failed to load timetable');
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load timetable'))

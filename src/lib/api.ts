@@ -12,6 +12,13 @@ import { canteenQuery } from '@/lib/canteen';
  */
 const PUB_KEY = process.env.NEXT_PUBLIC_PUBLISHABLE_KEY || '';
 
+/** Standard JSON envelope from MCS API routes. */
+export type ApiJsonResult<T = any> = {
+  success: boolean;
+  data: T;
+  message?: string;
+};
+
 /** Build branch + academic year query params from localStorage. */
 function buildScopeParams(extra?: Record<string, string | undefined>): URLSearchParams {
   const q = new URLSearchParams();
@@ -94,10 +101,10 @@ export const api = {
 
   // ─── Branches ────────────────────────────────────────
   getBranches: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/admin/branches'),
+    apiRequest<ApiJsonResult<any[]>>('/admin/branches'),
 
   getBranch: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}`),
+    apiRequest<ApiJsonResult>(`/admin/branches/${id}`),
 
   createBranch: (data: { name: string; code: string; address?: string; phone?: string; email?: string }) =>
     apiRequest('/admin/branches', {
@@ -123,14 +130,14 @@ export const api = {
     apiRequest(`/admin/branches/${id}`, { method: 'DELETE' }),
 
   getBranchStats: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${id}/stats${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/branches/${id}/stats${scopeQuery()}`),
 
   removeAdmin: (branchId: string, userId: string) =>
     apiRequest(`/admin/branches/${branchId}/remove-admin/${userId}`, { method: 'POST' }),
 
   // ─── Academic Calendars ──────────────────────────────
   getCalendars: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/admin/calendars'),
+    apiRequest<ApiJsonResult<any[]>>('/admin/calendars'),
 
   createCalendar: (data: { label: string; startDate: string; endDate: string; isCurrent?: boolean }) =>
     apiRequest('/admin/calendars', {
@@ -140,10 +147,10 @@ export const api = {
 
   // ─── Academic Years ──────────────────────────────────
   getAcademicYears: (branchId: string, status?: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years${status ? `?status=${status}` : ''}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/academic-years${status ? `?status=${status}` : ''}`),
 
   getAcademicYear: (branchId: string, id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/academic-years/${id}`),
+    apiRequest<ApiJsonResult>(`/admin/branches/${branchId}/academic-years/${id}`),
 
   createAcademicYear: (branchId: string, data: { calendarId: string; previousAcademicYearId?: string; directToArchived?: boolean }) =>
     apiRequest(`/admin/branches/${branchId}/academic-years`, {
@@ -176,20 +183,20 @@ export const api = {
     }),
 
   getAcademicYearDeletePreview: (branchId: string, id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/academic-years/${id}/delete-preview`),
+    apiRequest<ApiJsonResult>(`/admin/branches/${branchId}/academic-years/${id}/delete-preview`),
 
   getAcademicYearAuditLogs: (branchId: string, params?: { academicYearId?: string; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.academicYearId) qs.set('academicYearId', params.academicYearId);
     if (params?.limit) qs.set('limit', String(params.limit));
     const tail = qs.toString();
-    return apiRequest<{ success: boolean; data: any[] }>(
+    return apiRequest<ApiJsonResult<any[]>>(
       `/admin/branches/${branchId}/academic-year-audit-logs${tail ? `?${tail}` : ''}`,
     );
   },
 
   getPromotionPreconditions: (branchId: string, sourceAcademicYearId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/preconditions`,
     ),
 
@@ -225,13 +232,13 @@ export const api = {
     }),
 
   getFeeCarryForwardSources: (studentId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/fees/carry-forward/sources/${studentId}${scopeQuery()}`,
     ),
 
   // ─── API Keys (CEO only) ────────────────────────────
   getApiKeys: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/api-keys'),
+    apiRequest<ApiJsonResult<any[]>>('/api-keys'),
 
   createApiKey: (data: { name: string; type: string; branchCode?: string }) =>
     apiRequest('/api-keys', {
@@ -244,7 +251,7 @@ export const api = {
 
   // ─── Sections (branch-scoped, replaces old groups) ──
   getSections: (branchId: string, ayId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/sections`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/academic-years/${ayId}/sections`),
 
   createSection: (branchId: string, ayId: string, data: { name: string; section?: string; displayOrder: number; capacity?: number }) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/sections`, {
@@ -265,7 +272,7 @@ export const api = {
   getGroups: (params?: { section?: string }) => {
     const q = buildScopeParams(params?.section ? { section: params.section } : undefined);
     const qs = q.toString();
-    return apiRequest<{ success: boolean; data: any[] }>(`/admin/groups${qs ? `?${qs}` : ''}`);
+    return apiRequest<ApiJsonResult<any[]>>(`/admin/groups${qs ? `?${qs}` : ''}`);
   },
 
   createGroup: (data: { name: string; section?: string; displayOrder: number; capacity?: number; academicYearId?: string }) =>
@@ -293,7 +300,7 @@ export const api = {
   },
 
   getStudent: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/students/${id}`),
+    apiRequest<ApiJsonResult>(`/admin/students/${id}`),
 
   createStudent: (data: {
     name: string; gender?: string; dateOfBirth?: string; religion?: string;
@@ -325,7 +332,7 @@ export const api = {
     if (params?.role) q.set('role', params.role);
     if (params?.search) q.set('search', params.search);
     const qs = q.toString();
-    return apiRequest<{ success: boolean; data: any[] }>(`/admin/users${qs ? `?${qs}` : ''}`);
+    return apiRequest<ApiJsonResult<any[]>>(`/admin/users${qs ? `?${qs}` : ''}`);
   },
 
   createUser: (data: { name: string; username: string; password: string; email?: string; phone?: string; role?: string }) =>
@@ -336,10 +343,10 @@ export const api = {
 
   // ─── Subjects ────────────────────────────────────────────
   getSubjects: (branchId: string, ayId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/academic-years/${ayId}/subjects`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/academic-years/${ayId}/subjects`),
 
   getSubject: (branchId: string, id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/branches/${branchId}/subjects/${id}`),
+    apiRequest<ApiJsonResult>(`/admin/branches/${branchId}/subjects/${id}`),
 
   createSubject: (branchId: string, ayId: string, data: { name: string; code?: string; description?: string; totalMarks?: number; passingMarks?: number; isElective?: boolean; hodId?: string }) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${ayId}/subjects`, {
@@ -357,7 +364,7 @@ export const api = {
     apiRequest(`/admin/branches/${branchId}/subjects/${id}`, { method: 'DELETE' }),
 
   getSectionSubjects: (branchId: string, sectionId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/subjects`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/sections/${sectionId}/subjects`),
 
   linkSubjectGroups: (branchId: string, subjectId: string, groupIds: string[]) =>
     apiRequest(`/admin/branches/${branchId}/subjects/${subjectId}/link`, {
@@ -387,7 +394,7 @@ export const api = {
 
   // ─── Timetable Day Config (per timetable ID) ────
   getTimetableDays: (branchId: string, timetableId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/timetables/${timetableId}/days`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/timetables/${timetableId}/days`),
 
   setTimetableDays: (branchId: string, timetableId: string, days: { dayOfWeek: number; isActive: boolean }[]) =>
     apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/days`, {
@@ -396,7 +403,7 @@ export const api = {
 
   // ─── Timetable Slots (per timetable ID) ──────────
   getTimetableSlots: (branchId: string, timetableId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/timetables/${timetableId}/slots`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/timetables/${timetableId}/slots`),
 
   createTimetableSlot: (branchId: string, timetableId: string, data: { dayOfWeek?: number | null; startTime: string; endTime: string }) =>
     apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/slots`, {
@@ -407,7 +414,7 @@ export const api = {
     apiRequest(`/admin/branches/${branchId}/timetables/${timetableId}/slots/${slotId}`, { method: 'DELETE' }),
 
   getSectionTimetable: (branchId: string, sectionId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/sections/${sectionId}/timetable`),
 
   upsertTimetableEntry: (branchId: string, sectionId: string, slotId: string, data: { subjectId?: string | null; teacherId?: string | null; note?: string | null }) =>
     apiRequest(`/admin/branches/${branchId}/sections/${sectionId}/timetable/${slotId}`, {
@@ -415,7 +422,7 @@ export const api = {
     }),
 
   getTeacherTimetables: (branchId: string, teacherId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branches/${branchId}/teachers/${teacherId}/timetables`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branches/${branchId}/teachers/${teacherId}/timetables`),
 
   // ─── Admin Invitations (CEO only) ──────────────────
   createInvitation: (email: string, branchId: string) =>
@@ -449,10 +456,10 @@ export const api = {
   },
 
   getTeacher: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/teachers/${id}`),
+    apiRequest<ApiJsonResult>(`/admin/teachers/${id}`),
 
   getTeacherPortalPermissions: (teacherProfileId: string, branchId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/teachers/${teacherProfileId}/portal-permissions?branchId=${encodeURIComponent(branchId)}`,
     ),
 
@@ -508,11 +515,11 @@ export const api = {
     }),
 
   getTeacherAssignments: (teacherId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/teachers/${teacherId}/assignments`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/teachers/${teacherId}/assignments`),
 
   // ─── Assignments ──────────────────────────────────────────
   getGroupAssignments: (groupId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/groups/${groupId}/assignments`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/groups/${groupId}/assignments`),
 
   createAssignment: (data: { academicYearId: string; teacherId: string; groupId: string; subjectId: string; isClassTeacher?: boolean; role?: string }) =>
     apiRequest('/admin/assignments', {
@@ -537,26 +544,26 @@ export const api = {
 
   // ─── Exam Sessions (separate module — read-only from Result & Grade hub) ──
   getExamSessions: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/exam-sessions${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/exam-sessions${scopeQuery()}`),
 
   getExamSession: (sessionId: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions/${sessionId}${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/exam-sessions/${sessionId}${scopeQuery()}`),
 
   createExamSession: (data: { name: string; startDate: string; endDate: string }) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions`, {
+    apiRequest<ApiJsonResult>(`/admin/exam-sessions`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   updateExamSession: (sessionId: string, data: { name?: string; startDate?: string; endDate?: string }) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/exam-sessions/${sessionId}`, {
+    apiRequest<ApiJsonResult>(`/admin/exam-sessions/${sessionId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   // ─── Result & Grade ─────────────────────────────────────
   getResultSessionSummary: (sessionId: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/result/sessions/${sessionId}/summary${scopeQuery()}`),
 
   getResultAnalytics: (params?: { sessionId?: string; examId?: string; classId?: string; subjectId?: string }) => {
     const q: Record<string, string> = {};
@@ -564,11 +571,11 @@ export const api = {
     if (params?.examId && params.examId !== 'all') q.examId = params.examId;
     if (params?.classId) q.classId = params.classId;
     if (params?.subjectId) q.subjectId = params.subjectId;
-    return apiRequest<{ success: boolean; data: any }>(`/admin/result/analytics${scopeQuery(q)}`);
+    return apiRequest<ApiJsonResult>(`/admin/result/analytics${scopeQuery(q)}`);
   },
 
   getResultExamTypes: (sessionId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/sessions/${sessionId}/types${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/result/sessions/${sessionId}/types${scopeQuery()}`),
 
   createResultExamType: (sessionId: string, data: { name: string; defaultWeight?: number }) =>
     apiRequest(`/admin/result/sessions/${sessionId}/types`, {
@@ -586,7 +593,7 @@ export const api = {
     apiRequest(`/admin/result/sessions/${sessionId}/types/${typeId}`, { method: 'DELETE' }),
 
   getResultExams: (sessionId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/sessions/${sessionId}/exams${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/result/sessions/${sessionId}/exams${scopeQuery()}`),
 
   createResultExam: (sessionId: string, data: {
     name: string;
@@ -601,7 +608,7 @@ export const api = {
     }),
 
   getResultExam: (examId: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/result/exams/${examId}${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/result/exams/${examId}${scopeQuery()}`),
 
   updateResultExam: (examId: string, data: {
     name?: string;
@@ -621,13 +628,13 @@ export const api = {
     apiRequest(`/admin/result/exams/${examId}`, { method: 'DELETE' }),
 
   getResultExamStructure: (examId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/result/exams/${examId}/structure${scopeQuery()}`),
 
   generateResultExamStructure: (
     examId: string,
     options?: { selections?: { classId: string; subjectIds: string[] }[] },
   ) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/result/exams/${examId}/structure`, {
+    apiRequest<ApiJsonResult<any[]>>(`/admin/result/exams/${examId}/structure`, {
       method: 'POST',
       body: JSON.stringify(options?.selections ? { selections: options.selections } : {}),
     }),
@@ -645,14 +652,14 @@ export const api = {
     }),
 
   getResultMarksGrid: (subjectLinkId: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/result/structure/subjects/${subjectLinkId}/marks-grid${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/result/structure/subjects/${subjectLinkId}/marks-grid${scopeQuery()}`),
 
   saveResultMarks: (subjectLinkId: string, data: {
     totalMarks?: number;
     passingMarks?: number;
     entries: { studentId: string; marksObtained?: number | null; isAbsent?: boolean }[];
   }) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/result/structure/subjects/${subjectLinkId}/marks`, {
+    apiRequest<ApiJsonResult>(`/admin/result/structure/subjects/${subjectLinkId}/marks`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -667,7 +674,7 @@ export const api = {
     ),
 
   getClassResults: (sessionId: string, classId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/result/sessions/${sessionId}/classes/${classId}/results${scopeQuery()}`,
     ),
 
@@ -678,35 +685,35 @@ export const api = {
     ),
 
   computeReportCardsClass: (sessionId: string, classId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/result/sessions/${sessionId}/classes/${classId}/compute-report-cards`,
       { method: 'POST' },
     ),
 
   getClassReportCards: (sessionId: string, classId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/result/sessions/${sessionId}/classes/${classId}/report-cards${scopeQuery()}`,
     ),
 
   publishReportCard: (reportCardId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/result/report-cards/${reportCardId}/publish`,
       { method: 'POST' },
     ),
 
   getStudentReportCard: (studentId: string, sessionId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/result/students/${studentId}/sessions/${sessionId}/report-card${scopeQuery()}`,
     ),
 
   // ─── Canteen (branch-scoped only — use canteenQuery, not scopeQuery) ───
   getCanteenProducts: (activeOnly = true) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/canteen/products${canteenQuery({ activeOnly: activeOnly ? 'true' : 'false' })}`,
     ),
 
   getCanteenCategories: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/categories${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/canteen/categories${canteenQuery()}`),
 
   createCanteenCategory: (name: string) =>
     apiRequest(`/admin/canteen/categories${canteenQuery()}`, {
@@ -721,10 +728,10 @@ export const api = {
     }),
 
   getCanteenSuppliers: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/suppliers${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/canteen/suppliers${canteenQuery()}`),
 
   getCanteenSupplierDetail: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/canteen/suppliers/${id}${canteenQuery({ detail: 'true' })}`,
     ),
 
@@ -741,7 +748,7 @@ export const api = {
     }),
 
   getCanteenSupplierPayments: (supplierId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/canteen/suppliers/${supplierId}/payments${canteenQuery()}`,
     ),
 
@@ -773,21 +780,21 @@ export const api = {
     }),
 
   getCanteenRestockPurchases: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/restock-purchases${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/canteen/restock-purchases${canteenQuery()}`),
 
   getCanteenAccounts: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/accounts${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/canteen/accounts${canteenQuery()}`),
 
   getCanteenAccount: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/canteen/accounts/${id}${canteenQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/canteen/accounts/${id}${canteenQuery()}`),
 
   getCanteenAccountDetail: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/canteen/accounts/${id}${canteenQuery({ detail: 'true' })}`,
     ),
 
   getCanteenAccountSales: (id: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/canteen/accounts/${id}/sales${canteenQuery()}`,
     ),
 
@@ -804,7 +811,7 @@ export const api = {
     }),
 
   getCanteenCreditPersons: (type: string, opts?: { q?: string; groupId?: string }) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/canteen/credit-persons${canteenQuery({
         type,
         ...(opts?.q ? { q: opts.q } : {}),
@@ -813,7 +820,7 @@ export const api = {
     ),
 
   getCanteenCreditClasses: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/canteen/credit-classes${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/canteen/credit-classes${canteenQuery()}`),
 
   postCanteenSale: (data: Record<string, unknown>) =>
     apiRequest(`/admin/canteen/sales${canteenQuery()}`, {
@@ -822,18 +829,18 @@ export const api = {
     }),
 
   getCanteenSales: (date?: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/canteen/sales${canteenQuery(date ? { date } : undefined)}`,
     ),
 
   getCanteenSummary: (date?: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/admin/canteen/summary${canteenQuery({ date: date || new Date().toISOString().slice(0, 10) })}`,
     ),
 
   // ─── Stationary (branch-scoped master + fee-linked assignment) ───
   getStationaryCategories: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/categories${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/stationary/categories${canteenQuery()}`),
   createStationaryCategory: (name: string) =>
     apiRequest(`/admin/stationary/categories${canteenQuery()}`, {
       method: 'POST',
@@ -846,9 +853,9 @@ export const api = {
     }),
 
   getStationarySuppliers: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/suppliers${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/stationary/suppliers${canteenQuery()}`),
   getStationarySupplierDetail: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/stationary/suppliers/${id}${canteenQuery({ detail: 'true' })}`),
+    apiRequest<ApiJsonResult>(`/admin/stationary/suppliers/${id}${canteenQuery({ detail: 'true' })}`),
   createStationarySupplier: (data: Record<string, unknown>) =>
     apiRequest(`/admin/stationary/suppliers${canteenQuery()}`, {
       method: 'POST',
@@ -860,7 +867,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getStationarySupplierPayments: (supplierId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/stationary/suppliers/${supplierId}/payments${canteenQuery()}`,
     ),
   postStationarySupplierPayment: (supplierId: string, data: { amount: number; direction: string; note?: string }) =>
@@ -875,7 +882,7 @@ export const api = {
     }),
 
   getStationaryProducts: (activeOnly = true) =>
-    apiRequest<{ success: boolean; data: any[] }>(
+    apiRequest<ApiJsonResult<any[]>>(
       `/admin/stationary/products${canteenQuery({ activeOnly: activeOnly ? 'true' : 'false' })}`,
     ),
   createStationaryProduct: (data: Record<string, unknown>) =>
@@ -890,7 +897,7 @@ export const api = {
     }),
 
   getStationaryInventory: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/inventory${canteenQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/stationary/inventory${canteenQuery()}`),
   adjustStationaryInventory: (data: Record<string, unknown>) =>
     apiRequest(`/admin/stationary/inventory/adjust${canteenQuery()}`, {
       method: 'POST',
@@ -898,9 +905,9 @@ export const api = {
     }),
 
   getStationarySalesRecords: (search?: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/stationary/sales-records${canteenQuery(search ? { search } : undefined)}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/stationary/sales-records${canteenQuery(search ? { search } : undefined)}`),
   getFeeStationaryCatalog: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/fees/stationary/catalog${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/fees/stationary/catalog${scopeQuery()}`),
   assignStationaryToStudentFee: (data: Record<string, unknown>) =>
     apiRequest(`/admin/fees/stationary/assign${scopeQuery()}`, {
       method: 'POST',
@@ -918,20 +925,20 @@ export const api = {
     ),
 
   teacherBootstrap: () =>
-    apiRequest<{ success: boolean; data: any }>(`/teacher/bootstrap${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/teacher/bootstrap${scopeQuery()}`),
 
   teacherTimetable: () =>
-    apiRequest<{ success: boolean; data: { timetableName: string; slots: any[] } }>(
+    apiRequest<ApiJsonResult<{ timetableName: string; slots: any[] }>>(
       `/teacher/timetable${scopeQuery()}`,
     ),
 
   teacherClassStudents: (groupId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/teacher/classes/${groupId}/students${scopeQuery()}`,
     ),
 
   teacherAttendance: (groupId: string, date: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/teacher/attendance${scopeQuery({ groupId, date })}`,
     ),
 
@@ -946,23 +953,23 @@ export const api = {
     }),
 
   teacherProfile: () =>
-    apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/teacher/profile${scopeQuery()}`),
 
   teacherUpdateProfile: (body: {
     phone?: string | null;
     emergencyContact?: string | null;
     address?: string | null;
   }) =>
-    apiRequest<{ success: boolean; data: any }>(`/teacher/profile${scopeQuery()}`, {
+    apiRequest<ApiJsonResult>(`/teacher/profile${scopeQuery()}`, {
       method: 'PUT',
       body: JSON.stringify(scopeBody(body)),
     }),
 
   teacherAnnouncements: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/teacher/announcements${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/teacher/announcements${scopeQuery()}`),
 
   teacherMarksSubjects: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/teacher/marks/subjects${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/teacher/marks/subjects${scopeQuery()}`),
 
   teacherMarksTable: (filters?: {
     sessionId?: string;
@@ -970,7 +977,7 @@ export const api = {
     subjectId?: string;
     studentId?: string;
   }) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/teacher/marks/table${scopeQuery({
         sessionId: filters?.sessionId,
         examTypeId: filters?.examTypeId,
@@ -980,7 +987,7 @@ export const api = {
     ),
 
   teacherMarksGrid: (examClassSubjectId: string) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult>(
       `/teacher/marks/grid/${examClassSubjectId}${scopeQuery()}`,
     ),
 
@@ -998,10 +1005,10 @@ export const api = {
     }),
 
   teacherHodDepartment: () =>
-    apiRequest<{ success: boolean; data: any }>(`/teacher/hod/department${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/teacher/hod/department${scopeQuery()}`),
 
   teacherHodMarksSubjects: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/teacher/hod/marks/subjects${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/teacher/hod/marks/subjects${scopeQuery()}`),
 
   teacherNotifications: (opts?: { unreadOnly?: boolean; limit?: number }) =>
     apiRequest<{ success: boolean; data: { items: any[]; unreadCount: number } }>(
@@ -1018,21 +1025,25 @@ export const api = {
     apiRequest(`/teacher/notifications/read-all${scopeQuery()}`, { method: 'POST' }),
 
   studentBootstrap: () =>
-    apiRequest<{ success: boolean; data: any }>(`/student/bootstrap${scopeQuery()}`),
+    apiRequest<ApiJsonResult<import('@/lib/student/types').StudentBootstrapData>>(
+      `/student/bootstrap${scopeQuery()}`,
+    ),
 
   studentProfile: () =>
-    apiRequest<{ success: boolean; data: any }>(`/student/profile${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/student/profile${scopeQuery()}`),
 
   studentFees: () =>
-    apiRequest<{ success: boolean; data: any }>(`/student/fees${scopeQuery()}`),
+    apiRequest<ApiJsonResult<{ summary: Record<string, number>; months: unknown[] }>>(
+      `/student/fees${scopeQuery()}`,
+    ),
 
   studentAttendance: (params?: { from?: string; to?: string }) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult<{ records: unknown[]; summary: Record<string, number> }>>(
       `/student/attendance${scopeQuery({ from: params?.from, to: params?.to })}`,
     ),
 
   studentResultsTable: (params?: { sessionId?: string; examTypeId?: string; subjectId?: string }) =>
-    apiRequest<{ success: boolean; data: any }>(
+    apiRequest<ApiJsonResult<{ rows: unknown[]; filters: Record<string, unknown[]> }>>(
       `/student/results/table${scopeQuery({
         sessionId: params?.sessionId,
         examTypeId: params?.examTypeId,
@@ -1041,16 +1052,18 @@ export const api = {
     ),
 
   studentCanteen: () =>
-    apiRequest<{ success: boolean; data: any }>(`/student/canteen${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/student/canteen${scopeQuery()}`),
 
   studentTimetable: () =>
-    apiRequest<{ success: boolean; data: any }>(`/student/timetable${scopeQuery()}`),
+    apiRequest<ApiJsonResult<{ timetableName: string; groupLabel?: string; slots: unknown[] }>>(
+      `/student/timetable${scopeQuery()}`,
+    ),
 
   studentDatesheets: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/student/datesheets${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/student/datesheets${scopeQuery()}`),
 
   studentAnnouncements: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/student/announcements${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/student/announcements${scopeQuery()}`),
 
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     apiRequest('/auth/password', {
@@ -1067,7 +1080,7 @@ export const api = {
     ),
 
   getStaffMember: (userId: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/staff/${userId}${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/staff/${userId}${scopeQuery()}`),
 
   createStaffMember: (data: Record<string, unknown>) =>
     apiRequest(`/admin/staff${scopeQuery()}`, {
@@ -1103,7 +1116,7 @@ export const api = {
     apiRequest(`/admin/staff/${userId}/send-credentials${scopeQuery()}`, { method: 'POST' }),
 
   getBranchMemberTenures: (branchMemberId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/branch-members/${branchMemberId}/tenures${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/branch-members/${branchMemberId}/tenures${scopeQuery()}`),
   addBranchMemberTenureJoin: (branchMemberId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
     apiRequest(`/admin/branch-members/${branchMemberId}/tenures/join${scopeQuery()}`, {
       method: 'POST',
@@ -1116,7 +1129,7 @@ export const api = {
     }),
 
   getTeacherTenures: (userId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/teachers/${userId}/tenures${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/teachers/${userId}/tenures${scopeQuery()}`),
   addTeacherTenureJoin: (userId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
     apiRequest(`/admin/teachers/${userId}/tenures/join${scopeQuery()}`, {
       method: 'POST',
@@ -1129,7 +1142,7 @@ export const api = {
     }),
 
   getStudentSchoolTenures: (studentId: string) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/students/${studentId}/school-tenures${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/students/${studentId}/school-tenures${scopeQuery()}`),
   addStudentSchoolTenureJoin: (studentId: string, data?: { joinedAt?: string }) =>
     apiRequest(`/admin/students/${studentId}/school-tenures/join${scopeQuery()}`, {
       method: 'POST',
@@ -1153,7 +1166,7 @@ export const api = {
     }),
 
   getExpensesSummary: (month?: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/summary${scopeQuery(month ? { month } : {})}`),
+    apiRequest<ApiJsonResult>(`/admin/expenses/summary${scopeQuery(month ? { month } : {})}`),
 
   getPayrollList: (month?: string) =>
     apiRequest<{ success: boolean; data: any[]; month: string }>(`/admin/expenses/payroll${scopeQuery(month ? { month } : {})}`),
@@ -1168,10 +1181,10 @@ export const api = {
     }),
 
   getPayrollPayeeProfile: (userId: string, limit?: number) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/payroll/profile/${userId}${scopeQuery(limit ? { limit: String(limit) } : {})}`),
+    apiRequest<ApiJsonResult>(`/admin/expenses/payroll/profile/${userId}${scopeQuery(limit ? { limit: String(limit) } : {})}`),
 
   getPayrollPayeeDetail: (userId: string, month?: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/payroll/payee/${userId}${scopeQuery(month ? { month } : {})}`),
+    apiRequest<ApiJsonResult>(`/admin/expenses/payroll/payee/${userId}${scopeQuery(month ? { month } : {})}`),
 
   recordPayrollPayment: (data: Record<string, unknown>) =>
     apiRequest(`/admin/expenses/payroll${scopeQuery()}`, {
@@ -1180,7 +1193,7 @@ export const api = {
     }),
 
   getUtilityCategories: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/categories${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/utilities/categories${scopeQuery()}`),
 
   createUtilityCategory: (name: string) =>
     apiRequest(`/admin/expenses/utilities/categories${scopeQuery()}`, {
@@ -1189,10 +1202,10 @@ export const api = {
     }),
 
   getUtilityProviders: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/providers${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/utilities/providers${scopeQuery()}`),
 
   getUtilityBills: (params?: Record<string, string>) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities${scopeQuery(params)}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/utilities${scopeQuery(params)}`),
 
   recordUtilityBill: (data: Record<string, unknown>) =>
     apiRequest(`/admin/expenses/utilities${scopeQuery()}`, {
@@ -1201,7 +1214,7 @@ export const api = {
     }),
 
   getOtherCategories: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/others/categories${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/others/categories${scopeQuery()}`),
 
   createOtherCategory: (name: string) =>
     apiRequest(`/admin/expenses/others/categories${scopeQuery()}`, {
@@ -1210,7 +1223,7 @@ export const api = {
     }),
 
   getOtherPayments: (params?: Record<string, string>) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/others${scopeQuery(params)}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/others${scopeQuery(params)}`),
 
   recordOtherPayment: (data: Record<string, unknown>) =>
     apiRequest(`/admin/expenses/others${scopeQuery()}`, {
@@ -1225,10 +1238,10 @@ export const api = {
     }),
 
   getExpenseVoucher: (id: string) =>
-    apiRequest<{ success: boolean; data: any }>(`/admin/expenses/vouchers/${id}${scopeQuery()}`),
+    apiRequest<ApiJsonResult>(`/admin/expenses/vouchers/${id}${scopeQuery()}`),
 
   getExpenseVouchers: (params?: Record<string, string>) =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/vouchers${scopeQuery(params)}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/vouchers${scopeQuery(params)}`),
 
   exportPayrollCsv: (month?: string) =>
     apiRequest<{ success: boolean; data: { filename: string; csv: string } }>(
@@ -1252,7 +1265,7 @@ export const api = {
     }),
 
   getUtilityReminders: () =>
-    apiRequest<{ success: boolean; data: any[] }>(`/admin/expenses/utilities/reminders${scopeQuery()}`),
+    apiRequest<ApiJsonResult<any[]>>(`/admin/expenses/utilities/reminders${scopeQuery()}`),
 
   updateUtilityProvider: (id: string, data: Record<string, unknown>) =>
     apiRequest(`/admin/expenses/utilities/providers/${id}${scopeQuery()}`, {

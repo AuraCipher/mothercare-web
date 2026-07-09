@@ -18,11 +18,10 @@ export default function StudentHomePage() {
   useEffect(() => {
     if (!data) return;
     api.studentTimetable().then((res) => {
-      if (!res.success) return;
+      if (!res.success || !res.data) return;
       const day = new Date().getDay();
-      const slots = (res.data?.slots || []).filter(
-        (s: { dayOfWeek: number | null }) => s.dayOfWeek == null || s.dayOfWeek === day,
-      );
+      const rawSlots = (res.data.slots ?? []) as Array<{ dayOfWeek: number | null }>;
+      const slots = rawSlots.filter((s) => s.dayOfWeek == null || s.dayOfWeek === day);
       setTodaySlots(slots.slice(0, 4));
     }).catch(() => {});
     api.studentAnnouncements().then((res) => {

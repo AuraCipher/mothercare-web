@@ -117,20 +117,18 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
         const branchId = localStorage.getItem('activeBranchId');
         if (!branchId) return;
 
-        const ayRes = await api.getAcademicYears(branchId).catch(() => ({ success: false, data: [] }));
-        if (cancelled || !ayRes.success) return;
+        const ayRes = await api.meAcademicYear().catch(() => ({ success: false, data: null }));
+        if (cancelled || !ayRes.success || !ayRes.data) return;
 
-        setAcademicYears(ayRes.data || []);
+        const activeAy = ayRes.data;
+        setAcademicYears([activeAy]);
         const storedAy = localStorage.getItem('activeAYId');
-        if (storedAy && ayRes.data?.some((a: { id: string }) => a.id === storedAy)) {
+        if (storedAy === activeAy.id) {
           setActiveAYId(storedAy);
         } else {
-          const active = ayRes.data?.find((a: { status: string }) => a.status === 'ACTIVE');
-          if (active) {
-            setActiveAYId(active.id);
-            localStorage.setItem('activeAYId', active.id);
-            localStorage.setItem('activeAYStatus', active.status);
-          }
+          setActiveAYId(activeAy.id);
+          localStorage.setItem('activeAYId', activeAy.id);
+          localStorage.setItem('activeAYStatus', activeAy.status);
         }
       } catch {
         /* non-critical */
@@ -201,15 +199,12 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
     setActiveBranchId(branchId);
     localStorage.setItem('activeBranchId', branchId);
     setBranchDropdownOpen(false);
-    api.getAcademicYears(branchId).then((res) => {
-      if (!res.success) return;
-      setAcademicYears(res.data || []);
-      const active = res.data?.find((a: { status: string }) => a.status === 'ACTIVE');
-      if (active) {
-        setActiveAYId(active.id);
-        localStorage.setItem('activeAYId', active.id);
-        localStorage.setItem('activeAYStatus', active.status);
-      }
+    api.meAcademicYear().then((res) => {
+      if (!res.success || !res.data) return;
+      setAcademicYears([res.data]);
+      setActiveAYId(res.data.id);
+      localStorage.setItem('activeAYId', res.data.id);
+      localStorage.setItem('activeAYStatus', res.data.status);
     });
   };
 

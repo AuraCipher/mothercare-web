@@ -48,16 +48,20 @@ export function TeacherBootstrapProvider({ children }: { children: ReactNode }) 
       if (branchId) localStorage.setItem('activeBranchId', branchId);
     }
 
-    if (!academicYearId && branchId) {
+    if (!academicYearId) {
       try {
-        const ayRes = await api.getAcademicYears(branchId);
-        if (ayRes.success && ayRes.data?.length) {
-          const active = ayRes.data.find((ay: { status: string }) => ay.status === 'ACTIVE');
-          if (active?.id) {
-            academicYearId = active.id;
-            localStorage.setItem('activeAYId', active.id);
-            if (active.status) localStorage.setItem('activeAYStatus', active.status);
+        const ayRes = await api.meAcademicYear();
+        if (ayRes.success && ayRes.data?.id) {
+          academicYearId = ayRes.data.id;
+          localStorage.setItem('activeAYId', ayRes.data.id);
+          if (ayRes.data.status) localStorage.setItem('activeAYStatus', ayRes.data.status);
+          if (ayRes.data.branchId && !branchId) {
+            branchId = ayRes.data.branchId;
+            localStorage.setItem('activeBranchId', ayRes.data.branchId);
           }
+          // #region agent log
+          fetch('http://127.0.0.1:7275/ingest/ce52f613-123c-4e37-baf2-26dca66dcf5d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'062214'},body:JSON.stringify({sessionId:'062214',runId:'post-fix',hypothesisId:'H5',location:'use-teacher-bootstrap.tsx:load',message:'teacher scope via meAcademicYear',data:{ok:true,academicYearId:ayRes.data.id,branchId:ayRes.data.branchId},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
         }
       } catch {
         /* handled below */

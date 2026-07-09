@@ -37,12 +37,12 @@ export default function StudentResultsPage() {
         examTypeId: filterState.examTypeId !== RESULTS_FILTER_ALL ? filterState.examTypeId : undefined,
         subjectId: filterState.subjectId !== RESULTS_FILTER_ALL ? filterState.subjectId : undefined,
       });
-      if (res.success) {
-        setRows(res.data.rows || []);
+      if (res.success && res.data) {
+        setRows((res.data.rows as ResultsTableRow[]) || []);
         setFilterMeta({
-          sessions: res.data.filters?.sessions || [],
-          examTypes: res.data.filters?.examTypes || [],
-          subjects: res.data.filters?.subjects || [],
+          sessions: (res.data.filters?.sessions as ResultsFiltersMeta['sessions']) || [],
+          examTypes: (res.data.filters?.examTypes as ResultsFiltersMeta['examTypes']) || [],
+          subjects: (res.data.filters?.subjects as ResultsFiltersMeta['subjects']) || [],
         });
       } else {
         setError(res.message || 'Failed to load results');

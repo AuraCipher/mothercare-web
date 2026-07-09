@@ -29,7 +29,7 @@ export function isNavAllowed(
   isHod?: boolean,
 ): boolean {
   if (!permissions) return true;
-  if (href.startsWith('/teacher/hod')) return isHod && (permissions.hod?.allowed ?? false);
+  if (href.startsWith('/teacher/hod')) return Boolean(isHod) && (permissions.hod?.allowed ?? false);
   if (href.startsWith('/teacher/classes/') || href.startsWith('/teacher/subjects/')) {
     return permissions.classes?.allowed ?? true;
   }
