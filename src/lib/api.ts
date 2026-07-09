@@ -964,6 +964,21 @@ export const api = {
   teacherMarksSubjects: () =>
     apiRequest<{ success: boolean; data: any[] }>(`/teacher/marks/subjects${scopeQuery()}`),
 
+  teacherMarksTable: (filters?: {
+    sessionId?: string;
+    examTypeId?: string;
+    subjectId?: string;
+    studentId?: string;
+  }) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/teacher/marks/table${scopeQuery({
+        sessionId: filters?.sessionId,
+        examTypeId: filters?.examTypeId,
+        subjectId: filters?.subjectId,
+        studentId: filters?.studentId,
+      })}`,
+    ),
+
   teacherMarksGrid: (examClassSubjectId: string) =>
     apiRequest<{ success: boolean; data: any }>(
       `/teacher/marks/grid/${examClassSubjectId}${scopeQuery()}`,
@@ -1001,6 +1016,41 @@ export const api = {
 
   teacherMarkAllNotificationsRead: () =>
     apiRequest(`/teacher/notifications/read-all${scopeQuery()}`, { method: 'POST' }),
+
+  studentBootstrap: () =>
+    apiRequest<{ success: boolean; data: any }>(`/student/bootstrap${scopeQuery()}`),
+
+  studentProfile: () =>
+    apiRequest<{ success: boolean; data: any }>(`/student/profile${scopeQuery()}`),
+
+  studentFees: () =>
+    apiRequest<{ success: boolean; data: any }>(`/student/fees${scopeQuery()}`),
+
+  studentAttendance: (params?: { from?: string; to?: string }) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/student/attendance${scopeQuery({ from: params?.from, to: params?.to })}`,
+    ),
+
+  studentResultsTable: (params?: { sessionId?: string; examTypeId?: string; subjectId?: string }) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/student/results/table${scopeQuery({
+        sessionId: params?.sessionId,
+        examTypeId: params?.examTypeId,
+        subjectId: params?.subjectId,
+      })}`,
+    ),
+
+  studentCanteen: () =>
+    apiRequest<{ success: boolean; data: any }>(`/student/canteen${scopeQuery()}`),
+
+  studentTimetable: () =>
+    apiRequest<{ success: boolean; data: any }>(`/student/timetable${scopeQuery()}`),
+
+  studentDatesheets: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/student/datesheets${scopeQuery()}`),
+
+  studentAnnouncements: () =>
+    apiRequest<{ success: boolean; data: any[] }>(`/student/announcements${scopeQuery()}`),
 
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     apiRequest('/auth/password', {

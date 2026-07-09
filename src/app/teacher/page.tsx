@@ -150,6 +150,11 @@ export default function TeacherHomePage() {
             }
           />
           <TeacherQuickLink
+            href="/teacher/results"
+            title="Results"
+            body="Read-only marks table with session, exam, and subject filters"
+          />
+          <TeacherQuickLink
             href="/teacher/marks"
             title="Marks"
             body="Enter exam marks for your subjects"

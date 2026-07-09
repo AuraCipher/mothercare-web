@@ -85,6 +85,15 @@ function TeacherMarksContent() {
       title="Marks"
       subtitle="Enter exam marks for your assigned subjects"
     >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Link
+          href="/teacher/results"
+          className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-2 text-xs text-warm-cream"
+        >
+          View results table
+        </Link>
+      </div>
+
       {data.portal.isHod && (
         <div className="mb-4">
           <Link

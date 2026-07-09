@@ -46,6 +46,7 @@ const NAV_ITEMS = [
   { href: '/teacher/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/teacher/attendance', icon: CheckSquare, label: 'Attendance' },
   { href: '/teacher/marks', icon: ClipboardList, label: 'Marks' },
+  { href: '/teacher/results', icon: GraduationCap, label: 'Results' },
   { href: '/teacher/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/teacher/notifications', icon: Bell, label: 'Notifications' },
   { href: '/teacher/profile', icon: User, label: 'Profile' },

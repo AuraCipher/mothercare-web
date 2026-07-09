@@ -17,6 +17,7 @@ const NAV_FEATURE_MAP: Record<string, keyof TeacherFeaturePermissions> = {
   '/teacher/timetable': 'timetable',
   '/teacher/attendance': 'attendance',
   '/teacher/marks': 'marks',
+  '/teacher/results': 'marks',
   '/teacher/announcements': 'announcements',
   '/teacher/notifications': 'notifications',
   '/teacher/profile': 'profile',

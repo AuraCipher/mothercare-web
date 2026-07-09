@@ -39,7 +39,8 @@ function isPublicRoute(pathname: string): boolean {
 function isProtectedRoute(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
     || pathname === '/ceo' || pathname.startsWith('/ceo/')
-    || pathname === '/teacher' || pathname.startsWith('/teacher/');
+    || pathname === '/teacher' || pathname.startsWith('/teacher/')
+    || pathname === '/student' || pathname.startsWith('/student/');
 }
 
 function isAuthRoute(pathname: string): boolean {
@@ -80,8 +81,17 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(dest, request.url));
     }
 
+    if (pathname.startsWith('/student') && role && role !== 'student') {
+      const dest = defaultLandingForRole(role);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+
     if (pathname.startsWith('/admin') && role === 'teacher') {
       return NextResponse.redirect(new URL('/teacher', request.url));
+    }
+
+    if (pathname.startsWith('/admin') && role === 'student') {
+      return NextResponse.redirect(new URL('/student', request.url));
     }
 
     if (pathname.startsWith('/ceo') && role && role !== 'super_admin') {
