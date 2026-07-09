@@ -78,7 +78,7 @@ export default function FileUpload({ value, onChange, accept = 'image/*,.pdf', m
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const displaySrc = preview || (value ? `/api/uploads/${value}` : null);
+  const displaySrc = preview || (value ? `${config.apiUrl}/api/uploads/${value}` : null);
 
   return (
     <div>
