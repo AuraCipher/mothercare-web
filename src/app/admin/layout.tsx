@@ -279,7 +279,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           )}
           <span className="hidden text-xs text-warm-muted sm:block">{user?.name}</span>
-          {pathname.match(/^\/admin\/(students|teachers)\/[^\/]+$/) && <DocNav />}
+          <DocNav />
           <span className="inline-flex items-center gap-1 rounded-full border border-warm-accent/30 bg-warm-accent/10 px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-warm-accent uppercase">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-warm-accent" />
             {user?.role?.replace('_', ' ') || 'user'}

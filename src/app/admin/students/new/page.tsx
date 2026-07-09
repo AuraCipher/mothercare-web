@@ -97,7 +97,7 @@ export default function NewStudentPage() {
         {/* Photo */}
         <div>
           <p className="mb-2 text-xs text-warm-muted">Profile Photo</p>
-          <FileUpload value={form.profilePhotoId} onChange={set('profilePhotoId')} label="Upload Photo" />
+          <FileUpload value={form.profilePhotoId} onChange={set('profilePhotoId')} label="Upload Photo" purpose="profile" entityType="student" />
         </div>
 
         {/* Student Identity */}

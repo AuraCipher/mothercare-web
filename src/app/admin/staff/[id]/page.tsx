@@ -262,6 +262,8 @@ export default function StaffDetailPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'profile');
+      formData.append('entityType', 'staff');
+      if (userId) formData.append('entityId', userId);
       const res = await fetch(`${config.apiUrl}/api/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -456,7 +458,7 @@ export default function StaffDetailPage() {
               <Lightbox
                 isOpen={lightboxOpen}
                 onClose={() => setLightboxOpen(false)}
-                src={`${config.apiUrl}/api/uploads/${data.profilePhotoId}`}
+                fileId={data.profilePhotoId}
                 alt={data.name}
               />
             )}

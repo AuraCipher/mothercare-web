@@ -293,6 +293,8 @@ export default function StudentDetailPage() {
               const formData = new FormData();
               formData.append('file', file);
               formData.append('purpose', 'profile');
+              formData.append('entityType', 'student');
+              formData.append('entityId', id);
               const res = await fetch(`${config.apiUrl}/api/upload`, {
                 method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
               });
@@ -308,7 +310,7 @@ export default function StudentDetailPage() {
 
           {/* Lightbox for viewing full-size */}
           <Lightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)}
-            src={`${config.apiUrl}/api/uploads/${s.profilePhotoId}`}
+            fileId={s.profilePhotoId}
             alt={s.name} />
         </div>
       </div>

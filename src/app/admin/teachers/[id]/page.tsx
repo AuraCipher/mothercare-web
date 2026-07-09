@@ -503,6 +503,8 @@ export default function TeacherDetailPage() {
               const formData = new FormData();
               formData.append('file', file);
               formData.append('purpose', 'profile');
+              formData.append('entityType', 'teacher');
+              formData.append('entityId', data.id);
               const res = await fetch(`${config.apiUrl}/api/upload`, {
                 method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
               });
@@ -518,7 +520,7 @@ export default function TeacherDetailPage() {
 
           {/* Lightbox for viewing full-size */}
           <Lightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)}
-            src={`${config.apiUrl}/api/uploads/${user.profilePhotoId}`}
+            fileId={user.profilePhotoId}
             alt={user.name} />
         </div>
       </div>

@@ -16,7 +16,7 @@ type AyPermissionsContextValue = {
   ayStatus: string | null;
 };
 
-const AyPermissionsContext = createContext<AyPermissionsContextValue>({
+export const AyPermissionsContext = createContext<AyPermissionsContextValue>({
   staffAccess: null,
   ayStatus: null,
 });

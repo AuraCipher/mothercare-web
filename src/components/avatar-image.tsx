@@ -1,27 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import config from '@/config';
+import { useAuthenticatedFileUrl } from '@/hooks/use-authenticated-file-url';
 
 interface AvatarImageProps {
   fileId: string | null | undefined;
   alt?: string;
   className?: string;
-  fallback?: string; // initial letters to show when no image
+  fallback?: string;
 }
 
 export default function AvatarImage({ fileId, alt = '', className = '', fallback }: AvatarImageProps) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  const { url, error } = useAuthenticatedFileUrl(fileId);
 
-  useEffect(() => {
-    if (!fileId) { setSrc(null); return; }
-    setError(false); // reset error state for new fileId
-    const token = localStorage.getItem('token');
-    setSrc(`${config.apiUrl}/api/uploads/${fileId}`);
-  }, [fileId]);
-
-  if (!src || error) {
+  if (!url || error) {
     return (
       <div className={`flex items-center justify-center bg-warm-card border border-warm-card-border text-warm-muted ${className}`}>
         {fallback ? (
@@ -35,10 +26,10 @@ export default function AvatarImage({ fileId, alt = '', className = '', fallback
 
   return (
     <img
-      src={src}
+      src={url}
       alt={alt}
       className={className}
-      onError={() => setError(true)}
+      onError={() => {}}
       style={{ objectFit: 'cover' }}
     />
   );

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Calendar, ChevronDown, Check, LogOut } from 'lucide-react';
 import { api } from '@/lib/api';
+import DocNav from '@/components/doc-nav';
 import { filterAcademicYearsForAccess } from '@/lib/ay-access';
 import {
   allowedModules,
@@ -180,6 +181,7 @@ export function StaffModuleShell({ access, userName, children }: Props) {
         </div>
         <div className="flex items-center gap-3">
           {userName && <span className="hidden text-xs text-warm-muted sm:inline">{userName}</span>}
+          <DocNav />
           <button type="button" onClick={logout} className="flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream">
             <LogOut size={14} /> Logout
           </button>

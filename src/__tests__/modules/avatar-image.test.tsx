@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '../helpers/test-utils';
+import { render, screen, waitFor } from '../helpers/test-utils';
 import AvatarImage from '@/components/avatar-image';
 
 const localStorageMock = (() => {
@@ -8,7 +8,20 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
+const mockFetch = vi.fn();
+globalThis.fetch = mockFetch;
+
 describe('AvatarImage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(['x'], { type: 'image/jpeg' })),
+    });
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
+  });
+
   it('renders fallback text when no fileId', () => {
     render(<AvatarImage fileId={null} />);
     expect(screen.getByText('No Photo')).toBeInTheDocument();
@@ -19,15 +32,21 @@ describe('AvatarImage', () => {
     expect(screen.getByText('S')).toBeInTheDocument();
   });
 
-  it('renders img tag when fileId is provided', () => {
+  it('renders img tag when fileId is provided', async () => {
     render(<AvatarImage fileId="file-123" alt="Teacher photo" />);
-    const img = screen.getByAltText('Teacher photo') as HTMLImageElement;
-    expect(img).toBeInTheDocument();
-    expect(img.src).toContain('/api/uploads/file-123');
+    await waitFor(() => {
+      expect(screen.getByAltText('Teacher photo')).toBeInTheDocument();
+    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/uploads/file-123'),
+      expect.objectContaining({ headers: { Authorization: 'Bearer test-jwt' } }),
+    );
   });
 
-  it('applies custom className', () => {
+  it('applies custom className', async () => {
     render(<AvatarImage fileId="file-123" className="custom-class" alt="test" />);
-    expect(screen.getByAltText('test')).toHaveClass('custom-class');
+    await waitFor(() => {
+      expect(screen.getByAltText('test')).toHaveClass('custom-class');
+    });
   });
 });

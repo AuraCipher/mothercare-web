@@ -9,7 +9,8 @@ export type StaffModuleKey =
   | 'RESULT'
   | 'CANTEEN'
   | 'STATIONARY'
-  | 'EXPENSES';
+  | 'EXPENSES'
+  | 'DOCUMENTS';
 
 export type ModulePermission = {
   module: StaffModuleKey;
@@ -45,6 +46,7 @@ export const STAFF_MODULES: Array<{
   { key: 'CANTEEN', label: 'Canteen', path: '/admin/canteen' },
   { key: 'STATIONARY', label: 'Stationary', path: '/admin/stationary' },
   { key: 'EXPENSES', label: 'Payments', path: '/admin/expenses' },
+  { key: 'DOCUMENTS', label: 'Documents', path: '/admin' },
 ];
 
 export function moduleLabel(key: StaffModuleKey): string {
@@ -62,7 +64,7 @@ export function moduleDefaultPath(key: StaffModuleKey, permissions: ModulePermis
 
 export function allowedModules(access: StaffAccess | null): ModulePermission[] {
   if (!access?.isRestricted) return [];
-  return access.permissions.filter((p) => p.canRead);
+  return access.permissions.filter((p) => p.canRead && p.module !== 'DOCUMENTS');
 }
 
 export function pathnameAllowed(pathname: string, access: StaffAccess | null): boolean {
@@ -153,7 +155,7 @@ export function isAyReadOnlyForPath(
 export const EMPTY_PERMISSION_ROW = (module: StaffModuleKey): ModulePermission => ({
   module,
   canCreate: false,
-  canRead: true,
+  canRead: module === 'DOCUMENTS' ? false : true,
   canUpdate: false,
   canDelete: false,
   archivedCanRead: false,

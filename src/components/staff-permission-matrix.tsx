@@ -22,7 +22,7 @@ function CrudBadges({ p, archived }: { p: ModulePermission; archived?: boolean }
         { on: !!p.archivedCanDelete, label: 'Delete' },
       ]
     : [
-        { on: true, label: 'Read' },
+        { on: p.canRead, label: 'Read' },
         { on: p.canCreate, label: 'Create' },
         { on: p.canUpdate, label: 'Update' },
         { on: p.canDelete, label: 'Delete' },
@@ -129,7 +129,11 @@ export function PermissionMatrix({
     onChange(next);
   };
 
-  const toggleCrud = (key: StaffModuleKey, field: 'canCreate' | 'canUpdate' | 'canDelete', on: boolean) => {
+  const toggleCrud = (
+    key: StaffModuleKey,
+    field: 'canRead' | 'canCreate' | 'canUpdate' | 'canDelete',
+    on: boolean,
+  ) => {
     const row = value[key] ?? EMPTY_PERMISSION_ROW(key);
     onChange({ ...value, [key]: { ...row, [field]: on } });
   };
@@ -198,6 +202,30 @@ export function PermissionMatrix({
             </div>
             {enabled && row && isOpen && (
               <div className={`border-t border-warm-card-border/50 px-4 pb-3 pt-2 space-y-3 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+                {key === 'DOCUMENTS' ? (
+                  <div>
+                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-warm-muted">
+                      Document drawer (profiles, suppliers, etc.)
+                    </p>
+                    <p className="mb-3 text-[10px] text-warm-muted/80">
+                      Off by default. Staff also need read access on the related module (e.g. Canteen for supplier docs).
+                    </p>
+                    <div className="flex flex-wrap gap-4 pl-1">
+                      {(['canRead', 'canCreate', 'canUpdate', 'canDelete'] as const).map((field) => (
+                        <label key={field} className="flex items-center gap-1.5 text-warm-cream">
+                          <input
+                            type="checkbox"
+                            checked={row[field]}
+                            onChange={(e) => toggleCrud(key, field, e.target.checked)}
+                            className="rounded border-warm-card-border"
+                          />
+                          {field === 'canRead' ? 'Read' : field === 'canCreate' ? 'Create' : field === 'canUpdate' ? 'Update' : 'Delete'}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                <>
                 <div>
                   <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-warm-muted">Current year</p>
                   <div className="flex flex-wrap gap-4 pl-1">
@@ -248,6 +276,8 @@ export function PermissionMatrix({
                     </div>
                   )}
                 </div>
+                </>
+                )}
               </div>
             )}
           </div>
@@ -277,9 +307,10 @@ export function formatModuleSummary(permissions: ModulePermission[]): string {
 }
 
 export function crudSummary(p: ModulePermission): string {
-  const parts = ['Read'];
+  const parts: string[] = [];
+  if (p.canRead) parts.push('Read');
   if (p.canCreate) parts.push('Create');
   if (p.canUpdate) parts.push('Update');
   if (p.canDelete) parts.push('Delete');
-  return parts.join(' · ');
+  return parts.length ? parts.join(' · ') : 'None';
 }

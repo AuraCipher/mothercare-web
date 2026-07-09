@@ -508,11 +508,16 @@ export default function StaffPage() {
                   onClick={() => createPhotoRef.current?.click()}
                   className="group relative shrink-0"
                 >
-                  {createPhotoPreview || createPhotoId ? (
+                  {createPhotoPreview ? (
                     <img
-                      src={createPhotoPreview || `${config.apiUrl}/api/uploads/${createPhotoId}`}
+                      src={createPhotoPreview}
                       alt="Preview"
                       className="h-20 w-16 rounded-lg border-2 border-warm-card-border object-cover"
+                    />
+                  ) : createPhotoId ? (
+                    <AvatarImage
+                      fileId={createPhotoId}
+                      className="h-20 w-16 rounded-lg border-2 border-warm-card-border"
                     />
                   ) : (
                     <div className="flex h-20 w-16 items-center justify-center rounded-lg border-2 border-dashed border-warm-card-border bg-[#1a1614] text-[10px] text-warm-muted group-hover:border-warm-accent">
@@ -674,11 +679,16 @@ export default function StaffPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <button type="button" onClick={() => workerPhotoRef.current?.click()} className="group relative shrink-0">
-                  {workerPhotoPreview || workerPhotoId ? (
+                  {workerPhotoPreview ? (
                     <img
-                      src={workerPhotoPreview || `${config.apiUrl}/api/uploads/${workerPhotoId}`}
+                      src={workerPhotoPreview}
                       alt="Preview"
                       className="h-20 w-16 rounded-lg border-2 border-warm-card-border object-cover"
+                    />
+                  ) : workerPhotoId ? (
+                    <AvatarImage
+                      fileId={workerPhotoId}
+                      className="h-20 w-16 rounded-lg border-2 border-warm-card-border"
                     />
                   ) : (
                     <div className="flex h-20 w-16 items-center justify-center rounded-lg border-2 border-dashed border-warm-card-border bg-[#1a1614] text-[10px] text-warm-muted group-hover:border-warm-accent">
