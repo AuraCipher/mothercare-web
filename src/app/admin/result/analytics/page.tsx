@@ -455,7 +455,7 @@ export default function ResultAnalyticsPage() {
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-10 text-center">
           <p className="text-sm text-warm-muted">No analytics data available.</p>
           <p className="mt-2 text-xs text-warm-muted/60">
-            Run <code className="rounded bg-[#1a1614] px-1 py-0.5">npm run prisma:seed:result</code> in the backend, or create sessions and compute results.
+            Run <code className="rounded bg-[#1a1614] px-1 py-0.5">npx prisma db seed</code> in the backend, or create sessions and compute results.
           </p>
         </div>
       )}

@@ -11,15 +11,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test:unit": "vitest run --exclude '**/*integration*'",
+    "test:integration": "vitest run src/__tests__/phase/stationary-fee-integration.test.tsx",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "preflight": "tsx scripts/preflight.ts",
-    "clean": "rm -rf .next",
-    "dev:clear": "rm -rf .next && tsx scripts/preflight.ts && next dev",
-    "dev:server": "tsx watch server.ts",
-    "start:server": "tsx server.ts"
+    "test:all": "bash scripts/test-all.sh"
   },
   "dependencies": {
     "@types/three": "^0.184.1",
