@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Building2, Calendar, Plus, ArrowLeft, CheckCircle, Archive, ExternalLink, ChevronDown, ChevronRight, Trash2, X } from 'lucide-react';
 import ConfirmModal from '@/components/confirm-modal';
 import { showToast } from '@/components/toast';
+import { BranchChatSettingsPanel } from '@/components/admin/branch-chat-settings-panel';
 
 interface BranchDetail {
   id: string;
@@ -232,6 +233,8 @@ export default function BranchDetailPage() {
     }
   };
 
+  const activeAcademicYear = academicYears.find((ay) => ay.status === 'ACTIVE') ?? null;
+
   if (loading && !branch) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
@@ -296,6 +299,12 @@ export default function BranchDetailPage() {
           </div>
         )}
       </div>
+
+      <BranchChatSettingsPanel
+        branchId={branchId}
+        activeAcademicYearId={activeAcademicYear?.id ?? null}
+        activeAcademicYearLabel={activeAcademicYear?.calendar.label}
+      />
 
       <div className="mb-8 rounded-xl border border-warm-card-border bg-warm-card p-5">
         <h2 className="mb-3 text-sm font-medium text-warm-cream">Teacher portal policy</h2>

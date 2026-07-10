@@ -132,6 +132,32 @@ export const api = {
   getBranchStats: (id: string) =>
     apiRequest<ApiJsonResult>(`/admin/branches/${id}/stats${scopeQuery()}`),
 
+  getBranchChatSettings: (branchId: string) =>
+    apiRequest<ApiJsonResult>(`/admin/branches/${branchId}/chat-settings`),
+
+  updateBranchChatSettings: (
+    branchId: string,
+    academicYearId: string,
+    data: {
+      schoolAnnouncementPosterUserIds?: string[];
+      teacherAnnouncementPosterUserIds?: string[];
+      allowAllTeachersTeacherAnnouncement?: boolean;
+    },
+  ) => {
+    const qs = new URLSearchParams({ branchId, academicYearId });
+    return apiRequest(`/admin/branches/${branchId}/chat-settings?${qs}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getBranchTeachers: (branchId: string, params?: { search?: string; limit?: number }) => {
+    const q = new URLSearchParams({ branchId });
+    if (params?.search) q.set('search', params.search);
+    q.set('limit', String(params?.limit ?? 200));
+    return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/teachers?${q}`);
+  },
+
   removeAdmin: (branchId: string, userId: string) =>
     apiRequest(`/admin/branches/${branchId}/remove-admin/${userId}`, { method: 'POST' }),
 
