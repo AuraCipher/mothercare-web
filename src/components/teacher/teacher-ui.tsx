@@ -1,6 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export function TeacherSection({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -73,15 +75,28 @@ export function TeacherQuickLink({
   href,
   title,
   body,
+  icon: Icon,
+  badge,
 }: {
   href: string;
   title: string;
   body: string;
+  icon: LucideIcon;
+  badge?: string;
 }) {
   return (
-    <Link href={href} className="teacher-quick-link">
-      <p className="teacher-quick-link__title">{title}</p>
-      <p className="teacher-quick-link__body">{body}</p>
+    <Link href={href} className="teacher-quick-action">
+      <span className="teacher-quick-action__icon" aria-hidden>
+        <Icon size={20} strokeWidth={1.75} />
+      </span>
+      <span className="teacher-quick-action__content">
+        <span className="teacher-quick-action__head">
+          <span className="teacher-quick-action__title">{title}</span>
+          {badge ? <span className="teacher-quick-action__badge">{badge}</span> : null}
+        </span>
+        <span className="teacher-quick-action__body">{body}</span>
+      </span>
+      <ChevronRight className="teacher-quick-action__arrow" size={16} aria-hidden />
     </Link>
   );
 }

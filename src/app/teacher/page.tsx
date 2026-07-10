@@ -1,6 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  Bell,
+  CalendarDays,
+  ClipboardCheck,
+  PenLine,
+  TableProperties,
+  Users,
+} from 'lucide-react';
 import { AssignmentCard } from '@/components/teacher/assignment-card';
 import { TeacherNoAssignmentsState, TeacherPageShell } from '@/components/teacher/teacher-page-shell';
 import {
@@ -134,11 +142,12 @@ export default function TeacherHomePage() {
       )}
 
       <TeacherSection title="Quick actions">
-        <div className="teacher-grid-cards">
+        <div className="teacher-quick-actions">
           <TeacherQuickLink
             href="/teacher/timetable"
             title="My timetable"
             body="Weekly schedule and periods"
+            icon={CalendarDays}
           />
           <TeacherQuickLink
             href="/teacher/attendance"
@@ -148,22 +157,26 @@ export default function TeacherHomePage() {
                 ? 'Mark and review class attendance'
                 : 'View attendance (marking disabled by branch)'
             }
+            icon={ClipboardCheck}
           />
           <TeacherQuickLink
             href="/teacher/results"
             title="Results"
             body="Read-only marks table with session, exam, and subject filters"
+            icon={TableProperties}
           />
           <TeacherQuickLink
             href="/teacher/marks"
             title="Marks"
             body="Enter exam marks for your subjects"
+            icon={PenLine}
           />
           {data.portal.isHod && (
             <TeacherQuickLink
               href="/teacher/hod/marks"
               title="Department marks"
               body="HOD view — all subjects in your department"
+              icon={Users}
             />
           )}
           <TeacherQuickLink
@@ -174,6 +187,8 @@ export default function TeacherHomePage() {
                 ? `${unreadCount} unread notification(s)`
                 : 'School alerts and messages'
             }
+            icon={Bell}
+            badge={unreadCount > 0 ? `${unreadCount} new` : undefined}
           />
         </div>
       </TeacherSection>
