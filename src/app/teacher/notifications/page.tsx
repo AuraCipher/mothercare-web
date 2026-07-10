@@ -101,7 +101,7 @@ export default function TeacherNotificationsPage() {
       ) : items.length === 0 ? (
         <TeacherEmptyState
           title="No notifications"
-          body="School announcements and alerts will appear here."
+          body="School updates from chat channels will appear here when posted."
         />
       ) : (
         <ul className="space-y-2">
