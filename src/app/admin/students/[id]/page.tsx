@@ -29,6 +29,7 @@ export default function StudentDetailPage() {
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
+  const [pendingSavePassword, setPendingSavePassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPassError, setAdminPassError] = useState('');
   const passwordInputRef = React.useRef<HTMLInputElement>(null);
@@ -184,7 +185,10 @@ export default function StudentDetailPage() {
 
   const handleSavePassword = () => {
     if (!generatedPassword) return;
+    setPendingSavePassword(generatedPassword);
     setShowAdminPassPopup(true);
+    setAdminPassword('');
+    setAdminPassError('');
   };
 
   const handleGenerateCredentials = async () => {
@@ -226,12 +230,13 @@ export default function StudentDetailPage() {
 
   const handleAdminPassVerify = async () => {
     if (!adminPassword.trim()) { setAdminPassError('Enter your password to confirm'); return; }
-    if (!generatedPassword) { setAdminPassError('No password generated'); return; }
+    if (!pendingSavePassword) { setAdminPassError('No password generated'); return; }
     try {
-      await api.setStudentPassword(id, generatedPassword, adminPassword);
+      await api.setStudentPassword(id, pendingSavePassword, adminPassword);
       setShowAdminPassPopup(false);
       setAdminPassword('');
       setAdminPassError('');
+      setPendingSavePassword('');
       setGeneratedPassword('');
       setPasswordSaved(true);
       setShowPassword(false);

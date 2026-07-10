@@ -99,8 +99,18 @@ export default function TeacherDetailPage() {
 
   // Admin password verification popup
   const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
+  const [pendingSavePassword, setPendingSavePassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPassError, setAdminPassError] = useState('');
+
+  // Profile edit
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [form, setForm] = useState({
+    employeeId: '', fatherName: '', qualification: '', specialization: '',
+    joiningDate: '', dateOfBirth: '', phone: '', emergencyContact: '', address: '',
+    salary: '', gender: '', bloodGroup: '', cardId: '', severeDisease: '', experience: '', bio: '',
+  });
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const [tenures, setTenures] = useState<any[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
@@ -150,10 +160,11 @@ export default function TeacherDetailPage() {
   };
 
   const handleSavePassword = () => {
-    setGeneratedPassword('');
-    setPasswordSaved(true);
-    setShowPassword(false);
+    if (!generatedPassword) return;
+    setPendingSavePassword(generatedPassword);
     setShowAdminPassPopup(true);
+    setAdminPassword('');
+    setAdminPassError('');
   };
 
   const handleSendCredential = async () => {
@@ -176,15 +187,16 @@ export default function TeacherDetailPage() {
       setAdminPassError('Enter your password to confirm');
       return;
     }
-    if (!generatedPassword) {
+    if (!pendingSavePassword) {
       setAdminPassError('No password generated');
       return;
     }
     try {
-      await api.setTeacherPassword(data!.id, generatedPassword, adminPassword);
+      await api.setTeacherPassword(data!.id, pendingSavePassword, adminPassword);
       setShowAdminPassPopup(false);
       setAdminPassword('');
       setAdminPassError('');
+      setPendingSavePassword('');
       setGeneratedPassword('');
       setPasswordSaved(true);
       setShowPassword(false);
@@ -233,6 +245,66 @@ export default function TeacherDetailPage() {
   const refreshTenures = () => {
     if (!data?.userId) return;
     api.getTeacherTenures(data.userId).then((r) => setTenures(r.data || [])).catch(() => {});
+  };
+
+  const detailFromTeacher = (t: TeacherDetail) => ({
+    employeeId: t.employeeId || '',
+    fatherName: t.fatherName || '',
+    qualification: t.qualification || '',
+    specialization: t.specialization || '',
+    joiningDate: t.joiningDate ? t.joiningDate.substring(0, 10) : '',
+    dateOfBirth: t.dateOfBirth ? t.dateOfBirth.substring(0, 10) : '',
+    phone: t.phone || t.user.phone || '',
+    emergencyContact: t.emergencyContact || '',
+    address: t.address || '',
+    salary: t.salary != null ? String(t.salary) : '',
+    gender: t.gender || '',
+    bloodGroup: t.bloodGroup || '',
+    cardId: t.cardId || '',
+    severeDisease: t.severeDisease || '',
+    experience: t.experience || '',
+    bio: t.bio || '',
+  });
+
+  useEffect(() => {
+    if (data) setForm(detailFromTeacher(data));
+  }, [data]);
+
+  const cancelProfileEdit = () => {
+    if (data) setForm(detailFromTeacher(data));
+    setProfileEditing(false);
+  };
+
+  const saveProfile = async () => {
+    if (!data) return;
+    setSavingProfile(true);
+    try {
+      await api.updateTeacher(data.id, {
+        employeeId: form.employeeId.trim() || undefined,
+        fatherName: form.fatherName.trim() || undefined,
+        qualification: form.qualification.trim() || undefined,
+        specialization: form.specialization.trim() || undefined,
+        joiningDate: form.joiningDate || undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
+        phone: form.phone.trim() || undefined,
+        emergencyContact: form.emergencyContact.trim() || undefined,
+        address: form.address.trim() || undefined,
+        salary: form.salary.trim() ? Number(form.salary) : undefined,
+        gender: form.gender || undefined,
+        bloodGroup: form.bloodGroup.trim() || undefined,
+        cardId: form.cardId.trim() || undefined,
+        severeDisease: form.severeDisease.trim() || undefined,
+        experience: form.experience.trim() || undefined,
+        bio: form.bio.trim() || undefined,
+      });
+      setProfileEditing(false);
+      showToast('success', 'Profile updated');
+      loadData();
+    } catch (e: any) {
+      showToast('error', e.message || 'Update failed');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   // Fetch teacher timetables when teacher data is available
@@ -526,27 +598,84 @@ export default function TeacherDetailPage() {
 
       {/* Profile details grid */}
       <section className="mb-10">
-        <h2 className="mb-4 text-sm font-medium text-warm-cream">Profile Details</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <DetailCard icon={User} label="Full Name" value={user.name} />
-          <DetailCard icon={Mail} label="Email" value={user.email || '—'} />
-          <DetailCard icon={Phone} label="Phone" value={user.phone || data.phone || '—'} />
-          <DetailCard icon={Award} label="Employee ID" value={data.employeeId || '—'} />
-          <DetailCard icon={User} label="Father Name" value={data.fatherName || '—'} />
-          <DetailCard icon={Award} label="Qualification" value={data.qualification || '—'} />
-          <DetailCard icon={BookOpen} label="Specialization" value={data.specialization || '—'} />
-          <DetailCard icon={Calendar} label="Joining Date" value={data.joiningDate ? new Date(data.joiningDate).toLocaleDateString() : '—'} />
-          <DetailCard icon={Calendar} label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString() : '—'} />
-          <DetailCard icon={MapPin} label="Address" value={data.address || '—'} />
-          <DetailCard icon={DollarSign} label="Salary" value={data.salary ? `${Number(data.salary).toLocaleString()}` : '—'} />
-          <DetailCard icon={User} label="Gender" value={data.gender ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1) : '—'} />
-          <DetailCard icon={Heart} label="Blood Group" value={data.bloodGroup || '—'} />
-          <DetailCard icon={Phone} label="Emergency Contact" value={data.emergencyContact || '—'} />
-          <DetailCard icon={CreditCard} label="Card ID" value={data.cardId || '—'} />
-          <DetailCard icon={AlertTriangle} label="Severe Disease" value={data.severeDisease || '—'} />
-          <DetailCard icon={Briefcase} label="Experience" value={data.experience || '—'} />
-          <DetailCard icon={FileText} label="Bio" value={data.bio || '—'} />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-warm-cream">Profile Details</h2>
+          {!profileEditing ? (
+            <button type="button" onClick={() => setProfileEditing(true)} className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1 text-xs text-warm-muted hover:text-warm-cream">
+              <Edit3 size={12} /> Edit
+            </button>
+          ) : (
+            <button type="button" onClick={cancelProfileEdit} className="flex items-center gap-1 text-xs text-warm-muted hover:text-warm-cream">
+              <X size={12} /> Cancel
+            </button>
+          )}
         </div>
+
+        {profileEditing ? (
+          <div className="rounded-xl border border-warm-card-border bg-warm-card/30 p-5 space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <ProfileField label="Employee ID"><ProfileInput value={form.employeeId} onChange={(v) => setForm((p) => ({ ...p, employeeId: v }))} /></ProfileField>
+              <ProfileField label="Father Name"><ProfileInput value={form.fatherName} onChange={(v) => setForm((p) => ({ ...p, fatherName: v }))} /></ProfileField>
+              <ProfileField label="Qualification"><ProfileInput value={form.qualification} onChange={(v) => setForm((p) => ({ ...p, qualification: v }))} /></ProfileField>
+              <ProfileField label="Specialization"><ProfileInput value={form.specialization} onChange={(v) => setForm((p) => ({ ...p, specialization: v }))} /></ProfileField>
+              <ProfileField label="Joining Date"><ProfileInput type="date" value={form.joiningDate} onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))} /></ProfileField>
+              <ProfileField label="Date of Birth"><ProfileInput type="date" value={form.dateOfBirth} onChange={(v) => setForm((p) => ({ ...p, dateOfBirth: v }))} /></ProfileField>
+              <ProfileField label="Phone"><ProfileInput value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))} placeholder="+92 300 …" /></ProfileField>
+              <ProfileField label="Emergency Contact"><ProfileInput value={form.emergencyContact} onChange={(v) => setForm((p) => ({ ...p, emergencyContact: v }))} /></ProfileField>
+              <ProfileField label="Salary"><ProfileInput type="number" step="0.01" value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} /></ProfileField>
+              <ProfileField label="Blood Group"><ProfileInput value={form.bloodGroup} onChange={(v) => setForm((p) => ({ ...p, bloodGroup: v }))} /></ProfileField>
+              <ProfileField label="Gender">
+                <select value={form.gender} onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))} className={profileFieldClass}>
+                  <option value="">— Select —</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </ProfileField>
+              <ProfileField label="Card ID"><ProfileInput value={form.cardId} onChange={(v) => setForm((p) => ({ ...p, cardId: v }))} /></ProfileField>
+              <ProfileField label="Severe Disease"><ProfileInput value={form.severeDisease} onChange={(v) => setForm((p) => ({ ...p, severeDisease: v }))} /></ProfileField>
+              <ProfileField label="Experience"><ProfileInput value={form.experience} onChange={(v) => setForm((p) => ({ ...p, experience: v }))} placeholder="e.g. 5 years" /></ProfileField>
+            </div>
+            <ProfileField label="Address"><ProfileInput value={form.address} onChange={(v) => setForm((p) => ({ ...p, address: v }))} /></ProfileField>
+            <ProfileField label="Bio">
+              <textarea value={form.bio} onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))} rows={3} className={`${profileFieldClass} resize-none`} />
+            </ProfileField>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Full Name (read-only)</label>
+                <input className={profileFieldClass} value={user.name} disabled />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Email (read-only)</label>
+                <input className={profileFieldClass} value={user.email || ''} disabled />
+              </div>
+            </div>
+            <button type="button" disabled={savingProfile} onClick={saveProfile} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">
+              <Save size={13} /> {savingProfile ? 'Saving…' : 'Save profile'}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <DetailCard icon={User} label="Full Name" value={user.name} />
+            <DetailCard icon={Mail} label="Email" value={user.email || '—'} />
+            <DetailCard icon={Phone} label="Phone" value={user.phone || data.phone || '—'} />
+            <DetailCard icon={Award} label="Employee ID" value={data.employeeId || '—'} />
+            <DetailCard icon={User} label="Father Name" value={data.fatherName || '—'} />
+            <DetailCard icon={Award} label="Qualification" value={data.qualification || '—'} />
+            <DetailCard icon={BookOpen} label="Specialization" value={data.specialization || '—'} />
+            <DetailCard icon={Calendar} label="Joining Date" value={data.joiningDate ? new Date(data.joiningDate).toLocaleDateString() : '—'} />
+            <DetailCard icon={Calendar} label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString() : '—'} />
+            <DetailCard icon={MapPin} label="Address" value={data.address || '—'} />
+            <DetailCard icon={DollarSign} label="Salary" value={data.salary ? `${Number(data.salary).toLocaleString()}` : '—'} />
+            <DetailCard icon={User} label="Gender" value={data.gender ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1) : '—'} />
+            <DetailCard icon={Heart} label="Blood Group" value={data.bloodGroup || '—'} />
+            <DetailCard icon={Phone} label="Emergency Contact" value={data.emergencyContact || '—'} />
+            <DetailCard icon={CreditCard} label="Card ID" value={data.cardId || '—'} />
+            <DetailCard icon={AlertTriangle} label="Severe Disease" value={data.severeDisease || '—'} />
+            <DetailCard icon={Briefcase} label="Experience" value={data.experience || '—'} />
+            <DetailCard icon={FileText} label="Bio" value={data.bio || '—'} />
+          </div>
+        )}
       </section>
 
       <section className="mb-10">
@@ -865,6 +994,33 @@ export default function TeacherDetailPage() {
 }
 
 /* ── Detail card helper ── */
+const profileFieldClass =
+  'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent';
+
+function ProfileField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-warm-muted">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function ProfileInput({ value, onChange, placeholder, type = 'text', step }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; step?: string;
+}) {
+  return (
+    <input
+      type={type}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={profileFieldClass}
+    />
+  );
+}
+
 function DetailCard({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-warm-card-border bg-warm-card p-3">
