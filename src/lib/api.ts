@@ -963,6 +963,124 @@ export const api = {
       `/teacher/classes/${groupId}/students${scopeQuery()}`,
     ),
 
+  teacherClassCommunity: (groupId: string) =>
+    apiRequest<ApiJsonResult<{ id: string; groupId: string; academicYearId: string; groupLabel: string }>>(
+      `/teacher/classes/${groupId}/community${scopeQuery()}`,
+    ),
+
+  getTeacherClassRoles: (communityId: string) =>
+    apiRequest<ApiJsonResult>(`/teacher/communities/${communityId}/roles${scopeQuery()}`),
+
+  createTeacherClassRole: (
+    communityId: string,
+    data: {
+      name: string;
+      description?: string | null;
+      canPostInGroups?: boolean;
+      canReceiveDms?: boolean;
+      canInitiateDms?: boolean;
+    },
+  ) =>
+    apiRequest(`/teacher/communities/${communityId}/roles${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  updateTeacherClassRole: (
+    communityId: string,
+    roleId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+      canPostInGroups?: boolean;
+      canReceiveDms?: boolean;
+      canInitiateDms?: boolean;
+    },
+  ) =>
+    apiRequest(`/teacher/communities/${communityId}/roles/${roleId}${scopeQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  deleteTeacherClassRole: (communityId: string, roleId: string) =>
+    apiRequest(`/teacher/communities/${communityId}/roles/${roleId}${scopeQuery()}`, {
+      method: 'DELETE',
+    }),
+
+  assignTeacherClassRole: (
+    communityId: string,
+    roleId: string,
+    data: { studentId: string; publicDisplayName?: string; isMessagingRestricted?: boolean },
+  ) =>
+    apiRequest(`/teacher/communities/${communityId}/roles/${roleId}/assign${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  removeTeacherClassAssignment: (communityId: string, assignmentId: string) =>
+    apiRequest(`/teacher/communities/${communityId}/assignments/${assignmentId}${scopeQuery()}`, {
+      method: 'DELETE',
+    }),
+
+  adminClassCommunityByGroup: (groupId: string) =>
+    apiRequest<ApiJsonResult<{ id: string; groupId: string; academicYearId: string; groupLabel: string }>>(
+      `/admin/communities/by-group/${groupId}${scopeQuery()}`,
+    ),
+
+  getAdminClassRoles: (communityId: string) =>
+    apiRequest<ApiJsonResult>(`/admin/communities/${communityId}/roles${scopeQuery()}`),
+
+  createAdminClassRole: (
+    communityId: string,
+    data: {
+      name: string;
+      description?: string | null;
+      canPostInGroups?: boolean;
+      canReceiveDms?: boolean;
+      canInitiateDms?: boolean;
+    },
+  ) =>
+    apiRequest(`/admin/communities/${communityId}/roles${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  updateAdminClassRole: (
+    communityId: string,
+    roleId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+      canPostInGroups?: boolean;
+      canReceiveDms?: boolean;
+      canInitiateDms?: boolean;
+    },
+  ) =>
+    apiRequest(`/admin/communities/${communityId}/roles/${roleId}${scopeQuery()}`, {
+      method: 'PATCH',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  deleteAdminClassRole: (communityId: string, roleId: string) =>
+    apiRequest(`/admin/communities/${communityId}/roles/${roleId}${scopeQuery()}`, {
+      method: 'DELETE',
+    }),
+
+  assignAdminClassRole: (
+    communityId: string,
+    roleId: string,
+    data: { studentId: string; publicDisplayName?: string; isMessagingRestricted?: boolean },
+  ) =>
+    apiRequest(`/admin/communities/${communityId}/roles/${roleId}/assign${scopeQuery()}`, {
+      method: 'POST',
+      body: JSON.stringify(scopeBody(data)),
+    }),
+
+  removeAdminClassAssignment: (communityId: string, assignmentId: string) =>
+    apiRequest(`/admin/communities/${communityId}/assignments/${assignmentId}${scopeQuery()}`, {
+      method: 'DELETE',
+    }),
+
   teacherAttendance: (groupId: string, date: string) =>
     apiRequest<ApiJsonResult>(
       `/teacher/attendance${scopeQuery({ groupId, date })}`,

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, BookOpen, Link2, X, Check, Edit3 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, BookOpen, Link2, X, Check, Edit3, MessageSquare } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 
@@ -465,6 +466,15 @@ export default function ClassesPage() {
                       className="rounded p-1 text-warm-muted/40 hover:text-warm-accent transition-colors">
                       <BookOpen size={12} />
                     </button>
+                    {!hasSections && sectionsForClass[0] && (
+                      <Link
+                        href={`/admin/classes/${sectionsForClass[0].id}/chat-roles`}
+                        className="flex items-center gap-1 rounded p-1 text-[10px] text-warm-muted/60 hover:text-warm-accent transition-colors"
+                        title="Chat roles"
+                      >
+                        <MessageSquare size={12} />
+                      </Link>
+                    )}
                     <span className="text-[10px] text-warm-muted/60">
                       {sectionsForClass.length} section{sectionsForClass.length > 1 ? 's' : ''}
                     </span>
@@ -490,11 +500,20 @@ export default function ClassesPage() {
                           <span className="text-xs text-warm-muted">{s.section || '—'}</span>
                           <span className="text-[10px] text-warm-muted/40">({s._count?.students || 0} students)</span>
                         </div>
-                        {!isReadOnly && (
-                          <button onClick={() => promptDeleteSection(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
-                            <Trash2 size={11} />
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/classes/${s.id}/chat-roles`}
+                            className="flex items-center gap-1 rounded p-1 text-[10px] text-warm-muted/60 hover:text-warm-accent transition-colors"
+                            title="Chat roles"
+                          >
+                            <MessageSquare size={11} /> Chat roles
+                          </Link>
+                          {!isReadOnly && (
+                            <button onClick={() => promptDeleteSection(s.id, s.section || name)} className="text-warm-muted/30 hover:text-red transition-colors">
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

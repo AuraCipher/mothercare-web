@@ -91,6 +91,14 @@ export default function TeacherClassHubPage() {
         >
           Mark attendance
         </Link>
+        {isClassTeacher && (
+          <Link
+            href={`/teacher/classes/${groupId}/chat-roles`}
+            className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-2 text-xs text-warm-cream"
+          >
+            Chat roles
+          </Link>
+        )}
         <Link
           href="/teacher/announcements"
           className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream"
