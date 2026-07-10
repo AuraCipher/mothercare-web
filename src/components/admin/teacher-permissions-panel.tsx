@@ -12,6 +12,25 @@ import {
 type PermLevel = 'inherit' | 'allow' | 'deny';
 type PortalAccess = 'FULL' | 'READ_ONLY' | 'FROZEN';
 
+const PERM_LEVEL_LABELS: Record<PermLevel, string> = {
+  inherit: 'Use school default',
+  allow: 'Allow',
+  deny: "Don't allow",
+};
+
+function permLevelLabel(level: PermLevel): string {
+  return PERM_LEVEL_LABELS[level];
+}
+
+function branchDefaultHint(
+  branch: PermissionsPayload['branch'],
+  branchInheritKey?: string,
+): string | null {
+  if (!branchInheritKey || !branch) return null;
+  const on = Boolean(branch[branchInheritKey as keyof typeof branch]);
+  return on ? 'School setting: allowed' : 'School setting: not allowed';
+}
+
 interface PermissionsPayload {
   portalAccess: PortalAccess;
   stored: Record<string, Record<string, string>>;
@@ -151,7 +170,7 @@ export function TeacherPermissionsPanel({
   const effectiveLabel = (groupId: string) => {
     const f = data?.effective?.features?.[groupId];
     if (!f) return '—';
-    return f.allowed ? 'Allowed' : `Denied${f.reason ? ` — ${f.reason}` : ''}`;
+    return f.allowed ? 'Allowed' : `Not allowed${f.reason ? ` — ${f.reason}` : ''}`;
   };
 
   if (!branchId) {
@@ -181,8 +200,8 @@ export function TeacherPermissionsPanel({
         <div className="rounded-xl border border-warm-card-border bg-warm-card p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-warm-muted">
-              Control global portal mode and per-feature access without freezing the account.
-              Branch defaults: {data?.branch.name}
+              Set this teacher&apos;s portal access. School-wide settings apply unless you choose Allow or
+              Don&apos;t allow below — campus: {data?.branch.name}
             </p>
             <div className="flex gap-2">
               {!editing ? (
@@ -229,7 +248,7 @@ export function TeacherPermissionsPanel({
             <>
               <div className="mb-6 rounded-lg border border-warm-card-border bg-[#1a1614]/40 p-3">
                 <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-warm-muted">
-                  Global access (big)
+                  Overall portal access
                 </p>
                 {editing ? (
                   <select
@@ -311,14 +330,7 @@ export function TeacherPermissionsPanel({
                     <div className="space-y-2">
                       {group.fields.map((field) => {
                         const level = getStoredLevel(stored, group.id, field.key);
-                        const branchHint =
-                          field.branchInheritKey && data.branch
-                            ? `Branch default: ${
-                                data.branch[field.branchInheritKey as keyof typeof data.branch]
-                                  ? 'on'
-                                  : 'off'
-                              }`
-                            : null;
+                        const schoolHint = branchDefaultHint(data.branch, field.branchInheritKey);
                         return (
                           <div
                             key={field.key}
@@ -328,7 +340,7 @@ export function TeacherPermissionsPanel({
                               <p className="text-xs text-warm-cream">{field.label}</p>
                               <p className="text-[10px] text-warm-muted">
                                 {field.description}
-                                {branchHint ? ` · ${branchHint}` : ''}
+                                {schoolHint ? ` · ${schoolHint}` : ''}
                               </p>
                             </div>
                             {editing ? (
@@ -349,13 +361,13 @@ export function TeacherPermissionsPanel({
                                 >
                                   {data.options.levels.map((o) => (
                                     <option key={o.value} value={o.value}>
-                                      {o.label}
+                                      {permLevelLabel(o.value as PermLevel)}
                                     </option>
                                   ))}
                                 </select>
                               )
                             ) : (
-                              <span className="text-xs text-warm-muted capitalize">{level}</span>
+                              <span className="text-xs text-warm-muted">{permLevelLabel(level)}</span>
                             )}
                           </div>
                         );
