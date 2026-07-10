@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnnouncementMedia } from '@/components/chat/announcement-media';
 import { StudentPageShell } from '@/components/student/student-page-shell';
 import { api } from '@/lib/api';
 
@@ -9,6 +10,7 @@ type AnnouncementRow = {
   title: string;
   content: string | null;
   mediaUrl: string | null;
+  mediaMimeType?: string | null;
   isPinned: boolean;
   createdAt: string;
   scope: 'school' | 'class';
@@ -128,21 +130,12 @@ export default function StudentAnnouncementsPage() {
                 </p>
               </div>
             </div>
-            {row.content && (
+            {row.content && row.content !== row.title && (
               <p className="teacher-break-text mt-3 whitespace-pre-wrap text-sm text-warm-muted">
                 {row.content}
               </p>
             )}
-            {row.mediaUrl && (
-              <a
-                href={row.mediaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-xs text-warm-cream underline"
-              >
-                View attachment
-              </a>
-            )}
+            <AnnouncementMedia mediaUrl={row.mediaUrl} mediaMimeType={row.mediaMimeType} />
           </li>
         ))}
       </ul>
