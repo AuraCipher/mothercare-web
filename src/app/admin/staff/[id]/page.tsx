@@ -15,6 +15,7 @@ import AvatarImage from '@/components/avatar-image';
 import ProfileOptionMenu, { viewPhotoItem, uploadNewItem } from '@/components/profile-option-menu';
 import Lightbox from '@/components/lightbox';
 import PayrollHistoryPanel from '@/components/payroll-history-panel';
+import TenureHistoryPanel from '@/components/tenure-history-panel';
 import {
   PermissionMatrix,
   ModulePermissionsRead,
@@ -182,8 +183,6 @@ export default function StaffDetailPage() {
     confirmLabel: string; action: () => Promise<void>;
   }>({ open: false, title: '', message: '', variant: 'default', confirmLabel: 'Confirm', action: async () => {} });
   const [tenures, setTenures] = useState<any[]>([]);
-  const [tenureReason, setTenureReason] = useState('RESIGNED');
-  const [tenureNote, setTenureNote] = useState('');
 
   const load = useCallback(() => {
     if (!userId) return;
@@ -580,52 +579,17 @@ export default function StaffDetailPage() {
       </section>
 
       <section className="mb-8 rounded-xl border border-warm-card-border bg-warm-card/30 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-warm-cream">Join / Leave History</h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                if (!data?.branchMemberId) return;
-                await api.addBranchMemberTenureJoin(data.branchMemberId);
-                showToast('success', 'Rejoin record added');
-                refreshTenures();
-              }}
-              className="rounded-lg border border-green-700/30 px-2.5 py-1 text-xs text-green-400 hover:bg-green-900/20"
-            >
-              Mark Rejoin
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!data?.branchMemberId) return;
-                await api.addBranchMemberTenureLeave(data.branchMemberId, { endReason: tenureReason, notes: tenureNote || undefined });
-                showToast('success', 'Leave recorded');
-                setTenureNote('');
-                refreshTenures();
-              }}
-              className="rounded-lg border border-yellow-700/30 px-2.5 py-1 text-xs text-yellow-400 hover:bg-yellow-900/20"
-            >
-              Mark Leave
-            </button>
-          </div>
-        </div>
-        <div className="mb-3 flex gap-2">
-          <select value={tenureReason} onChange={(e) => setTenureReason(e.target.value)} className="rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream">
-            {['RESIGNED','TERMINATED','TRANSFERRED','LEAVE','OTHER'].map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <input value={tenureNote} onChange={(e) => setTenureNote(e.target.value)} placeholder="Note (optional)" className="flex-1 rounded border border-warm-card-border bg-[#1a1614] px-2 py-1 text-xs text-warm-cream" />
-        </div>
-        <div className="space-y-1">
-          {tenures.length === 0 ? (
-            <p className="text-xs text-warm-muted">No tenure events yet.</p>
-          ) : tenures.map((t) => (
-            <div key={t.id} className="flex items-center justify-between rounded border border-warm-card-border/40 px-2 py-1.5 text-xs">
-              <span className="text-warm-cream">#{t.sequence} · Joined {new Date(t.joinedAt).toLocaleDateString()} {t.leftAt ? `→ Left ${new Date(t.leftAt).toLocaleDateString()}` : '→ Active'}</span>
-              <span className="text-warm-muted">{t.endReason || 'ACTIVE'}</span>
-            </div>
-          ))}
-        </div>
+        <h2 className="mb-4 text-sm font-medium text-warm-cream">Join / Leave History</h2>
+        {data?.branchMemberId ? (
+          <TenureHistoryPanel
+            tenures={tenures}
+            onRefresh={refreshTenures}
+            onRecordJoin={() => api.addBranchMemberTenureJoin(data.branchMemberId)}
+            onRecordLeave={(payload) => api.addBranchMemberTenureLeave(data.branchMemberId, payload)}
+          />
+        ) : (
+          <p className="text-xs text-warm-muted">Branch membership not found.</p>
+        )}
       </section>
 
       {/* Module access — staff with login only */}

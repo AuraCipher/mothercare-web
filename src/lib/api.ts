@@ -71,10 +71,22 @@ export async function apiRequest<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${config.apiUrl}${path}`, {
-    ...options,
-    headers,
-  });
+  const url = `${config.apiUrl}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    const hint =
+      err instanceof TypeError && err.message === 'Failed to fetch'
+        ? `Cannot reach API at ${config.apiUrl}. Check that the backend is running and NEXT_PUBLIC_API_URL is correct.`
+        : err instanceof Error
+          ? err.message
+          : 'Network request failed';
+    throw new Error(hint);
+  }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
@@ -1264,12 +1276,12 @@ export const api = {
   addBranchMemberTenureJoin: (branchMemberId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
     apiRequest(`/admin/branch-members/${branchMemberId}/tenures/join${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify(scopeBody(data || {})),
     }),
   addBranchMemberTenureLeave: (branchMemberId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
     apiRequest(`/admin/branch-members/${branchMemberId}/tenures/leave${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(scopeBody(data)),
     }),
 
   getTeacherTenures: (userId: string) =>
@@ -1277,12 +1289,12 @@ export const api = {
   addTeacherTenureJoin: (userId: string, data?: { joinedAt?: string; previousTenureId?: string }) =>
     apiRequest(`/admin/teachers/${userId}/tenures/join${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify(scopeBody(data || {})),
     }),
   addTeacherTenureLeave: (userId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
     apiRequest(`/admin/teachers/${userId}/tenures/leave${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(scopeBody(data)),
     }),
 
   getStudentSchoolTenures: (studentId: string) =>
@@ -1290,12 +1302,12 @@ export const api = {
   addStudentSchoolTenureJoin: (studentId: string, data?: { joinedAt?: string }) =>
     apiRequest(`/admin/students/${studentId}/school-tenures/join${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify(scopeBody(data || {})),
     }),
   addStudentSchoolTenureLeave: (studentId: string, data: { leftAt?: string; endReason: string; notes?: string }) =>
     apiRequest(`/admin/students/${studentId}/school-tenures/leave${scopeQuery()}`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(scopeBody(data)),
     }),
   addStudentClassMovement: (studentId: string, data: { toGroupId: string; effectiveAt?: string; reason?: string }) =>
     apiRequest(`/admin/students/${studentId}/class-movements${scopeQuery()}`, {
