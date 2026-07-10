@@ -13,7 +13,20 @@ export type PermissionPresetId =
   | 'class_teacher'
   | 'hod'
   | 'view_only_auditor'
-  | 'marks_entry_only';
+  | 'marks_entry_only'
+  | 'chat_read_only';
+
+const APP_CHAT_READ_ONLY = {
+  app: {
+    access: 'allow',
+    schoolAnnouncementPost: 'deny',
+    teachersAnnouncementPost: 'deny',
+    classAnnouncementPost: 'deny',
+    subjectGroupPost: 'deny',
+    directMessages: 'deny',
+    attachments: 'deny',
+  },
+} satisfies TeacherPortalPermissionsStored;
 
 export interface TeacherPermissionPreset {
   id: PermissionPresetId;
@@ -79,6 +92,16 @@ export const TEACHER_PERMISSION_PRESETS: TeacherPermissionPreset[] = [
       attendance: { access: 'deny' },
       marks: { access: 'allow', view: 'allow', enter: 'allow' },
       ...SENSITIVE_DENIED,
+    },
+  },
+  {
+    id: 'chat_read_only',
+    label: 'Mobile chat read-only',
+    summary: 'Can open app chat and read channels; all posting and attachments denied.',
+    portalAccess: 'FULL',
+    portalPermissions: {
+      ...SENSITIVE_DENIED,
+      ...APP_CHAT_READ_ONLY,
     },
   },
 ];
