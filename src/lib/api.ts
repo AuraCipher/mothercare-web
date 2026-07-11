@@ -475,9 +475,22 @@ export const api = {
   validateInvitation: (token: string) =>
     apiRequest<{ success: boolean; data: { email: string; branchId: string; branchName: string; branchCode: string } }>(`/admin/invitations/${token}`),
 
-  completeInvitation: (token: string, data: { name: string; username: string; password: string; phone?: string }) =>
+  completeInvitation: (token: string, data: {
+    name: string; username: string; password: string; phone?: string;
+    employeeId?: string; qualification?: string; specialization?: string;
+    joiningDate?: string; address?: string; emergencyContact?: string; workRole?: string; bio?: string;
+  }) =>
     apiRequest(`/admin/invitations/${token}/complete`, {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getAdminDetail: (userId: string) =>
+    apiRequest<ApiJsonResult>(`/admin/invitations/admins/${userId}`),
+
+  updateAdminProfile: (userId: string, data: Record<string, unknown>) =>
+    apiRequest<ApiJsonResult>(`/admin/invitations/admins/${userId}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 

@@ -162,9 +162,11 @@ export default function CeoAdminsPage() {
         ) : (
           <div className="space-y-3">
             {admins.map((admin) => (
-              <div
+              <button
                 key={admin.id}
-                className="flex items-center justify-between rounded-xl border border-warm-card-border bg-warm-card p-4 transition-colors hover:bg-warm-card/80"
+                type="button"
+                onClick={() => router.push(`/ceo/admins/${admin.userId}`)}
+                className="flex w-full items-center justify-between rounded-xl border border-warm-card-border bg-warm-card p-4 text-left transition-colors hover:bg-warm-card/80"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warm-accent/10 shrink-0">
@@ -194,7 +196,7 @@ export default function CeoAdminsPage() {
                     {admin.status}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
