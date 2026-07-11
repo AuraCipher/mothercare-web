@@ -14,6 +14,7 @@
     "test:unit": "vitest run --exclude '**/*integration*'",
     "test:integration": "vitest run src/__tests__/phase/stationary-fee-integration.test.tsx",
     "test:e2e": "playwright test",
+    "test:e2e:admin": "playwright test e2e/admin",
     "test:all": "bash scripts/test-all.sh"
   },
   "dependencies": {

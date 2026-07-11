@@ -165,6 +165,12 @@ async function selectFilters() {
   await waitFor(() => expect(screen.getByDisplayValue('Select exam…')).not.toBeDisabled());
   fireEvent.change(screen.getByDisplayValue('Select exam…'), { target: { value: 'exam1' } });
   fireEvent.change(screen.getByDisplayValue('Select class…'), { target: { value: 'g1' } });
+  // handleGenerate requires schoolName from branch fetch — wait for hydration before Generate clicks
+  await waitFor(() => {
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/branches/'))).toBe(true);
+  });
+  await waitFor(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
 describe('ReportCardsPage — rendering', () => {
@@ -340,7 +346,8 @@ describe('ReportCardsPage — generation', () => {
     render(<ReportCardsPage />);
     await selectFilters();
     fireEvent.click(screen.getByText('Generate Report Cards'));
-    fireEvent.click(await screen.findByText('Download CSV'));
+    await waitFor(() => expect(screen.getByText('Download CSV')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Download CSV'));
     expect(downloadReportCardsCsv).toHaveBeenCalled();
   });
 
