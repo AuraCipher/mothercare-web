@@ -285,6 +285,82 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
         <li>Class promotion rules are automatic (+1 / empty lowest / graduate highest).</li>
       </ol>
 
+      <h2>Effects by portal at each phase</h2>
+      <p>
+        Until <code>PUBLISHED</code>, every portal continues using the <strong>source ACTIVE</strong>{' '}
+        year. The target BUILD_STAGE year is admin-only preview after <code>APPLIED</code>. User-facing
+        guide: <Link href="/docs/intro/admin/academic-years">Admin: Academic Years &amp; Promotion</Link>.
+      </p>
+
+      <DocCallout variant="info" title="Mobile detail">
+        Flutter-specific caches, socket rejoin, and credential-tag login errors:{' '}
+        <Link href="/docs/api/academic-year/mobile-effects">Mobile Promotion Effects</Link>.
+      </DocCallout>
+
+      <h3>Master matrix — all phases</h3>
+      <DocTable
+        headers={['Phase', 'Admin ERP', 'Student (web/mobile)', 'Teacher (web/mobile)', 'Staff mobile', 'CEO']}
+        rows={[
+          [
+            <><code>DRAFT</code></>,
+            'Wizard step 2 done; run record created; ERP unchanged on source ACTIVE',
+            'No change',
+            'No change',
+            'No change',
+            'No involvement',
+          ],
+          [
+            <><code>SNAPSHOT_DONE</code></>,
+            'Audit snapshot stored; source still ACTIVE; wizard step 3 ready',
+            'No change',
+            'No change',
+            'No change',
+            'No involvement',
+          ],
+          [
+            <><code>APPLIED</code></>,
+            'Target BUILD_STAGE populated (review by switching sidebar year); source still ACTIVE for all live ops',
+            'No change — target year invisible',
+            'No change — carried assignments exist only on BUILD_STAGE backend',
+            'No change',
+            'No involvement',
+          ],
+          [
+            <><code>PUBLISHED</code></>,
+            'Sidebar must switch to new ACTIVE; ARCHIVED source read-only; new year mostly empty history',
+            'Graduates blocked; promoted need re-credential; stale bootstrap possible',
+            'Bootstrap refresh → new assignments/timetable/chat year; JWT valid',
+            'Campus dashboards scope to new year after bootstrap refresh',
+            'No direct effect',
+          ],
+        ]}
+      />
+
+      <h3>After PUBLISHED — domain effects</h3>
+      <DocTable
+        headers={['Domain', 'Admin ERP', 'Student', 'Teacher', 'Staff mobile']}
+        rows={[
+          ['Enrollments', 'New-year rows with promoted classes; graduates on ARCHIVED source only', 'Login needs userId on ACTIVE row', 'N/A', 'N/A'],
+          ['Fees', 'Structures if carried; balances in ARCHIVED year', 'New year dues empty until billed; old dues not auto-moved', 'N/A', 'Campus fee stats use new year ID'],
+          ['Attendance', 'Fresh start in new year', 'Empty history', 'Mark against new groups', 'Campus attendance scoped to new year'],
+          ['Exams / results', 'Fresh start in new year', 'Empty results table', 'Marks entry on new year', 'Campus results scoped to new year'],
+          ['Timetable', 'Carried grid if selected', 'Shows after bootstrap refresh', 'Shows after bootstrap refresh', 'N/A'],
+          ['Chat', 'Per academicYearId; lazy room bootstrap', 'New year rooms on first chat open', 'New class communities; socket rejoin', 'New year chat landing'],
+          ['Permissions', 'Unchanged; archived_ay_access for old year', 'N/A', 'N/A', 'N/A'],
+        ]}
+      />
+
+      <h3>Student login scenarios after publish</h3>
+      <DocTable
+        headers={['Student state', 'auth.service behavior', 'Mobile message']}
+        rows={[
+          ['Graduated (highest class)', 'assertStudentLoginEligible rejects GRADUATED / NO_LOGIN', 'Account closed after graduation'],
+          ['Promoted, userId null on new row', 'No ACTIVE enrollment with linked user', 'No active enrollment. Contact school admin'],
+          ['Promoted, re-credentialed', 'ACTIVE enrollment in ACTIVE year', 'Login succeeds'],
+          ['Old ARCHIVED row still has userId', 'Enrollment must be in ACTIVE year', 'No active enrollment'],
+        ]}
+      />
+
       <h2>Benchmark script</h2>
       <p>
         <code>backend/scripts/benchmark-year-end.ts</code> exercises snapshot on large datasets (2000+ students)
@@ -292,7 +368,8 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
       </p>
 
       <p>
-        See also: <Link href="/docs/api/architecture">Architecture</Link> ·{' '}
+        See also: <Link href="/docs/api/academic-year/mobile-effects">Mobile app effects</Link> ·{' '}
+        <Link href="/docs/api/architecture">Architecture</Link> ·{' '}
         <Link href="/docs/api/endpoints">REST Endpoints</Link> ·{' '}
         <Link href="/docs/api/authentication">Authentication</Link> (student login eligibility)
       </p>

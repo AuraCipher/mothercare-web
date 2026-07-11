@@ -24,8 +24,8 @@ export default function CeoInviteAdminPage() {
         token URL the invitee uses once to create their account.
       </p>
       <p>
-        <strong>Who uses it:</strong> <code>super_admin</code> (CEO) only. The invitation is never sent
-        automatically — you copy the link and share it via WhatsApp, SMS, email, or in person.
+        <strong>Who uses it:</strong> <code>super_admin</code> (CEO) only. When Resend is configured on the
+        backend, the invitation email is sent automatically. You can still copy the registration link as a backup.
       </p>
 
       <h2>Before you start</h2>
@@ -75,14 +75,14 @@ export default function CeoInviteAdminPage() {
           The info box explains: an invitation link will be generated; you share it with the new admin;
           they set their own password; the link expires in <strong>7 days</strong>.
         </DocStep>
-        <DocStep title="Generate Invitation Link">
-          Click <strong>Generate Invitation Link</strong> (shows <strong>Generating…</strong> while
-          working). On success a toast appears and the success screen replaces the form.
+        <DocStep title="Send Invitation">
+          Click <strong>Send Invitation</strong> (shows <strong>Sending…</strong> while working). On success a
+          toast appears and the success screen replaces the form. When <code>RESEND_API_KEY</code> and{' '}
+          <code>RESEND_FROM_EMAIL</code> are set on the backend, the invitee receives the email automatically.
         </DocStep>
-        <DocStep title="Copy and share the link">
-          On the success screen titled <strong>Invitation Created</strong>, the full URL is displayed.
-          Click the copy icon or select the text. Toast: <em>Link copied to clipboard</em>. Share via
-          WhatsApp or your preferred channel — the system does not send it for you.
+        <DocStep title="Copy and share the link (backup)">
+          On the success screen titled <strong>Invitation Created</strong>, the full URL is displayed even when
+          email was sent. Click the copy icon if you need to share manually. Toast: <em>Link copied to clipboard</em>.
         </DocStep>
         <DocStep title="Track or invite again">
           Click <strong>Back to Admins</strong> to see the invite under{' '}
@@ -129,7 +129,7 @@ export default function CeoInviteAdminPage() {
           <tr>
             <td>Generate Invitation Link</td>
             <td>—</td>
-            <td>Submits to <code>api.createInvitation(email, branchId)</code>.</td>
+            <td>Submits to <code>api.createInvitation(email, branchId)</code>. Button label: <strong>Send Invitation</strong>.</td>
           </tr>
         </tbody>
       </table>
@@ -189,7 +189,8 @@ export default function CeoInviteAdminPage() {
             <td>Form submitted successfully</td>
             <td>
               Backend creates invitation record with 7-day <code>expiresAt</code>. Response includes{' '}
-              <code>data.link</code>. UI switches to success screen; toast confirms creation.
+              <code>data.link</code>, <code>data.emailSent</code>, and optional <code>data.emailWarning</code>.
+              Resend sends HTML email when configured. UI switches to success screen; toast confirms creation.
             </td>
           </tr>
           <tr>
@@ -252,8 +253,8 @@ export default function CeoInviteAdminPage() {
       </DocCallout>
 
       <DocCallout variant="info" title="CEO invitations vs credential WhatsApp">
-        <strong>CEO invitations</strong> — you copy a registration link and share manually (WhatsApp,
-        SMS, etc.). No automatic message is sent from the platform.
+        <strong>CEO invitations</strong> — emailed automatically via Resend when configured; copy-link remains
+        available as fallback.
         <br />
         <strong>Credential delivery</strong> — after admins are active, they use{' '}
         <strong>Generate credentials</strong> and <strong>Send credentials</strong> on student/teacher
@@ -308,7 +309,7 @@ export default function CeoInviteAdminPage() {
         items={[
           {
             q: 'Will the new admin receive an email automatically?',
-            a: 'No. The CEO portal only generates a link. You must copy it and share via WhatsApp, SMS, or another channel yourself.',
+            a: 'Yes, when RESEND_API_KEY and RESEND_FROM_EMAIL are configured on the backend. Otherwise the CEO portal only generates a link for you to copy and share manually.',
           },
           {
             q: 'Can I resend the same link later?',

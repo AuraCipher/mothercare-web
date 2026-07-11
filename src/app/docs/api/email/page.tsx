@@ -9,7 +9,7 @@ export default function ApiEmailPage() {
   return (
     <DocsShell
       title="Email & Credential Delivery"
-      subtitle="Admin invitation HTML templates, WhatsApp credential pipeline, and Resend env (reserved, unused)."
+      subtitle="Admin invitation emails via Resend, WhatsApp credential pipeline, and HTML templates."
       nav={apiNav}
       variant="api"
     >
@@ -18,25 +18,30 @@ export default function ApiEmailPage() {
       <DocTable
         headers={['Channel', 'Status', 'Purpose']}
         rows={[
-          ['HTML email templates', 'Rendered only — not sent by API', 'CEO invitation branding preview'],
+          ['Resend email', 'Active when RESEND_API_KEY + RESEND_FROM_EMAIL set', 'CEO admin invitation delivery'],
+          ['HTML email templates', 'Used by Resend sender', 'Branded admin invitation body'],
           ['Meta WhatsApp Cloud API', 'Production path', 'Login credential delivery for students, teachers, staff'],
-          ['Resend', 'Env vars only — NOT wired', 'Future automatic email delivery'],
         ]}
       />
 
-      <h2>Resend configuration (unused)</h2>
-      <p>Defined in <code>backend/src/config/env.ts</code>:</p>
+      <h2>Resend — CEO admin invitations</h2>
+      <p>
+        Service: <code>backend/src/lib/email/resend.service.ts</code>. Template:{' '}
+        <code>backend/src/emails/templates/admin-invitation.ts</code>.
+      </p>
       <DocTable
-        headers={['Variable', 'Required', 'Status']}
+        headers={['Variable', 'Required', 'Purpose']}
         rows={[
-          [<code>RESEND_API_KEY</code>, 'No', 'Optional — no backend import of Resend SDK'],
-          [<code>RESEND_FROM_EMAIL</code>, 'No', 'Optional — no sender configured'],
+          [<code>RESEND_API_KEY</code>, 'For auto-send', 'Resend API authentication'],
+          [<code>RESEND_FROM_EMAIL</code>, 'For auto-send', 'Verified sender address (e.g. noreply@yourschool.pk)'],
+          [<code>FRONTEND_URL</code>, 'Recommended', 'Registration link base URL in email body'],
+          [<code>SCHOOL_NAME</code>, 'No', 'Branding in subject and HTML'],
         ]}
       />
-      <DocCallout variant="warn" title="Resend is not active">
-        The Resend SDK is not installed. No service calls <code>resend.emails.send()</code>. CEO invitations are
-        shared as registration links manually from the portal. Do not expect outbound email in staging or
-        production until a sender service is implemented.
+      <DocCallout variant="info" title="Graceful fallback">
+        When Resend is not configured or send fails, <code>POST /admin/invitations</code> still returns{' '}
+        <code>data.link</code> with <code>emailSent: false</code> and an <code>emailWarning</code> string.
+        The CEO portal shows the link for manual sharing.
       </DocCallout>
 
       <h2>Admin invitation flow</h2>
@@ -51,12 +56,14 @@ export default function ApiEmailPage() {
   participant CEO as CEO Portal
   participant API as POST /admin/invitations
   participant DB as PostgreSQL
+  participant Resend as Resend API
   participant Admin as New Branch Admin
 
-  CEO->>API: branchId, email, name
+  CEO->>API: branchId, email
   API->>DB: Store invitation token (7d TTL)
-  API-->>CEO: { token, registrationUrl }
-  Note over CEO: CEO copies link manually (no email send)
+  API->>Resend: sendAdminInvitationEmail (if configured)
+  API-->>CEO: { token, link, emailSent, emailWarning? }
+  Note over CEO: Copy link as backup when emailSent=false
   Admin->>API: GET /admin/invitations/:token
   API-->>Admin: Token validity JSON
   Admin->>API: POST /admin/invitations/:token/complete

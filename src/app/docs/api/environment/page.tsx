@@ -76,8 +76,8 @@ export default function ApiEnvironmentPage() {
           [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'For WA', '—', 'meta-whatsapp.service.ts'],
           [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'No', '—', 'Not read by send code — dashboard only'],
           [<code>META_WHATSAPP_API_VERSION</code>, 'No', 'v21.0', 'meta-whatsapp.service.ts'],
-          [<code>RESEND_API_KEY</code>, 'No', '—', 'Defined only — no sender wired'],
-          [<code>RESEND_FROM_EMAIL</code>, 'No', '—', 'Defined only — no sender wired'],
+          [<code>RESEND_API_KEY</code>, 'For email invites', '—', 'resend.service.ts → sendAdminInvitationEmail'],
+          [<code>RESEND_FROM_EMAIL</code>, 'For email invites', '—', 'resend.service.ts (verified sender domain)'],
           [<code>R2_ACCOUNT_ID</code>, 'For R2', '—', 'upload.service.ts'],
           [<code>R2_ACCESS_KEY_ID</code>, 'For R2', '—', 'upload.service.ts'],
           [<code>R2_SECRET_ACCESS_KEY</code>, 'For R2', '—', 'upload.service.ts'],
@@ -213,17 +213,33 @@ APP_DOWNLOAD_URL=https://play.google.com/store/apps/details?id=com.mothercare.ap
         </DocCallout>
       </DocSection>
 
-      <DocSection title="Resend — not wired">
+      <DocSection title="Resend — CEO admin invitation emails">
         <p>
-          <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> are parsed by env.ts but{' '}
-          <strong>no backend code imports or calls Resend</strong>. The Resend npm package is not installed.
-          CEO admin invitations use copy-link only (<code>web/src/app/ceo/admins/invite/page.tsx</code>).
+          Service: <code>backend/src/lib/email/resend.service.ts</code> → <code>sendAdminInvitationEmail()</code>.
+          Called automatically from <code>invitation.service.createInvitation()</code> after the invitation row is saved.
         </p>
-        <p>
-          An HTML invitation template exists at <code>backend/src/emails/templates/admin-invitation.ts</code>{' '}
-          and can be previewed via <code>GET /admin/invitations/:token?html=1</code> — but nothing sends it
-          as email. Setting Resend env vars today has zero effect.
-        </p>
+        <DocSteps>
+          <DocStep title="Create a Resend account and verify your domain">
+            Sign up at <a href="https://resend.com">resend.com</a>, add your sending domain, and complete DNS verification.
+          </DocStep>
+          <DocStep title="Create an API key">
+            Resend dashboard → API Keys → create key with send permission.
+          </DocStep>
+          <DocStep title="Configure backend env">
+            <DocCodeBlock>{`RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM_EMAIL=noreply@yourschool.pk
+FRONTEND_URL=https://portal.yourschool.pk`}</DocCodeBlock>
+          </DocStep>
+          <DocStep title="Test from CEO portal">
+            <code>/ceo/admins/invite</code> → submit email + branch. Response includes <code>emailSent: true</code> when
+            delivery succeeds. If Resend is unset or fails, <code>emailSent: false</code> and <code>emailWarning</code>{' '}
+            explain why — the registration link is still returned for manual sharing.
+          </DocStep>
+        </DocSteps>
+        <DocCallout variant="info" title="Optional fallback">
+          Resend is <strong>not</strong> required for invitations to work. Without it, the CEO portal behaves as
+          copy-link only (same as before). WhatsApp credential delivery is unrelated — it uses Meta env vars.
+        </DocCallout>
       </DocSection>
 
       <DocSection title="Cloudflare R2 — file storage">

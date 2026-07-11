@@ -50,6 +50,8 @@ export function docsPathForAppRoute(pathname: string): string | null {
     [/^\/admin\/timetable/, '/docs/intro/admin/timetable'],
     [/^\/admin\/teachers/, '/docs/intro/admin/teachers'],
     [/^\/admin\/staff/, '/docs/intro/admin/staff'],
+    [/^\/admin\/settings\/academic-years/, '/docs/intro/admin/academic-years'],
+    [/^\/admin\/academic-years\/[^/]+\/promote/, '/docs/intro/admin/academic-years'],
     [/^\/admin\/settings/, '/docs/intro/admin/settings'],
     [/^\/admin\/branches/, '/docs/intro/admin/branches'],
     [/^\/admin/, '/docs/intro/admin'],

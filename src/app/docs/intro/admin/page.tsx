@@ -47,8 +47,9 @@ export default function AdminIntroPage() {
           <strong>Go</strong>. The page reloads so all modules scope data to that year.
         </li>
         <li>
-          <strong>Backend availability:</strong> stats load via <code>getBranchStats(branchId)</code>.
-          If the API is down, an error banner appears instead of numbers.
+          <strong>Year-end transition:</strong> when moving to a new school year, use{' '}
+          <Link href="/docs/intro/admin/academic-years">Academic Years &amp; Batch Promotion</Link>{' '}
+          — the current ACTIVE year stays live until you publish step 4.
         </li>
       </ul>
 

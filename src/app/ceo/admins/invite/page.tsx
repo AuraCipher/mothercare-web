@@ -23,6 +23,8 @@ export default function InviteAdminPage() {
 
   // Result state
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -49,6 +51,8 @@ export default function InviteAdminPage() {
       const d = await api.createInvitation(email.trim(), branchId);
       if (d.success && d.data?.link) {
         setInviteLink(d.data.link);
+        setEmailSent(d.data.emailSent ?? false);
+        setEmailWarning(d.data.emailWarning ?? null);
         showToast('success', d.data.message || 'Invitation created');
       }
     } catch (e: any) {
@@ -72,6 +76,8 @@ export default function InviteAdminPage() {
 
   const handleReset = () => {
     setInviteLink(null);
+    setEmailSent(null);
+    setEmailWarning(null);
     setEmail('');
     setBranchId('');
     setError('');
@@ -91,7 +97,8 @@ export default function InviteAdminPage() {
       <div className="mb-8">
         <h1 className="mb-1 text-xl font-light text-warm-cream">Invite New Admin</h1>
         <p className="text-sm text-warm-muted">
-          Send an invitation to create a branch administrator account.
+          Send an invitation email to create a branch administrator account.
+          When Resend is configured, the invite is emailed automatically; you can still copy the link as a backup.
         </p>
       </div>
 
@@ -135,8 +142,8 @@ export default function InviteAdminPage() {
             <div className="rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-3">
               <p className="text-xs text-warm-muted">
                 <span className="font-medium text-warm-cream">What happens next?</span><br />
-                An invitation link will be generated. Share it with the new admin.
-                They will set their own password. The link expires in 7 days.
+                An invitation link is generated and emailed to the address above when Resend is configured.
+                They will set their own password. The link expires in 7 days — copy it below if email delivery is unavailable.
               </p>
             </div>
           </div>
@@ -160,7 +167,7 @@ export default function InviteAdminPage() {
               disabled={sending}
               className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] disabled:opacity-50 transition-colors"
             >
-              {sending ? 'Generating…' : 'Generate Invitation Link'}
+              {sending ? 'Sending…' : 'Send Invitation'}
             </button>
           </div>
         </form>
@@ -173,9 +180,25 @@ export default function InviteAdminPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-warm-cream">Invitation Created</p>
-              <p className="text-xs text-warm-muted">Share this link with the new admin.</p>
+              <p className="text-xs text-warm-muted">
+                {emailSent
+                  ? 'An email was sent to the invitee. You can still copy the link below as a backup.'
+                  : 'Share this link with the new admin (email was not sent automatically).'}
+              </p>
             </div>
           </div>
+
+          {emailWarning && (
+            <div className="mb-4 rounded-lg border border-amber-900/30 bg-amber-900/10 px-4 py-3">
+              <p className="text-xs text-amber-300">{emailWarning}</p>
+            </div>
+          )}
+
+          {emailSent && (
+            <div className="mb-4 rounded-lg border border-green-900/30 bg-green-900/10 px-4 py-3">
+              <p className="text-xs text-green-300">Invitation email delivered via Resend.</p>
+            </div>
+          )}
 
           {/* Invited email + branch info */}
           <div className="mb-4 rounded-lg border border-warm-card-border bg-[#1a1614] px-4 py-3">
