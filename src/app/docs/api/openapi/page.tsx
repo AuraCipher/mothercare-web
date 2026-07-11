@@ -7,7 +7,7 @@ export default function ApiOpenApiPage() {
   return (
     <DocsShell
       title="OpenAPI Specification"
-      subtitle="Machine-readable API catalog — 296 paths, 384 operations generated from Express route files."
+      subtitle="Machine-readable API catalog — 296 paths, 383 operations with per-endpoint request/response schemas."
       nav={apiNav}
       variant="api"
     >
@@ -22,7 +22,8 @@ export default function ApiOpenApiPage() {
         headers={['File', 'Purpose']}
         rows={[
           [<code>backend/openapi.yaml</code>, 'Generated OpenAPI 3.1 specification (source of truth for tooling)'],
-          [<code>backend/scripts/generate-openapi.ts</code>, 'Generator — scans <code>*.routes.ts</code> files'],
+          [<code>backend/scripts/openapi/</code>, 'Zod schemas + operation registry consumed by the generator'],
+          [<code>backend/scripts/generate-openapi.ts</code>, 'Generator — scans <code>*.routes.ts</code> + schema registry'],
           [<code>npm run openapi:generate</code>, 'Regenerate after adding or changing routes'],
         ]}
       />
@@ -38,20 +39,26 @@ export default function ApiOpenApiPage() {
         <li>Path parameters normalized to OpenAPI style (<code>{'{id}'}</code> not <code>:id</code>)</li>
         <li>Tags per portal/module (Admin ERP, Teacher Portal, Chat, etc.)</li>
         <li>JWT <code>bearerAuth</code> security scheme on protected routes</li>
-        <li>Shared <code>SuccessEnvelope</code> / <code>ErrorEnvelope</code> response schemas</li>
-        <li><code>branchId</code> and <code>academicYearId</code> query parameters on admin paths</li>
+        <li><strong>Request bodies</strong> on all POST/PUT/PATCH routes (typed Zod schemas where DTOs exist; <code>JsonObjectRequest</code> fallback elsewhere)</li>
+        <li><strong>Response schemas</strong> on every operation (<code>GenericDataResponse</code> / <code>GenericDataListResponse</code> default; domain-specific schemas on auth, students, fees, academic year, and other registered endpoints)</li>
+        <li><code>ErrorEnvelope</code> on 400/422 responses; path and query parameters documented</li>
+        <li><code>branchId</code> and <code>academicYearId</code> query parameters on scoped admin paths</li>
       </ul>
 
-      <h2>What is not included (yet)</h2>
+      <h2>Schema coverage</h2>
+      <p>
+        After generation the script prints coverage stats. Key domains (auth, students, fees, academic year) have
+        fully typed request/response schemas derived from Zod definitions in{' '}
+        <code>backend/scripts/openapi/zod-schemas.ts</code>. Add entries to{' '}
+        <code>schema-registry.ts</code> to upgrade more endpoints from generic envelopes to domain types.
+      </p>
+
+      <h2>What is not included</h2>
       <ul>
-        <li>Per-endpoint request/response body schemas (only login has a detailed body schema today)</li>
         <li>Socket.IO events — realtime chat uses WebSockets, not REST</li>
         <li>Webhook callbacks — none exposed</li>
+        <li>Runtime Zod validation on most admin routes (schemas document intent; only <code>/auth</code> validates with Zod today)</li>
       </ul>
-      <p>
-        Extend <code>generate-openapi.ts</code> to attach schemas from Zod validators when you need full
-        contract testing.
-      </p>
 
       <DocSection title="Regenerate after route changes">
         <DocSteps>
@@ -63,7 +70,8 @@ export default function ApiOpenApiPage() {
           <DocStep title="Run the generator">
             <DocCodeBlock>{`cd backend
 npm run openapi:generate
-# Wrote backend/openapi.yaml (384 operations, 296 paths)`}</DocCodeBlock>
+# Wrote backend/openapi.yaml (383 operations, 296 paths)
+# Schema coverage: 100% operations have request or response schemas`}</DocCodeBlock>
           </DocStep>
           <DocStep title="Commit the updated YAML">
             Include <code>backend/openapi.yaml</code> in the same PR as route changes so diffs stay reviewable.

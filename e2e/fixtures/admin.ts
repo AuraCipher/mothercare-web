@@ -28,7 +28,9 @@ export async function loginAsBranchAdmin(page: Page) {
   await login(page, adminCreds.username, adminCreds.password);
   await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 20_000 });
 
-  await page.evaluate(async () => {
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+
+  await page.evaluate(async ({ apiBase }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const branchId = localStorage.getItem('activeBranchId');
@@ -36,7 +38,7 @@ export async function loginAsBranchAdmin(page: Page) {
     if (localStorage.getItem('activeAYId')) return;
 
     try {
-      const res = await fetch(`/api/me/academic-year?branchId=${encodeURIComponent(branchId)}`, {
+      const res = await fetch(`${apiBase}/me/academic-year?branchId=${encodeURIComponent(branchId)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -47,7 +49,7 @@ export async function loginAsBranchAdmin(page: Page) {
     } catch {
       /* optional — pages may still render */
     }
-  });
+  }, { apiBase });
 }
 
 export async function expectAdminHeading(page: Page, heading: string | RegExp) {
