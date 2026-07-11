@@ -151,7 +151,8 @@ export default function ApiIntroPage() {
 
       <h2>Environment variables (overview)</h2>
       <p>
-        Full tables live in <Link href="/docs/api/get-started">Get Started</Link> and{' '}
+        Full tables live in <Link href="/docs/api/environment">Environment Variables</Link>,{' '}
+        <Link href="/docs/api/get-started">Get Started</Link>, and{' '}
         <Link href="/docs/api/deployment">Deployment</Link>. Schema: <code>backend/src/config/env.ts</code>.
       </p>
       <DocTable
@@ -197,9 +198,11 @@ export default function ApiIntroPage() {
         headers={['Page', 'Contents']}
         rows={[
           [<Link href="/docs/api/get-started">Get Started</Link>, 'Clone, env tables, migrate, seed, run all surfaces'],
+          [<Link href="/docs/api/environment">Environment Variables</Link>, 'Full catalog + how to obtain each secret'],
           [<Link href="/docs/api/architecture">Architecture</Link>, 'Request flow, roles, scope rules, workers, Prisma highlights'],
           [<Link href="/docs/api/authentication">Authentication</Link>, 'JWT, cookies, API keys, error codes, examples'],
-          [<Link href="/docs/api/email">Email &amp; credentials</Link>, 'Invitations, WhatsApp flow (not Resend)'],
+          [<Link href="/docs/api/academic-year">Academic Year &amp; Promotion</Link>, 'Lifecycle, batch promote phases, carry matrix'],
+          [<Link href="/docs/api/email">Email &amp; credentials</Link>, 'Invitations (copy-link), WhatsApp pipeline'],
           [<Link href="/docs/api/endpoints">REST Endpoints</Link>, 'Module-by-module route tables with params'],
           [<Link href="/docs/api/chat">Chat &amp; Realtime</Link>, 'Socket.IO events, FCM, mobile-only decision'],
           [<Link href="/docs/api/deployment">Deployment</Link>, 'Production runbook step-by-step'],

@@ -185,6 +185,7 @@ export default function ApiArchitecturePage() {
       <DocCallout variant="warn" title="Archived academic years">
         <code>AcademicYearStatus.ARCHIVED</code> years are read-only for most modules. Staff need{' '}
         <code>archived_ay_access</code> permission (or full admin) to view/edit historical data.
+        Full batch promotion reference: <Link href="/docs/api/academic-year">Academic Year &amp; Promotion</Link>.
       </DocCallout>
 
       <h2>Academic year lifecycle</h2>

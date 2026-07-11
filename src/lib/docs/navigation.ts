@@ -109,9 +109,11 @@ export const introNav: DocsNavItem[] = [
 export const apiNav: DocsNavItem[] = [
   { title: 'Introduction', href: '/docs/api' },
   { title: 'Get Started', href: '/docs/api/get-started' },
+  { title: 'Environment Variables', href: '/docs/api/environment' },
   { title: 'Architecture', href: '/docs/api/architecture' },
   { title: 'Authentication', href: '/docs/api/authentication' },
-  { title: 'Email (Resend)', href: '/docs/api/email' },
+  { title: 'Academic Year & Promotion', href: '/docs/api/academic-year' },
+  { title: 'Email & Credentials', href: '/docs/api/email' },
   { title: 'REST Endpoints', href: '/docs/api/endpoints' },
   { title: 'Chat & Realtime', href: '/docs/api/chat' },
   { title: 'Deployment', href: '/docs/api/deployment' },

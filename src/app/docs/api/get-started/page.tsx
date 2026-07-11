@@ -58,7 +58,9 @@ flutter pub get`}
       <h2>Backend environment (<code>backend/.env</code>)</h2>
       <p>
         Copy <code>backend/.env.example</code>. Variables are validated at boot by Zod in{' '}
-        <code>backend/src/config/env.ts</code> — invalid config exits the process.
+        <code>backend/src/config/env.ts</code> — invalid config exits the process. For step-by-step setup of
+        every integration (PostgreSQL, Redis, Meta WhatsApp, R2, Firebase, Sentry), see the{' '}
+        <Link href="/docs/api/environment">Environment Variables</Link> guide.
       </p>
 
       <h3>Required</h3>
@@ -146,6 +148,9 @@ flutter pub get`}
       </DocCallout>
 
       <h2>Web environment (<code>web/.env.local</code>)</h2>
+      <p>
+        Copy <code>web/.env.example</code> to <code>web/.env.local</code>.
+      </p>
       <DocTable
         headers={['Variable', 'Example', 'Description']}
         rows={[
@@ -269,7 +274,8 @@ flutter run --dart-define=API_BASE_URL=http://YOUR_LAN_IP:5000`}
       </DocCallout>
 
       <p>
-        Next: <Link href="/docs/api/architecture">Architecture overview</Link>
+        Next: <Link href="/docs/api/environment">Environment Variables</Link> ·{' '}
+        <Link href="/docs/api/architecture">Architecture overview</Link>
       </p>
     </DocsShell>
   );

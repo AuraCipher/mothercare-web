@@ -71,9 +71,10 @@ cd ../web && npm run test:all`}</DocCodeBlock>
 cd ../web && npm run typecheck && npm run build`}</DocCodeBlock>
           </DocStep>
           <DocStep title="Verify environment files">
-            Ensure production values for all required vars (see{' '}
-            <Link href="/docs/api/get-started">Get Started</Link>). Never commit <code>.env</code>{' '}
-            files or service account JSON to git.
+            Ensure production values for all required vars. See the full guide at{' '}
+            <Link href="/docs/api/environment">Environment Variables</Link>. Copy from{' '}
+            <code>backend/.env.example</code> and <code>web/.env.example</code>. Never commit{' '}
+            <code>.env</code> files or service account JSON to git.
           </DocStep>
           <DocStep title="Review database migrations">
             Run <code>npx prisma migrate deploy</code> against a staging database first. Confirm no
@@ -136,13 +137,18 @@ NODE_ENV=production APP_MODE=production node dist/server.js`}</DocCodeBlock>
             [<code>R2_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, 'Document storage — avoid local disk'],
             [<code>R2_BACKUPS_BUCKET</code>, 'PostgreSQL backup uploads'],
             [<code>SENTRY_DSN</code>, 'Error tracking — initSentry() in server.ts'],
-            [<code>META_WHATSAPP_*</code>, 'Credential delivery via WhatsApp'],
+            [<code>META_WHATSAPP_*</code>, 'Credential delivery via WhatsApp (not email)'],
             [<code>FCM_ENABLED=true</code>, 'Mobile push notifications'],
             [<code>FIREBASE_SERVICE_ACCOUNT_JSON</code>, 'FCM credentials (or path variant)'],
             [<code>PUSH_MASTER_SECRET</code>, 'Encrypt FCM payloads'],
-            [<code>RESEND_API_KEY</code>, 'Transactional email (invitations, receipts)'],
+            [<code>SENTRY_DSN</code>, 'Error tracking — initSentry() in server.ts'],
           ]}
         />
+        <DocCallout variant="warn" title="Resend is not wired">
+          <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> are parsed by env.ts but no service
+          sends email. CEO invitations are copy-link only. See{' '}
+          <Link href="/docs/api/email">Email &amp; credentials</Link>.
+        </DocCallout>
       </DocSection>
 
       <DocSection title="Web deployment">
@@ -261,7 +267,7 @@ npm run backup:postgres
             Login → create branch → create academic year → publish
           </DocStep>
           <DocStep title="Admin flow">
-            Admin login → create student → send credentials (WhatsApp or email)
+            Admin login → create student → generate credentials → send credentials (WhatsApp)
           </DocStep>
           <DocStep title="Mobile flow">
             Mobile login → chat bootstrap loads rooms → send test message → verify FCM on second device
@@ -287,7 +293,7 @@ npm run backup:postgres
       </DocSection>
 
       <p>
-        See also: <Link href="/docs/api/get-started">Get Started</Link> ·{' '}
+        Next: <Link href="/docs/api/environment">Environment Variables</Link> ·{' '}
         <Link href="/docs/api/architecture">Architecture</Link> ·{' '}
         <Link href="/docs/api/chat">Chat &amp; Realtime</Link>
       </p>
