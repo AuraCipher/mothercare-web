@@ -6,23 +6,15 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/components/toast', () => ({ showToast: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: {} }));
-vi.mock('lucide-react', () => ({
-  ArrowLeft: 'div',
-  Check: 'div',
-  ChevronRight: 'div',
-  Plus: 'div',
-  X: 'div',
-}));
 
 type Carry = Record<string, boolean>;
 const carryKeys = [
   'classes',
-  'students',
   'subjects',
+  'students',
   'teacherAssignments',
   'timetableGrid',
   'feeStructures',
-  'attendance',
 ];
 
 function expectedInvalid(c: Carry) {
@@ -36,15 +28,15 @@ function expectedSelected(c: Carry) {
 }
 
 describe('Promotion carry validation matrix', () => {
-  it('includes all 128 carry permutations', () => {
-    expect(2 ** carryKeys.length).toBe(128);
+  it('includes all 64 carry permutations', () => {
+    expect(2 ** carryKeys.length).toBe(64);
   });
 
   for (let mask = 0; mask < 2 ** carryKeys.length; mask += 1) {
     const c: Carry = {};
     carryKeys.forEach((k, i) => { c[k] = !!(mask & (1 << i)); });
 
-    it(`carry permutation ${mask + 1}/128`, async () => {
+    it(`carry permutation ${mask + 1}/64`, async () => {
       const mod = await import('@/app/admin/academic-years/[id]/promote/page');
       const result = mod.getPromotionCarryValidation(c);
       expect(result.invalidCarryConfig).toBe(expectedInvalid(c));

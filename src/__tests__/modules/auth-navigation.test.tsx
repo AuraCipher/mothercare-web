@@ -57,7 +57,7 @@ describe('Auth Navigation — Login Page', () => {
 
   it('renders the sign-in form', () => {
     render(<LoginPage />);
-    expect(screen.getByText('Mother Care School')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your identifier')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your password')).toBeInTheDocument();
     expect(screen.getByText('Stay signed in')).toBeInTheDocument();

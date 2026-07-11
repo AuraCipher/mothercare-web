@@ -278,6 +278,26 @@ npm run backup:postgres
         </DocSteps>
       </DocSection>
 
+      <DocSection title="Rate limiting">
+        <p>
+          Per-IP limits in <code>backend/src/middleware/security/rateLimiter.ts</code>. Tune via env when
+          legitimate traffic hits 429 responses under load.
+        </p>
+        <DocTable
+          headers={['Variable', 'Default', 'Applies to']}
+          rows={[
+            [<code>RATE_LIMIT_PASSWORD_MAX</code>, '5 / minute', 'Admin set-password on student/teacher/staff'],
+            [<code>RATE_LIMIT_PASSWORD_WINDOW_MS</code>, '60000', 'Password limiter window'],
+            [<code>RATE_LIMIT_UPLOAD_MAX</code>, '20 / minute', 'POST /api/upload'],
+            [<code>RATE_LIMIT_UPLOAD_WINDOW_MS</code>, '60000', 'Upload limiter window'],
+          ]}
+        />
+        <p>
+          Login (<code>POST /auth/login</code>) is not rate-limited in code today — put a reverse-proxy
+          limit (nginx, Cloudflare) in front of production if brute-force is a concern.
+        </p>
+      </DocSection>
+
       <DocSection title="Sentry production setup" id="sentry-production-setup">
         <p>
           Backend code calls <code>initSentry()</code> when <code>SENTRY_DSN</code> is set. The SDK captures
