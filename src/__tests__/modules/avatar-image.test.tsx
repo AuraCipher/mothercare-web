@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '../helpers/test-utils';
 import AvatarImage from '@/components/avatar-image';
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt' };
+  const store: Record<string, string> = { token: 'test-jwt' };
   return { getItem: (key: string) => store[key] || null, setItem: () => {}, removeItem: () => {}, clear: () => {} };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });

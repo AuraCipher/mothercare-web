@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import {
@@ -76,14 +77,14 @@ export default function CeoDashboard() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-warm-cream">Quick Actions</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <a href="/ceo/branches" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
+          <Link href="/ceo/branches" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
             <span className="flex items-center gap-2 text-sm text-warm-cream"><Building2 size={15} className="text-warm-accent" /> Manage Branches</span>
             <ArrowRight size={14} className="text-warm-muted" />
-          </a>
-          <a href="/ceo/keys" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
+          </Link>
+          <Link href="/ceo/keys" className="flex items-center justify-between rounded-lg border border-warm-card-border bg-warm-card px-4 py-3 transition-colors hover:bg-warm-card/80">
             <span className="flex items-center gap-2 text-sm text-warm-cream"><Key size={15} className="text-warm-accent" /> API Key Manager</span>
             <ArrowRight size={14} className="text-warm-muted" />
-          </a>
+          </Link>
         </div>
       </div>
     </main>

@@ -30,7 +30,7 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/components/toast', () => ({ showToast: vi.fn() }));
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
+  const store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
   return { getItem: (k: string) => store[k] || null, setItem: () => {}, removeItem: () => {}, clear: () => {} };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });

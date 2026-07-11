@@ -4,16 +4,15 @@ import { render, screen } from '@testing-library/react';
 
 // Mock next/dynamic to render the lazily-loaded component inside Suspense
 vi.mock('next/dynamic', () => {
-  const ReactMock = require('react');
   return {
     default:
       (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
-        const LazyComponent = ReactMock.lazy(loader);
+        const LazyComponent = React.lazy(loader);
         return (props: Record<string, unknown>) =>
-          ReactMock.createElement(
-            ReactMock.Suspense,
+          React.createElement(
+            React.Suspense,
             { fallback: null },
-            ReactMock.createElement(LazyComponent, props),
+            React.createElement(LazyComponent, props),
           );
       },
   };

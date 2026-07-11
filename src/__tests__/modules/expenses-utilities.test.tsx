@@ -333,7 +333,11 @@ describe('UtilitiesPage — categories and duplicate', () => {
   it('duplicates bill from provider', async () => {
     await renderUtilities();
     const providerBtns = await screen.findAllByText('LESCO');
-    const dupBtn = providerBtns.find((el) => el.closest('button'))?.closest('button')!;
+    const dupBtn = providerBtns
+      .map((el) => el.closest('button'))
+      .find((btn): btn is HTMLButtonElement => btn instanceof HTMLButtonElement);
+    expect(dupBtn).toBeDefined();
+    if (!dupBtn) return;
     fireEvent.click(dupBtn);
     await waitFor(() => expect(mockDuplicateUtilityBill).toHaveBeenCalledWith('p1'));
     expect(mockShowToast).toHaveBeenCalledWith('success', 'Bill duplicated from last payment');
@@ -343,7 +347,11 @@ describe('UtilitiesPage — categories and duplicate', () => {
     mockDuplicateUtilityBill.mockRejectedValue(new Error('No previous bill'));
     await renderUtilities();
     const providerBtns = await screen.findAllByText('LESCO');
-    const dupBtn = providerBtns.find((el) => el.closest('button'))?.closest('button')!;
+    const dupBtn = providerBtns
+      .map((el) => el.closest('button'))
+      .find((btn): btn is HTMLButtonElement => btn instanceof HTMLButtonElement);
+    expect(dupBtn).toBeDefined();
+    if (!dupBtn) return;
     fireEvent.click(dupBtn);
     await waitFor(() => expect(mockShowToast).toHaveBeenCalledWith('error', 'No previous bill'));
   });

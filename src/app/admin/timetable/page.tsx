@@ -243,7 +243,7 @@ export default function TimetableManagePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setRenameTarget(null)}>
           <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-warm-cream">Rename "{renameTarget.name}"</h2>
+              <h2 className="text-sm font-medium text-warm-cream">Rename &ldquo;{renameTarget.name}&rdquo;</h2>
               <button onClick={() => setRenameTarget(null)} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
             </div>
             <input value={renameName} onChange={(e) => setRenameName(e.target.value)}

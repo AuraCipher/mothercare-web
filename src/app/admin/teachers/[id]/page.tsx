@@ -969,7 +969,7 @@ export default function TeacherDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>
           <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
-            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm saving the teacher's new credentials.</p>
+            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm saving the teacher&apos;s new credentials.</p>
             <input
               type="password"
               value={adminPassword}

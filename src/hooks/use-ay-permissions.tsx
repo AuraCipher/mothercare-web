@@ -41,18 +41,18 @@ export function AyPermissionsProvider({
 export function useAyPermissions(moduleOverride?: StaffModuleKey) {
   const { staffAccess, ayStatus } = useContext(AyPermissionsContext);
   const pathname = usePathname();
-  const module = moduleOverride ?? moduleForPathname(pathname);
+  const staffModule = moduleOverride ?? moduleForPathname(pathname);
   const archived = ayStatus === 'ARCHIVED';
 
   const can = (action: CrudAction) => {
-    if (!module) return !staffAccess?.isRestricted;
-    return canCrud(staffAccess, module, action, { archived });
+    if (!staffModule) return !staffAccess?.isRestricted;
+    return canCrud(staffAccess, staffModule, action, { archived });
   };
 
   const readOnly = isAyReadOnlyForPath(staffAccess, pathname, ayStatus);
 
   return {
-    module,
+    module: staffModule,
     ayStatus,
     isArchived: archived,
     isBuildStage: ayStatus === 'BUILD_STAGE',
@@ -60,6 +60,6 @@ export function useAyPermissions(moduleOverride?: StaffModuleKey) {
     canCreate: can('create'),
     canUpdate: can('update'),
     canDelete: can('delete'),
-    canRead: module ? can('read') : true,
+    canRead: staffModule ? can('read') : true,
   };
 }

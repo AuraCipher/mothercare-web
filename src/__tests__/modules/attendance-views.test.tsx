@@ -13,7 +13,7 @@ vi.mock('@/components/toast', () => ({ showToast: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({}), usePathname: () => '/admin/attendance' }));
 
 const localStorageMock = () => {
-  let store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
+  const store: Record<string, string> = { token: 'test-jwt', activeBranchId: 'b-1', activeAYId: 'ay-1' };
   return { getItem: (key: string) => store[key] || null, setItem: () => {}, removeItem: () => {}, clear: () => {} };
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock() });

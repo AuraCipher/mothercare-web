@@ -11,7 +11,7 @@ const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
 const localStorageMock = (() => {
-  let store: Record<string, string> = { token: 'test-jwt' };
+  const store: Record<string, string> = { token: 'test-jwt' };
   return { getItem: (key: string) => store[key] || null, setItem: () => {}, removeItem: () => {}, clear: () => {} };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
