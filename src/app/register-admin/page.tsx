@@ -27,6 +27,14 @@ function RegisterAdminInner() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [workRole, setWorkRole] = useState('');
+  const [qualification, setQualification] = useState('');
+  const [specialization, setSpecialization] = useState('');
+  const [joiningDate, setJoiningDate] = useState('');
+  const [address, setAddress] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [bio, setBio] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -93,6 +101,14 @@ function RegisterAdminInner() {
         username: username.trim(),
         password,
         phone: phone.trim() || undefined,
+        employeeId: employeeId.trim() || undefined,
+        workRole: workRole.trim() || undefined,
+        qualification: qualification.trim() || undefined,
+        specialization: specialization.trim() || undefined,
+        joiningDate: joiningDate || undefined,
+        address: address.trim() || undefined,
+        emergencyContact: emergencyContact.trim() || undefined,
+        bio: bio.trim() || undefined,
       });
       if (d.success) {
         setSuccess(true);
@@ -281,6 +297,90 @@ function RegisterAdminInner() {
                   className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] pl-9 pr-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Employee ID</label>
+                <input
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  placeholder="e.g. ADM-001"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Work Role</label>
+                <input
+                  value={workRole}
+                  onChange={(e) => setWorkRole(e.target.value)}
+                  placeholder="e.g. Principal"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Qualification</label>
+                <input
+                  value={qualification}
+                  onChange={(e) => setQualification(e.target.value)}
+                  placeholder="e.g. M.Ed"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-warm-muted">Specialization</label>
+                <input
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
+                  placeholder="e.g. Administration"
+                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-warm-muted">Joining Date</label>
+              <input
+                type="date"
+                value={joiningDate}
+                onChange={(e) => setJoiningDate(e.target.value)}
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-warm-muted">Address</label>
+              <textarea
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                rows={2}
+                placeholder="Office / home address"
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-warm-muted">Emergency Contact</label>
+              <input
+                value={emergencyContact}
+                onChange={(e) => setEmergencyContact(e.target.value)}
+                placeholder="Name and phone"
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-warm-muted">Bio</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder="Short professional bio (optional)"
+                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+              />
             </div>
           </div>
 

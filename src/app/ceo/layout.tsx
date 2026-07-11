@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import {
   LogOut, LayoutDashboard, Building2, Menu, X,
-  ChevronDown, Check, MapPin, Users, Key, Settings,
+  ChevronDown, Check, MapPin, Users, Key,
 } from 'lucide-react';
 
 /* ── Decode JWT payload client-side (no library needed) ── */
@@ -229,17 +229,10 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
           <div className="border-t border-warm-card-border p-3">
             <button
               onClick={handleSignOut}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-red transition-colors mb-1"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-red transition-colors"
             >
               <LogOut size={14} /> Sign Out
             </button>
-            <a
-              href="/ceo/settings"
-              onClick={() => setMenuOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
-            >
-              <Settings size={14} /> Settings
-            </a>
           </div>
         </nav>
       </div>

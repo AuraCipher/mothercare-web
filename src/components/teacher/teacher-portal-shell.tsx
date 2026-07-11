@@ -19,6 +19,8 @@ import {
   Bell,
   User,
   X,
+  Wallet,
+  UserCheck,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
@@ -45,6 +47,8 @@ const NAV_ITEMS = [
   { href: '/teacher/my-classes', icon: BookOpen, label: 'My Classes' },
   { href: '/teacher/timetable', icon: CalendarDays, label: 'Timetable' },
   { href: '/teacher/attendance', icon: CheckSquare, label: 'Attendance' },
+  { href: '/teacher/my-attendance', icon: UserCheck, label: 'My Attendance' },
+  { href: '/teacher/my-payroll', icon: Wallet, label: 'My Payroll' },
   { href: '/teacher/marks', icon: ClipboardList, label: 'Marks' },
   { href: '/teacher/results', icon: GraduationCap, label: 'Results' },
   { href: '/teacher/announcements', icon: Megaphone, label: 'Announcements' },

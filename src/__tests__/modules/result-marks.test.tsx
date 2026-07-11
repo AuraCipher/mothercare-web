@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../helpers/test-utils';
 import MarksEntrySection, { marksProgressSummary } from '../../app/admin/result/components/marks-entry-section';
+import type { StructureClass } from '../../app/admin/result/components/exam-structure-section';
 
 const mockShowToast = vi.hoisted(() => vi.fn());
 
@@ -34,31 +35,40 @@ const mockStudents = [
   { id: 's3', name: 'Hassan Raza', rollNumber: '3' },
 ];
 
-const mockStructure = [
+const mockStructure: StructureClass[] = [
   {
+    id: 'esc-g1',
+    examId: 'exam1',
     classId: 'g1',
     isActive: true,
-    class: { name: 'Class 5', section: 'A' },
+    hasMarks: false,
+    class: { id: 'g1', name: 'Class 5', section: 'A' },
     subjects: [
-      { id: 'link1', isActive: true, hasMarks: false, subject: { id: 'sub1', name: 'Math', code: 'MTH' } },
-      { id: 'link2', isActive: true, hasMarks: true, subject: { id: 'sub2', name: 'English', code: 'ENG' } },
-      { id: 'link3', isActive: false, hasMarks: false, subject: { id: 'sub3', name: 'Urdu', code: 'URD' } },
+      { id: 'link1', isActive: true, totalMarks: 100, passingMarks: 40, hasMarks: false, subject: { id: 'sub1', name: 'Math', code: 'MTH' } },
+      { id: 'link2', isActive: true, totalMarks: 100, passingMarks: 40, hasMarks: true, subject: { id: 'sub2', name: 'English', code: 'ENG' } },
+      { id: 'link3', isActive: false, totalMarks: null, passingMarks: null, hasMarks: false, subject: { id: 'sub3', name: 'Urdu', code: 'URD' } },
     ],
   },
   {
+    id: 'esc-g2',
+    examId: 'exam1',
     classId: 'g2',
     isActive: true,
-    class: { name: 'Class 6', section: null },
+    hasMarks: false,
+    class: { id: 'g2', name: 'Class 6', section: null },
     subjects: [
-      { id: 'link4', isActive: true, hasMarks: false, subject: { id: 'sub4', name: 'Science', code: 'SCI' } },
+      { id: 'link4', isActive: true, totalMarks: 100, passingMarks: 40, hasMarks: false, subject: { id: 'sub4', name: 'Science', code: 'SCI' } },
     ],
   },
   {
+    id: 'esc-g3',
+    examId: 'exam1',
     classId: 'g3',
     isActive: false,
-    class: { name: 'Class 7', section: 'B' },
+    hasMarks: false,
+    class: { id: 'g3', name: 'Class 7', section: 'B' },
     subjects: [
-      { id: 'link5', isActive: true, hasMarks: false, subject: { id: 'sub5', name: 'History', code: 'HIS' } },
+      { id: 'link5', isActive: true, totalMarks: 100, passingMarks: 40, hasMarks: false, subject: { id: 'sub5', name: 'History', code: 'HIS' } },
     ],
   },
 ];
@@ -301,8 +311,8 @@ describe('MarksEntrySection — save column', () => {
   it('validates total marks before save', async () => {
     global.fetch = createMarksFetch({
       grids: {
-        link1: { ...makeGrid('Math', 'link1'), totalMarks: null, passingMarks: null },
-        link2: { ...makeGrid('English', 'link2'), totalMarks: null, passingMarks: null },
+        link1: { ...makeGrid('Math', 'link1'), totalMarks: null, passingMarks: null } as unknown as ReturnType<typeof makeGrid>,
+        link2: { ...makeGrid('English', 'link2'), totalMarks: null, passingMarks: null } as unknown as ReturnType<typeof makeGrid>,
       },
     });
     render(<MarksEntrySection examId="exam1" />);

@@ -978,6 +978,12 @@ export const api = {
   teacherBootstrap: () =>
     apiRequest<ApiJsonResult>(`/teacher/bootstrap${scopeQuery()}`),
 
+  teacherMyAttendance: () =>
+    apiRequest<ApiJsonResult<any[]>>(`/teacher/my-attendance${scopeQuery()}`),
+
+  teacherMyPayroll: () =>
+    apiRequest<ApiJsonResult<any[]>>(`/teacher/my-payroll${scopeQuery()}`),
+
   teacherTimetable: () =>
     apiRequest<ApiJsonResult<{ timetableName: string; slots: any[] }>>(
       `/teacher/timetable${scopeQuery()}`,
