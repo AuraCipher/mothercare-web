@@ -55,7 +55,7 @@ export function DocTable({
   rows: ReactNode[][];
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="my-6 overflow-x-auto">
       <table>
         <thead>
           <tr>
@@ -75,5 +75,35 @@ export function DocTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+export function DocSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="my-8">
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+export function DocFaq({ items }: { items: { q: string; a: ReactNode }[] }) {
+  return (
+    <dl className="my-6 space-y-4">
+      {items.map((item) => (
+        <div key={item.q} className="rounded-lg border border-warm-card-border bg-warm-card/30 p-4">
+          <dt className="text-sm font-medium text-warm-cream">{item.q}</dt>
+          <dd className="mt-2 text-sm leading-relaxed text-warm-muted">{item.a}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function DocCodeBlock({ children }: { children: string }) {
+  return (
+    <pre className="my-4 overflow-x-auto rounded-lg border border-warm-card-border bg-[#0f0d0c] p-4 text-xs leading-relaxed text-warm-cream">
+      <code>{children}</code>
+    </pre>
   );
 }

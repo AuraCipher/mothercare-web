@@ -3,108 +3,272 @@ import { DocsShell } from '@/components/docs/docs-shell';
 import { DocCallout, DocTable } from '@/components/docs/doc-blocks';
 import { apiNav } from '@/lib/docs/navigation';
 
+const pre = 'overflow-x-auto rounded-lg border border-warm-card-border bg-warm-card p-4 text-xs leading-relaxed text-warm-cream';
+
 export default function ApiEmailPage() {
   return (
     <DocsShell
       title="Email & Credential Delivery"
-      subtitle="Admin invitation templates, Resend configuration, and WhatsApp credential sends."
+      subtitle="Admin invitation HTML templates, WhatsApp credential pipeline, and Resend env (reserved, unused)."
       nav={apiNav}
       variant="api"
     >
       <h2>Overview</h2>
       <p>Mother Care School uses two separate outbound channels:</p>
-      <ul>
-        <li><strong>HTML email templates</strong> — admin invitation branding (Resend env reserved, not yet sending from backend)</li>
-        <li><strong>Meta WhatsApp Cloud API</strong> — login credential delivery for students, teachers, and staff</li>
-      </ul>
+      <DocTable
+        headers={['Channel', 'Status', 'Purpose']}
+        rows={[
+          ['HTML email templates', 'Rendered only — not sent by API', 'CEO invitation branding preview'],
+          ['Meta WhatsApp Cloud API', 'Production path', 'Login credential delivery for students, teachers, staff'],
+          ['Resend', 'Env vars only — NOT wired', 'Future automatic email delivery'],
+        ]}
+      />
 
-      <h2>Resend configuration</h2>
-      <p>Environment variables in <code>backend/src/config/env.ts</code>:</p>
-      <ul>
-        <li><code>RESEND_API_KEY</code> — optional</li>
-        <li><code>RESEND_FROM_EMAIL</code> — optional sender address</li>
-      </ul>
-      <DocCallout variant="warn" title="Not wired yet">
-        The Resend SDK is not installed and no backend service calls Resend today. These env vars are
-        placeholders for future automatic email delivery. CEO invitations are shared as links manually.
+      <h2>Resend configuration (unused)</h2>
+      <p>Defined in <code>backend/src/config/env.ts</code>:</p>
+      <DocTable
+        headers={['Variable', 'Required', 'Status']}
+        rows={[
+          [<code>RESEND_API_KEY</code>, 'No', 'Optional — no backend import of Resend SDK'],
+          [<code>RESEND_FROM_EMAIL</code>, 'No', 'Optional — no sender configured'],
+        ]}
+      />
+      <DocCallout variant="warn" title="Resend is not active">
+        The Resend SDK is not installed. No service calls <code>resend.emails.send()</code>. CEO invitations are
+        shared as registration links manually from the portal. Do not expect outbound email in staging or
+        production until a sender service is implemented.
       </DocCallout>
 
-      <h2>Admin invitation emails</h2>
+      <h2>Admin invitation flow</h2>
       <p>
         Template: <code>backend/src/emails/templates/admin-invitation.ts</code> →{' '}
-        <code>adminInvitationEmailHtml()</code>. Renders a branded HTML email with branch name, expiry (7 days),
-        and a link to <code>{'{FRONTEND_URL}'}/register-admin?token=…</code>.
+        <code>adminInvitationEmailHtml()</code>. Produces branded HTML with branch name, 7-day expiry, and link to{' '}
+        <code>{'{FRONTEND_URL}'}/register-admin?token=…</code>.
       </p>
 
-      <h3>Invitation API flow</h3>
-      <DocTable
-        headers={['Method', 'Path', 'Auth', 'Description']}
-        rows={[
-          ['POST', '/admin/invitations', 'super_admin', 'Create invitation — returns token + registration link'],
-          ['GET', '/admin/invitations', 'super_admin', 'List pending invitations and registered admins'],
-          ['GET', '/admin/invitations/:token', 'Public', 'Validate token (JSON)'],
-          ['GET', '/admin/invitations/:token?html=1', 'Public', 'Render invitation HTML preview'],
-          ['POST', '/admin/invitations/:token/complete', 'Public', 'Complete branch admin registration'],
-          ['GET', '/admin/invitations/admins/:userId', 'super_admin', 'Admin profile detail'],
-          ['PUT', '/admin/invitations/admins/:userId', 'super_admin', 'Update admin profile'],
-        ]}
-      />
+      <pre className={pre}>
+{`sequenceDiagram
+  participant CEO as CEO Portal
+  participant API as POST /admin/invitations
+  participant DB as PostgreSQL
+  participant Admin as New Branch Admin
 
-      <p>
-        <code>InvitationService.createInvitation()</code> stores a one-time token (7-day expiry). The CEO portal
-        copies the link — nothing is emailed automatically from the API.
-      </p>
-
-      <h2>sendCredentials (WhatsApp)</h2>
-      <p>
-        Admin portal actions call <code>send-credentials</code> endpoints. The backend generates a fresh temporary
-        password, hashes it, and queues delivery via the Meta WhatsApp template API.
-      </p>
-
-      <h3>Endpoints</h3>
-      <DocTable
-        headers={['Method', 'Path', 'Recipient']}
-        rows={[
-          ['POST', '/admin/students/:id/send-credentials', 'Student (WhatsApp/phone on profile)'],
-          ['POST', '/admin/students/send-credentials/bulk', 'Multiple students'],
-          ['POST', '/admin/teachers/:id/send-credentials', 'Teacher'],
-          ['POST', '/admin/staff/:userId/send-credentials', 'Staff member'],
-        ]}
-      />
-
-      <h3>Delivery pipeline</h3>
-      <pre className="overflow-x-auto rounded-lg border border-warm-card-border bg-warm-card p-4 text-xs leading-relaxed text-warm-cream">
-{`admin route → studentService.sendCredentials()
-  → notificationService.sendCredential()
-  → message.queue (BullMQ, REDIS_URL)
-  → credential-delivery.service
-  → meta-whatsapp.service (template message)
-  → CredentialSend audit row + student credentialStatus update`}
+  CEO->>API: branchId, email, name
+  API->>DB: Store invitation token (7d TTL)
+  API-->>CEO: { token, registrationUrl }
+  Note over CEO: CEO copies link manually (no email send)
+  Admin->>API: GET /admin/invitations/:token
+  API-->>Admin: Token validity JSON
+  Admin->>API: POST /admin/invitations/:token/complete
+  API->>DB: Create user + BranchMember branch_admin
+  API-->>Admin: 201 + JWT`}
       </pre>
 
-      <h3>WhatsApp env vars</h3>
-      <ul>
-        <li><code>META_WHATSAPP_PHONE_NUMBER_ID</code></li>
-        <li><code>META_WHATSAPP_ACCESS_TOKEN</code></li>
-        <li><code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code></li>
-        <li><code>META_WHATSAPP_API_VERSION</code> (default <code>v21.0</code>)</li>
-      </ul>
+      <h3>Invitation endpoints</h3>
+      <DocTable
+        headers={['Method', 'Path', 'Auth', 'Body / params']}
+        rows={[
+          ['POST', '/admin/invitations', 'super_admin', 'branchId, email, name, phone?'],
+          ['GET', '/admin/invitations', 'super_admin', 'List pending + registered admins'],
+          ['GET', '/admin/invitations/:token', 'Public', 'Validate token — JSON'],
+          ['GET', '/admin/invitations/:token?html=1', 'Public', 'Render invitation HTML preview'],
+          ['POST', '/admin/invitations/:token/complete', 'Public', 'password, name, phone, username'],
+          ['GET', '/admin/invitations/admins/:userId', 'super_admin', 'Admin profile detail'],
+          ['PUT', '/admin/invitations/admins/:userId', 'super_admin', 'Update admin profile fields'],
+        ]}
+      />
+
+      <h3>POST /admin/invitations — example</h3>
+      <pre className={pre}>
+{`POST /admin/invitations
+Authorization: Bearer <ceo-token>
+Content-Type: application/json
+
+{
+  "branchId": "branch-uuid",
+  "email": "principal@school.pk",
+  "name": "Principal Name",
+  "phone": "+923001234567"
+}
+
+Response 201:
+{
+  "success": true,
+  "data": {
+    "id": "invitation-uuid",
+    "token": "secure-random-token",
+    "registrationUrl": "https://portal.school.pk/register-admin?token=...",
+    "expiresAt": "2026-07-18T..."
+  }
+}`}
+      </pre>
+
+      <h3>POST /admin/invitations/:token/complete — example</h3>
+      <pre className={pre}>
+{`POST /admin/invitations/abc123token/complete
+Content-Type: application/json
+
+{
+  "password": "SecurePass123",
+  "name": "Principal Name",
+  "username": "principal_sohan",
+  "phone": "+923001234567"
+}
+
+Response 201:
+{
+  "success": true,
+  "token": "jwt...",
+  "user": { "id": "...", "role": "management", ... }
+}`}
+      </pre>
+
+      <h3>Invitation errors</h3>
+      <DocTable
+        headers={['Status', 'message', 'Cause']}
+        rows={[
+          ['400', 'Invitation expired', 'Token past 7-day expiry'],
+          ['400', 'Invitation already used', 'Token consumed'],
+          ['404', 'Invitation not found', 'Invalid token'],
+          ['409', 'Email already registered', 'Duplicate user'],
+          ['422', 'Validation failed', 'Weak password or missing fields'],
+        ]}
+      />
+
+      <h2>WhatsApp credential delivery</h2>
       <p>
-        Templates are selected per recipient type (<code>student</code>, <code>teacher</code>, <code>staff</code>).
-        Body parameters include name, username, temporary password, <code>FRONTEND_URL</code>, and{' '}
-        <code>APP_DOWNLOAD_URL</code>.
+        Admin portal actions call <code>send-credentials</code> endpoints. Backend generates a fresh temporary
+        password, hashes it with bcrypt, updates the user record, and queues delivery via Meta WhatsApp template
+        API.
       </p>
 
-      <h3>Credential tracking</h3>
-      <p>
-        Students track <code>credentialSentAt</code>, <code>credentialStatus</code>, and <code>CredentialSend</code>{' '}
-        history rows (phone redacted). Prisma enum <code>StudentCredentialTag</code> includes <code>CRED_RESEND</code>{' '}
-        for re-send workflows.
-      </p>
+      <h3>Credential endpoints</h3>
+      <DocTable
+        headers={['Method', 'Path', 'Auth', 'Scope query params']}
+        rows={[
+          ['POST', '/admin/students/:id/send-credentials', 'Admin + students module', 'branchId, academicYearId'],
+          ['POST', '/admin/students/send-credentials/bulk', 'Admin', 'branchId, academicYearId, studentIds[]'],
+          ['POST', '/admin/students/send-all-credentials', 'Admin', 'branchId, academicYearId'],
+          ['POST', '/admin/teachers/:id/send-credentials', 'Admin', 'branchId'],
+          ['POST', '/admin/staff/:userId/send-credentials', 'Admin + staff module', 'branchId'],
+        ]}
+      />
+
+      <h3>POST /admin/students/:id/send-credentials — example</h3>
+      <pre className={pre}>
+{`POST /admin/students/student-uuid/send-credentials?branchId=...&academicYearId=...
+Authorization: Bearer <admin-token>
+
+Response 200:
+{
+  "success": true,
+  "data": {
+    "credentialStatus": "SENT",
+    "delivery": {
+      "success": true,
+      "channel": "whatsapp",
+      "messageStatus": "queued",
+      "messageId": "bullmq-job-id"
+    }
+  }
+}`}
+      </pre>
+
+      <h3>Delivery pipeline</h3>
+      <pre className={pre}>
+{`flowchart TD
+  A[Admin POST send-credentials] --> B[studentService.sendCredentials]
+  B --> C[Generate temp password + hash]
+  C --> D[notificationService.sendCredential]
+  D --> E{REDIS_URL set?}
+  E -->|Yes| F[enqueueCredentialSend → messages queue]
+  E -->|No| G[deliverCredential sync]
+  F --> H[message.worker]
+  H --> I[credential-delivery.service]
+  G --> I
+  I --> J[meta-whatsapp.service sendTemplateMessage]
+  J --> K[CredentialSend audit row]
+  K --> L[Update student.credentialStatus]`}
+      </pre>
+
+      <h3>WhatsApp environment variables</h3>
+      <DocTable
+        headers={['Variable', 'Description']}
+        rows={[
+          [<code>META_WHATSAPP_PHONE_NUMBER_ID</code>, 'Sender phone number ID from Meta Business Suite'],
+          [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'System user or permanent token with whatsapp_business_messaging'],
+          [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'WABA ID — template namespace'],
+          [<code>META_WHATSAPP_API_VERSION</code>, 'Graph API version (default v21.0)'],
+          [<code>FRONTEND_URL</code>, 'Web portal link in template body parameter'],
+          [<code>APP_DOWNLOAD_URL</code>, 'Mobile app store link in template body parameter'],
+        ]}
+      />
+
+      <h3>Template selection</h3>
+      <p>File: <code>backend/src/services/meta-whatsapp.service.ts</code></p>
+      <DocTable
+        headers={['recipientType', 'Template purpose']}
+        rows={[
+          [<code>student</code>, 'Student login credentials template'],
+          [<code>teacher</code>, 'Teacher login credentials template'],
+          [<code>staff</code>, 'Staff login credentials template'],
+        ]}
+      />
+      <p>Body parameters (via <code>buildCredentialParameters()</code>): name, username, temporary password, portal URL, app download URL.</p>
+
+      <h3>SendCredentialResult shape</h3>
+      <pre className={pre}>
+{`{
+  "success": true,
+  "channel": "whatsapp",
+  "messageId": "wamid.xxx",
+  "messageStatus": "sent"
+}
+
+// Failure:
+{
+  "success": false,
+  "channel": "whatsapp",
+  "messageStatus": "failed",
+  "errorCode": "131026",
+  "errorMessage": "Message undeliverable",
+  "retryable": true,
+  "solvable": false
+}`}
+      </pre>
+
+      <h3>WhatsApp error codes (examples)</h3>
+      <DocTable
+        headers={['errorCode', 'retryable', 'Meaning']}
+        rows={[
+          ['131026', 'Sometimes', 'Recipient not on WhatsApp or invalid number'],
+          ['130429', 'Yes', 'Rate limit — worker retries with exponential backoff'],
+          ['queue_failed', 'Yes', 'BullMQ job failed after 3 attempts'],
+          ['unknown_error', 'Yes', 'Unexpected network or parse error'],
+          ['missing_whatsapp_config', 'No', 'META_WHATSAPP_* env not set'],
+        ]}
+      />
+
+      <h3>Credential tracking (Prisma)</h3>
+      <DocTable
+        headers={['Field / model', 'Purpose']}
+        rows={[
+          [<code>Student.credentialSentAt</code>, 'Timestamp of last send'],
+          [<code>Student.credentialStatus</code>, 'SENT | FAILED | PENDING'],
+          [<code>StudentCredentialTag</code>, 'CRED_NEW, CRED_RESEND, NO_LOGIN, etc.'],
+          [<code>CredentialSend</code>, 'Audit history — phone redacted in logs'],
+        ]}
+      />
 
       <DocCallout variant="tip" title="Queue fallback">
-        Without <code>REDIS_URL</code>, credential sends run synchronously via{' '}
-        <code>enqueueCredentialSend(..., {'{ wait: true }'})</code> instead of a background worker.
+        Without <code>REDIS_URL</code>, <code>enqueueCredentialSend()</code> calls{' '}
+        <code>deliverCredential()</code> synchronously. Admin UI waits up to 60s for queue completion when{' '}
+        <code>wait: true</code> (default).
+      </DocCallout>
+
+      <DocCallout variant="info" title="Rate limiting">
+        <code>send-credentials</code> and <code>set-password</code> routes use <code>passwordSetLimiter</code> to
+        prevent abuse. Expect 429 if exceeded.
       </DocCallout>
 
       <p>
