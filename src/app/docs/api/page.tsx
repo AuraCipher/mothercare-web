@@ -204,6 +204,7 @@ export default function ApiIntroPage() {
           [<Link href="/docs/api/academic-year">Academic Year &amp; Promotion</Link>, 'Lifecycle, batch promote phases, carry matrix'],
           [<Link href="/docs/api/email">Email &amp; credentials</Link>, 'Invitations (copy-link), WhatsApp pipeline'],
           [<Link href="/docs/api/endpoints">REST Endpoints</Link>, 'Module-by-module route tables with params'],
+          [<Link href="/docs/api/openapi">OpenAPI Specification</Link>, 'backend/openapi.yaml — Swagger, Postman, client gen'],
           [<Link href="/docs/api/chat">Chat &amp; Realtime</Link>, 'Socket.IO events, FCM, mobile-only decision'],
           [<Link href="/docs/api/deployment">Deployment</Link>, 'Production runbook step-by-step'],
         ]}

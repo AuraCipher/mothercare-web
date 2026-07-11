@@ -137,16 +137,16 @@ NODE_ENV=production APP_MODE=production node dist/server.js`}</DocCodeBlock>
             [<code>R2_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, 'Document storage — avoid local disk'],
             [<code>R2_BACKUPS_BUCKET</code>, 'PostgreSQL backup uploads'],
             [<code>SENTRY_DSN</code>, 'Error tracking — initSentry() in server.ts'],
-            [<code>META_WHATSAPP_*</code>, 'Credential delivery via WhatsApp (not email)'],
+            [<><code>RESEND_API_KEY</code> + <code>RESEND_FROM_EMAIL</code></>, 'CEO admin invitation emails'],
+            [<code>META_WHATSAPP_*</code>, 'Credential delivery via WhatsApp'],
             [<code>FCM_ENABLED=true</code>, 'Mobile push notifications'],
             [<code>FIREBASE_SERVICE_ACCOUNT_JSON</code>, 'FCM credentials (or path variant)'],
             [<code>PUSH_MASTER_SECRET</code>, 'Encrypt FCM payloads'],
-            [<code>SENTRY_DSN</code>, 'Error tracking — initSentry() in server.ts'],
           ]}
         />
-        <DocCallout variant="warn" title="Resend is not wired">
-          <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> are parsed by env.ts but no service
-          sends email. CEO invitations are copy-link only. See{' '}
+        <DocCallout variant="info" title="Resend for CEO invites">
+          When <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> are set, CEO invitation emails
+          send automatically. Without them, invitations still work via copy-link. See{' '}
           <Link href="/docs/api/email">Email &amp; credentials</Link>.
         </DocCallout>
       </DocSection>
@@ -274,6 +274,39 @@ npm run backup:postgres
           </DocStep>
           <DocStep title="Observability">
             Trigger a test 500 → verify Sentry event. Check worker logs for BullMQ job completion.
+          </DocStep>
+        </DocSteps>
+      </DocSection>
+
+      <DocSection title="Sentry production setup" id="sentry-production-setup">
+        <p>
+          Backend code calls <code>initSentry()</code> when <code>SENTRY_DSN</code> is set. The SDK captures
+          unhandled exceptions via <code>captureRequestError()</code> in the Express error handler.
+        </p>
+        <DocSteps>
+          <DocStep title="Create a Sentry project">
+            Sign up at <a href="https://sentry.io">sentry.io</a> → Create project → Node.js/Express → copy the DSN
+            into <code>SENTRY_DSN</code> in production backend env.
+          </DocStep>
+          <DocStep title="Configure environments">
+            Sentry automatically tags <code>environment</code> from <code>NODE_ENV</code>. Use separate
+            projects or environment filters for staging vs production.
+          </DocStep>
+          <DocStep title="Alert rules (recommended)">
+            In Sentry → Alerts → Create alert rule:
+            <ul>
+              <li><strong>Error spike</strong> — when issue count &gt; 10 in 5 minutes → email/Slack</li>
+              <li><strong>New issue</strong> — first seen in production → notify on-call</li>
+              <li><strong>Regression</strong> — resolved issue reappears → notify team</li>
+            </ul>
+          </DocStep>
+          <DocStep title="Verify after deploy">
+            Trigger a test 500 (invalid route with debug flag) or use Sentry → Settings → Client Keys →
+            send test event. Confirm events appear under Issues with correct release/environment tags.
+          </DocStep>
+          <DocStep title="Performance (optional)">
+            <code>tracesSampleRate</code> is 0.1 in production (10% of transactions). Adjust in{' '}
+            <code>backend/src/lib/sentry.ts</code> if you need more APM detail.
           </DocStep>
         </DocSteps>
       </DocSection>

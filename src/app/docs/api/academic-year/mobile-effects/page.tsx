@@ -107,10 +107,17 @@ export default function MobilePromotionEffectsPage() {
           ],
           [
             <>
-              <code>CRED_NEW</code> / <code>CRED_CARRIED</code> on new-year row with <code>userId: null</code>
+              <code>CRED_NEW</code> on new-year row with <code>userId: null</code> (never credentialed)
             </>,
-            'Blocked until admin links user + sends credentials',
+            'Blocked until admin generates and sends credentials',
             '"No active enrollment. Contact school admin."',
+          ],
+          [
+            <>
+              <code>CRED_CARRIED</code> — promoted with existing <code>userId</code> on ACTIVE row
+            </>,
+            'Allowed after bootstrap refresh',
+            '—',
           ],
           [
             <>
@@ -126,10 +133,10 @@ export default function MobilePromotionEffectsPage() {
           ],
         ]}
       />
-      <DocCallout variant="warn" title="Promoted students need re-credentialing">
-        <code>batch-promotion.service.ts</code> creates new-year student rows with <code>userId: null</code>.
-        Until admin generates credentials and links the user on the new row, promoted students cannot log in on
-        mobile even though their password may still be known.
+      <DocCallout variant="info" title="Promoted students keep login">
+        <code>batch-promotion.service.ts</code> transfers <code>userId</code> from the archived source row to
+        the new ACTIVE year row. Students who already had credentials log in with the same username/password
+        after publish. Only never-credentialed (<code>CRED_NEW</code>) students need admin credential delivery.
       </DocCallout>
 
       <h2>Phase-by-phase — Student app</h2>
@@ -163,7 +170,7 @@ export default function MobilePromotionEffectsPage() {
           rows={[
             ['Login', 'Still uses source ACTIVE year enrollment'],
             ['Bootstrap / academics / chat', 'Still source ACTIVE year — target BUILD_STAGE is invisible to mobile'],
-            ['Backend data change', 'Target year populated; graduated students tagged NO_LOGIN on source; promoted students have new rows with userId null (not yet ACTIVE year)'],
+            ['Backend data change', 'Target year populated; graduates frozen on source; promoted students get userId transferred to new row'],
             ['Mobile impact', 'None until publish — students already logged in unaffected'],
           ]}
         />
@@ -176,7 +183,7 @@ export default function MobilePromotionEffectsPage() {
             ['Existing session (JWT valid)', 'App may keep running with cached bootstrap showing old year label'],
             ['Bootstrap refresh', 'Resolves new ACTIVE year if student has linked enrollment; else 403 / empty academicYearId'],
             ['Graduated students', 'Login rejected — LoginValidator shows graduation message'],
-            ['Promoted students (not re-credentialed)', 'Login rejected — no ACTIVE enrollment with userId'],
+            ['Promoted students (had credentials)', 'Login works after bootstrap picks new ACTIVE year'],
             ['Fees / attendance / results', 'New year = empty history until recorded; old year data stays in ARCHIVED (not shown without archived access)'],
             ['Timetable / datesheets', 'New carried timetable appears after bootstrap picks new ACTIVE year'],
             ['Chat', 'New academicYearId → new room set (lazy-created on backend); old year rooms not in landing'],
@@ -282,10 +289,8 @@ export default function MobilePromotionEffectsPage() {
         rows={[
           ['During DRAFT–APPLIED', 'No change', 'No change', 'No change'],
           ['Immediately after PUBLISHED (cached app)', 'May show old year label; academics may 403 if enrollment not linked', 'May show old assignments until bootstrap refetch', 'Campus stats may target old year ID from cache'],
-          ['After bootstrap refetch', 'Works if re-credentialed + linked in new year', 'New assignments/timetable/chat rooms', 'New year campus data'],
-          ['Graduated student', 'Login blocked — re-login does not help', 'N/A', 'N/A'],
-          ['Promoted student before admin credentials', 'Login blocked', 'N/A', 'N/A'],
-          ['Logout + login', 'Required for students after credential re-issue', 'Usually not required', 'Usually not required'],
+          ['After bootstrap refetch', 'Works if credentialed (carried login) or after admin sends credentials', 'New assignments/timetable/chat rooms', 'New year campus data'],
+          ['Logout + login', 'Helps clear stale bootstrap cache', 'Usually not required', 'Usually not required'],
           ['Force refresh without logout', 'Retry button on student_chat_shell error state; killing app clears bootstrap cache after TTL', 'teacher_chat_shell _loadBootstrap on restart', 'admin_staff_shell same pattern'],
         ]}
       />

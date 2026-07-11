@@ -103,9 +103,9 @@ export default function AdminAcademicYearsPage() {
           ['Timetable', 'On', 'Grid copied with mapped class/subject IDs'],
           ['Fee structures', 'On', 'Template amounts per class — not paid balances'],
           ['Datesheets', 'Off', 'Not carried (forced off)'],
-          ['Attendance', 'Off (UI only)', 'Not implemented — checking the box has no effect'],
-          ['Exams / results', 'Off (UI only)', 'Not implemented — checking the box has no effect'],
-          ['Announcements / chat', 'Off (UI only)', 'Not implemented — checking the box has no effect'],
+          ['Attendance', 'Removed from wizard — never carried'],
+          ['Exams / results', 'Removed from wizard — never carried'],
+          ['Announcements / chat', 'Removed from wizard — never carried'],
         ]}
       />
 
@@ -120,11 +120,14 @@ export default function AdminAcademicYearsPage() {
         <li><strong>Lowest class</strong> (smallest display order) receives no students in the new year — intake class stays empty for new admissions.</li>
         <li><strong>Highest class</strong> students are marked <code>GRADUATED</code> with <code>NO_LOGIN</code> — no row in the new year.</li>
         <li>Everyone else moves up one class (+1 display order).</li>
-        <li>New-year student rows are created with <code>userId: null</code> — portal login is not auto-linked.</li>
+        <li>
+          <strong>Promoted students keep their login</strong> — the user account link moves from the archived
+          source row to the new ACTIVE year row (same username/password).
+        </li>
         <li>
           Credential tag: <code>CRED_CARRIED</code> if credentials were sent before; <code>CRED_NEW</code>{' '}
-          if not. Admin must generate and send credentials again — see{' '}
-          <Link href="/docs/intro/admin/students">Students</Link> Operations page.
+          if never credentialed — those students still need Generate + Send on{' '}
+          <Link href="/docs/intro/admin/students">Students</Link> Operations.
         </li>
         <li>Outstanding fee balances stay in the <strong>archived</strong> source year unless you manually carry forward on student fee detail.</li>
       </ul>
@@ -164,12 +167,12 @@ export default function AdminAcademicYearsPage() {
               'Login blocked: &quot;Account closed after graduation.&quot; Re-login does not help.',
             ],
             [
-              'PUBLISHED — promoted, not re-credentialed',
-              'Login blocked: &quot;No active enrollment.&quot; Admin must link user + send credentials on new-year row.',
+              'PUBLISHED — promoted (had credentials)',
+              'Same username/password works in new ACTIVE year after bootstrap refresh',
             ],
             [
-              'PUBLISHED — re-credentialed',
-              'Login works. Fees/attendance/results show new year (empty until recorded). Old year data in ARCHIVED only.',
+              'PUBLISHED — promoted (never credentialed)',
+              'Login blocked until admin generates credentials on Operations page',
             ],
             [
               'PUBLISHED — session already open',
@@ -220,9 +223,9 @@ export default function AdminAcademicYearsPage() {
         <DocStep title="Review promoted roster">
           Open <Link href="/docs/intro/admin/students">Students</Link> — confirm class placements. Lowest class should be empty; graduates absent from new year.
         </DocStep>
-        <DocStep title="Re-credential promoted students">
-          Operations page → filter <code>CRED_NEW</code> / <code>CRED_CARRIED</code> → Generate + Send via WhatsApp.
-          Until this completes, promoted students cannot log in on mobile.
+        <DocStep title="Re-credential students who never had login">
+          Operations page → filter <code>CRED_NEW</code> students who were never sent credentials → Generate + Send via WhatsApp.
+          Students who already had credentials keep the same login after promotion.
         </DocStep>
         <DocStep title="Carry fee dues if needed">
           For students with balances in the archived year, use <strong>Carry Old Dues</strong> on student fee detail — not automatic during promotion.
@@ -248,7 +251,7 @@ export default function AdminAcademicYearsPage() {
           ['Fees missing in new year', 'Only structures carried — balances stay in ARCHIVED year', 'Use Carry Old Dues or record new payments'],
           ['Attendance / results empty in new year', 'Not carried by promotion', 'Expected — start fresh marking in new ACTIVE year'],
           ['Need old year data', 'Year is ARCHIVED', 'Switch sidebar to ARCHIVED year if you have archived_ay_access permission'],
-          ['Checked attendance carry in wizard', 'No backend effect today', 'Do not rely on this checkbox until implemented'],
+          ['Checked attendance carry in wizard', 'Option removed from wizard — attendance is never carried'],
         ]}
       />
 

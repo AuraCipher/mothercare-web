@@ -17,6 +17,11 @@ export default function ApiEndpointsPage() {
         file upload. Every mount point below maps directly to a router in{' '}
         <code>backend/src/modules/**/routes/*.ts</code>.
       </p>
+      <DocCallout variant="info" title="Machine-readable spec">
+        For OpenAPI 3.1 (296 paths, 384 operations), import <code>backend/openapi.yaml</code> or see{' '}
+        <Link href="/docs/api/openapi">OpenAPI Specification</Link>. Regenerate with{' '}
+        <code>cd backend && npm run openapi:generate</code>.
+      </DocCallout>
 
       <h2>Mount points (app.ts)</h2>
       <DocTable
@@ -769,7 +774,8 @@ Content-Type: application/json
       </DocCallout>
 
       <p>
-        Next: <Link href="/docs/api/chat">Chat &amp; Realtime</Link> ·{' '}
+        Next: <Link href="/docs/api/openapi">OpenAPI Specification</Link> ·{' '}
+        <Link href="/docs/api/chat">Chat &amp; Realtime</Link> ·{' '}
         <Link href="/docs/api/architecture">Architecture</Link>
       </p>
     </DocsShell>

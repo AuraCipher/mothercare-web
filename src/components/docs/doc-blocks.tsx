@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Fragment } from 'react';
 import { Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const styles = {
@@ -54,6 +55,13 @@ export function DocTable({
   headers: string[];
   rows: ReactNode[][];
 }) {
+  const renderCell = (cell: ReactNode) => {
+    if (Array.isArray(cell)) {
+      return cell.map((part, index) => <Fragment key={index}>{part}</Fragment>);
+    }
+    return cell;
+  };
+
   return (
     <div className="my-6 overflow-x-auto">
       <table>
@@ -68,7 +76,7 @@ export function DocTable({
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex}>{cell}</td>
+                <td key={cellIndex}>{renderCell(cell)}</td>
               ))}
             </tr>
           ))}
@@ -78,9 +86,9 @@ export function DocTable({
   );
 }
 
-export function DocSection({ title, children }: { title: string; children: ReactNode }) {
+export function DocSection({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
-    <section className="my-8">
+    <section className="my-8" id={id}>
       <h2>{title}</h2>
       {children}
     </section>

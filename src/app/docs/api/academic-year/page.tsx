@@ -196,15 +196,12 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
           [<code>timetableGrid</code>, 'true', 'Yes', 'Copy timetable slots + entries with mapped IDs'],
           [<code>feeStructures</code>, 'true', 'Yes', 'Copy fee structure templates per group (not paid balances)'],
           [<code>datesheets</code>, 'false (forced)', 'No', 'Always disabled — mergeCarryOptions forces false'],
-          [<code>attendance</code>, 'false', 'No', 'UI checkbox only — no code path in applyCarry'],
-          [<code>examsResults</code>, 'false', 'No', 'UI checkbox only — no code path in applyCarry'],
-          [<code>announcementsMessages</code>, 'false', 'No', 'UI checkbox only — no code path in applyCarry'],
         ]}
       />
-      <DocCallout variant="warn" title="Unimplemented carry toggles">
-        The promotion UI shows checkboxes for attendance, exams/results, and announcements/messages, but{' '}
-        <code>applyCarry()</code> does not read those flags. Enabling them in the UI has no effect today.
-      </DocCallout>
+      <p>
+        Attendance, exams/results, and chat history are <strong>not</strong> part of batch promotion — those
+        options were removed from the wizard. Each new year starts with empty attendance and results.
+      </p>
 
       <h4>Fixed student promotion rules (when students + classes carried)</h4>
       <p>From <code>FIXED_STUDENT_RULES</code> in batch-promotion.constants.ts:</p>
@@ -221,7 +218,7 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
         headers={['Field', 'Behavior']}
         rows={[
           ['personId', 'Linked via StudentPerson; created if missing on source'],
-          ['userId', 'Set null — login not auto-linked to new year row'],
+          ['userId', 'Moved from archived source row to new ACTIVE row (same login credentials)'],
           ['username', 'Copied from source'],
           ['admissionNumber / studentNumber', 'Set null on new row (identity uniques on StudentPerson)'],
           ['credentialTag', 'CRED_CARRIED if credentialSentAt set, else CRED_NEW'],
@@ -231,9 +228,9 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
         ]}
       />
       <p>
-        Graduated students lose login because <code>auth.service</code> rejects students with{' '}
-        <code>NO_LOGIN</code> or <code>GRADUATED</code> status. Admin must generate fresh credentials for
-        new-year rows if students need portal access.
+        Graduated and frozen-status students lose login. Promoted students with existing credentials keep
+        the same username/password — <code>Student.userId</code> is transferred to the new-year row because
+        it is globally unique.
       </p>
 
       <h3>Phase: PUBLISHED — POST …/runs/:runId/publish</h3>
@@ -328,7 +325,7 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
           [
             <><code>PUBLISHED</code></>,
             'Sidebar must switch to new ACTIVE; ARCHIVED source read-only; new year mostly empty history',
-            'Graduates blocked; promoted need re-credential; stale bootstrap possible',
+            'Graduates blocked; promoted students keep login if previously credentialed; stale bootstrap possible',
             'Bootstrap refresh → new assignments/timetable/chat year; JWT valid',
             'Campus dashboards scope to new year after bootstrap refresh',
             'No direct effect',
@@ -356,7 +353,8 @@ teacherAssignment.deleteMany({ academicYearId: targetId })`}</DocCodeBlock>
         rows={[
           ['Graduated (highest class)', 'assertStudentLoginEligible rejects GRADUATED / NO_LOGIN', 'Account closed after graduation'],
           ['Promoted, userId null on new row', 'No ACTIVE enrollment with linked user', 'No active enrollment. Contact school admin'],
-          ['Promoted, re-credentialed', 'ACTIVE enrollment in ACTIVE year', 'Login succeeds'],
+          ['Promoted with prior credentials', 'ACTIVE enrollment in ACTIVE year', 'Login succeeds'],
+          ['Promoted never credentialed', 'No user linked', 'Blocked until admin sends credentials'],
           ['Old ARCHIVED row still has userId', 'Enrollment must be in ACTIVE year', 'No active enrollment'],
         ]}
       />

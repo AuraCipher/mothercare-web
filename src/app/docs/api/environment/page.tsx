@@ -107,6 +107,52 @@ export default function ApiEnvironmentPage() {
         secrets (JWT, Resend, Meta tokens) in web env files.
       </p>
 
+      <DocSection title="Optional in development — what still works without them">
+        <p>
+          These services are <strong>optional locally</strong>. The app runs with PostgreSQL + JWT only; other
+          features degrade gracefully instead of crashing.
+        </p>
+        <DocTable
+          headers={['Service', 'If unset in dev', 'What you lose']}
+          rows={[
+            [
+              <><code>REDIS_URL</code> (TCP)</>,
+              'WhatsApp credential sends run synchronously in the API process instead of a background queue',
+              'No BullMQ workers; no chat push fanout; Socket.IO stays single-instance (no Redis adapter)',
+            ],
+            [
+              <><code>R2_*</code> (Cloudflare)</>,
+              'Files save to local <code>backend/uploads/</code> on disk',
+              'Uploads work on one machine only — not suitable for multi-server production',
+            ],
+            [
+              <><code>FIREBASE_*</code> + <code>PUSH_MASTER_SECRET</code></>,
+              'Chat and credentials still work',
+              'No mobile push notifications when the app is in the background — users must open the app to see new messages',
+            ],
+            [
+              <><code>UPSTASH_REDIS_*</code> (REST)</>,
+              'Server starts with a warning',
+              'JWT blacklist on logout may not work — logged-out tokens might still work until expiry',
+            ],
+            [
+              <><code>RESEND_*</code></>,
+              'CEO invites return copy-link only',
+              'No automatic invitation email — you paste the link manually',
+            ],
+            [
+              <><code>META_WHATSAPP_*</code></>,
+              'Generate credentials still works; Send fails with an error',
+              'Cannot deliver login details via WhatsApp until Meta API is configured',
+            ],
+          ]}
+        />
+        <DocCallout variant="tip" title="Production vs development">
+          For go-live, treat Redis (both REST + TCP), R2, WhatsApp, and Firebase as <strong>required</strong>.
+          Development can omit them to iterate faster on a laptop.
+        </DocCallout>
+      </DocSection>
+
       <DocSection title="PostgreSQL (DATABASE_URL)">
         <DocSteps>
           <DocStep title="Provision a database">

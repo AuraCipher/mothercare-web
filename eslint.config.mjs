@@ -17,6 +17,13 @@ const eslintConfig = defineConfig([
       "@next/next/no-img-element": "warn",
     },
   },
+  {
+    files: ["src/app/docs/**/*.tsx", "src/components/docs/**/*.tsx"],
+    rules: {
+      // DocTable rows use tuple syntax [<code>…</code>, "label"] — keys are applied in DocTable render.
+      "react/jsx-key": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

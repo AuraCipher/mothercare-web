@@ -6,11 +6,12 @@ import { api } from '@/lib/api';
 import { ArrowLeft, Check, ChevronRight, Plus, X } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
+import { PROMOTION_UI_CARRY_KEYS } from '@/lib/admin/batch-promotion';
 
 type Step = 1 | 2 | 3 | 4;
 
 export function getPromotionCarryValidation(carryOptions: Record<string, boolean>) {
-  const selectedCarryCount = Object.entries(carryOptions).filter(([k, v]) => k !== 'datesheets' && !!v).length;
+  const selectedCarryCount = PROMOTION_UI_CARRY_KEYS.filter((k) => !!carryOptions[k]).length;
   const invalidCarryConfig =
     (!!carryOptions.students && !carryOptions.classes)
     || (!!carryOptions.teacherAssignments && (!carryOptions.classes || !carryOptions.subjects))
@@ -324,24 +325,19 @@ export default function BatchPromotionPage() {
           </div>
           <div className="space-y-2">
             <p className="text-xs font-medium text-warm-muted">Carry into new year (defaults recommended)</p>
-            {Object.entries(carryOptions).map(([key, on]) => (
+            {PROMOTION_UI_CARRY_KEYS.map((key) => (
               <label key={key} className="flex items-center gap-2 text-xs text-warm-cream">
                 <input
                   type="checkbox"
-                  checked={!!on}
-                  disabled={key === 'datesheets'}
+                  checked={!!carryOptions[key]}
                   onChange={(e) => setCarryOptions((prev) => ({ ...prev, [key]: e.target.checked }))}
                 />
                 {key === 'classes' && 'Classes/sections skeleton + order mapping'}
                 {key === 'students' && 'Promote active students (+1); highest class graduates; lowest stays empty'}
                 {key === 'subjects' && 'Subjects and class-subject links'}
-                {key === 'teacherAssignments' && 'Teacher assignments as initial setup (not attendance history)'}
-                {key === 'timetableGrid' && 'Timetable structure as initial setup (datesheets remain empty)'}
+                {key === 'teacherAssignments' && 'Teacher assignments as initial setup'}
+                {key === 'timetableGrid' && 'Timetable structure as initial setup'}
                 {key === 'feeStructures' && 'Fee structure templates only (not paid/outstanding transactions)'}
-                {key === 'attendance' && 'Attendance records history'}
-                {key === 'examsResults' && 'Exam sessions/results history'}
-                {key === 'announcementsMessages' && 'Announcements/messages history'}
-                {key === 'datesheets' && 'Datesheets (always disabled for carry)'}
               </label>
             ))}
             {selectedCarryCount === 0 && (

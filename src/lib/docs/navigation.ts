@@ -117,6 +117,7 @@ export const apiNav: DocsNavItem[] = [
   { title: 'Mobile Promotion Effects', href: '/docs/api/academic-year/mobile-effects' },
   { title: 'Email & Credentials', href: '/docs/api/email' },
   { title: 'REST Endpoints', href: '/docs/api/endpoints' },
+  { title: 'OpenAPI Specification', href: '/docs/api/openapi' },
   { title: 'Chat & Realtime', href: '/docs/api/chat' },
   { title: 'Deployment', href: '/docs/api/deployment' },
 ];
