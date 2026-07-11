@@ -1,4 +1,5 @@
 import config from '@/config';
+import { AppLogo } from '@/components/app-logo';
 import { Lock, Megaphone, Layers, Users, GraduationCap, BookOpen, School, ArrowRight } from 'lucide-react';
 import HeroCanvas from '@/components/hero-canvas-wrapper';
 
@@ -42,18 +43,7 @@ export default function Home() {
       <section className="relative flex min-h-screen flex-col items-center px-6 pt-32 text-center md:pt-48">
         {/* Logo */}
         <div className="mb-8">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-10 w-10 stroke-warm-accent"
-            fill="none"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
+          <AppLogo size={72} priority className="mx-auto rounded-2xl shadow-lg shadow-black/20" />
         </div>
 
         <h1 className="mb-6 text-4xl font-light tracking-tight text-warm-cream md:text-5xl lg:text-6xl">

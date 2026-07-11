@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
+import { DocsHelpLink } from '@/components/docs/help-link';
 import { decodeJwtPayload } from '@/lib/teacher/auth-routing';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { academicYearBanner } from '@/lib/teacher/types';
@@ -254,6 +255,7 @@ export function TeacherPortalShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="teacher-portal-header__end flex items-center gap-2 sm:gap-3">
+          <DocsHelpLink />
           <span className="hidden max-w-[8rem] truncate text-xs text-warm-muted md:block">{displayName}</span>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warm-accent/30 bg-warm-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warm-accent sm:px-2.5">
             <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-warm-accent" />

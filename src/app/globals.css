@@ -131,3 +131,39 @@ input[type='number']:focus {
   appearance: textfield;
   -moz-appearance: textfield;
 }
+
+/* Documentation prose */
+.docs-prose h2 {
+  @apply mt-10 mb-3 text-lg font-medium text-warm-cream;
+}
+.docs-prose h3 {
+  @apply mt-6 mb-2 text-base font-medium text-warm-cream;
+}
+.docs-prose p {
+  @apply mb-4 text-sm leading-relaxed text-warm-muted;
+}
+.docs-prose ul {
+  @apply mb-4 list-disc space-y-2 pl-5 text-sm text-warm-muted;
+}
+.docs-prose ol {
+  @apply mb-4 list-decimal space-y-2 pl-5 text-sm text-warm-muted;
+}
+.docs-prose a {
+  @apply text-warm-accent underline-offset-2 hover:underline;
+}
+.docs-prose code {
+  @apply rounded bg-warm-card px-1.5 py-0.5 text-xs text-warm-cream;
+}
+.docs-prose table {
+  @apply mb-6 w-full border-collapse text-left text-sm;
+}
+.docs-prose th {
+  @apply border border-warm-card-border bg-warm-card px-3 py-2 text-xs font-medium text-warm-cream;
+}
+.docs-prose td {
+  @apply border border-warm-card-border px-3 py-2 text-warm-muted;
+}
+.docs-prose hr {
+  @apply my-8 border-warm-card-border;
+}
+

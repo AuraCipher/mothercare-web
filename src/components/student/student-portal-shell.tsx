@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
+import { DocsHelpLink } from '@/components/docs/help-link';
 import { decodeJwtPayload } from '@/lib/teacher/auth-routing';
 import { useStudentBootstrap } from '@/lib/student/use-student-bootstrap';
 import { academicYearBanner } from '@/lib/student/types';
@@ -114,6 +115,7 @@ export function StudentPortalShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="teacher-portal-header__end flex items-center gap-2">
+          <DocsHelpLink />
           <span className="hidden max-w-[8rem] truncate text-xs text-warm-muted sm:inline">
             {user?.name}
           </span>

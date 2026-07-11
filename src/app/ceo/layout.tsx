@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
+import { DocsHelpLink } from '@/components/docs/help-link';
 import {
   LogOut, LayoutDashboard, Building2, Menu, X,
   ChevronDown, Check, MapPin, Users, Key,
@@ -148,6 +149,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <DocsHelpLink />
           {activeBranch && (
             <div className="hidden items-center gap-1.5 text-xs text-warm-muted sm:flex">
               <MapPin size={12} className="text-warm-accent" />

@@ -40,7 +40,8 @@ export function isProtectedRoute(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
     || pathname === '/ceo' || pathname.startsWith('/ceo/')
     || pathname === '/teacher' || pathname.startsWith('/teacher/')
-    || pathname === '/student' || pathname.startsWith('/student/');
+    || pathname === '/student' || pathname.startsWith('/student/')
+    || pathname === '/docs' || pathname.startsWith('/docs/');
 }
 
 export function isAuthRoute(pathname: string): boolean {

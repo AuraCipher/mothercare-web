@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
+import { DocsHelpLink } from '@/components/docs/help-link';
 import { StaffModuleShell } from '@/components/staff-module-shell';
 import { firstAllowedPath, isAyReadOnlyForPath, type StaffAccess } from '@/lib/staff-permissions';
 import { filterAcademicYearsForAccess } from '@/lib/ay-access';
@@ -272,6 +273,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <div className="flex items-center gap-3">
+          <DocsHelpLink />
           {activeBranch && (
             <div className="hidden items-center gap-1.5 text-xs text-warm-muted sm:flex">
               <MapPin size={12} className="text-warm-accent" />

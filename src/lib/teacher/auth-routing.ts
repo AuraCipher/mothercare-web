@@ -9,7 +9,7 @@ export function decodeJwtPayload(token: string): Record<string, any> | null {
   }
 }
 
-const ALLOWED_REDIRECT_PREFIXES = ['/teacher', '/student', '/admin', '/ceo'] as const;
+const ALLOWED_REDIRECT_PREFIXES = ['/teacher', '/student', '/admin', '/ceo', '/docs'] as const;
 
 /** Prevent open redirects after login. */
 export function sanitizePostLoginRedirect(path: string | null | undefined): string | null {
