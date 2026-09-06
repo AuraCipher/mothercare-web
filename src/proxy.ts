@@ -20,6 +20,8 @@ export const PUBLIC_ROUTES = [
   '/',
   '/login',
   '/about',
+  '/terms',
+  '/privacy',
   '/academics',
   '/admission',
   '/news',

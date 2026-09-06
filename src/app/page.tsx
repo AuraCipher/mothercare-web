@@ -134,6 +134,13 @@ export default function Home() {
 
       {/* ── Footer ────────────────────────────────── */}
       <footer className="relative pb-8 text-center">
+        <div className="mb-3 flex items-center justify-center gap-4 text-xs text-warm-muted">
+          <a href="/about" className="hover:text-warm-cream transition-colors">About</a>
+          <span className="text-warm-card-border">|</span>
+          <a href="/terms" className="hover:text-warm-cream transition-colors">Terms of Service</a>
+          <span className="text-warm-card-border">|</span>
+          <a href="/privacy" className="hover:text-warm-cream transition-colors">Privacy Policy</a>
+        </div>
         <p className="text-xs text-warm-muted">
           &copy; {new Date().getFullYear()} {config.appName}. All rights reserved.
         </p>
