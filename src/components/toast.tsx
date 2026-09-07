@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { friendlyErrorMessage } from '@/lib/errors';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -15,7 +16,8 @@ let toastId = 0;
 const listeners: Set<(t: ToastItem) => void> = new Set();
 
 export function showToast(type: ToastType, message: string) {
-  const item: ToastItem = { id: ++toastId, type, message };
+  const safeMessage = type === 'error' ? friendlyErrorMessage(new Error(message)) : message;
+  const item: ToastItem = { id: ++toastId, type, message: safeMessage };
   listeners.forEach((fn) => fn(item));
 }
 

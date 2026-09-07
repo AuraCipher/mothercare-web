@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Plus, Building2, MapPin, Phone, ExternalLink, Trash2, Edit3, X } from 'lucide-react';
 import ConfirmModal from '@/components/confirm-modal';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface Branch {
   id: string;
@@ -65,7 +66,7 @@ export default function BranchesPage() {
       const data = await api.getBranches();
       setBranches(data.data || []);
     } catch (e: any) {
-      setError(e.message || 'Failed to load branches');
+      setError(safeErrorMessage(e.message || 'Failed to load branches'));
     } finally {
       setLoading(false);
     }

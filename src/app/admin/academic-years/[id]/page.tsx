@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Calendar, ArrowLeft, Building2, Users, BookOpen, CheckCircle, Archive } from 'lucide-react';
 import ConfirmModal from '@/components/confirm-modal';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface AcademicYearDetail {
   id: string;
@@ -60,7 +61,7 @@ export default function AcademicYearDetailPage() {
       const data = await api.getAcademicYear(bId, ayId);
       setAy(data.data);
     } catch (e: any) {
-      setError(e.message || 'Failed to load academic year');
+      setError(safeErrorMessage(e.message || 'Failed to load academic year'));
     } finally {
       setLoading(false);
     }

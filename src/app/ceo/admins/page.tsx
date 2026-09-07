@@ -7,6 +7,7 @@ import {
   Plus, Users, Mail, MapPin, Check, X, Clock, Copy, ExternalLink,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface Admin {
   id: string;
@@ -48,7 +49,7 @@ export default function CeoAdminsPage() {
         setPendingInvitations(d.data.pendingInvitations || []);
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to load data');
+      setError(safeErrorMessage(e.message || 'Failed to load data'));
     } finally {
       setLoading(false);
     }

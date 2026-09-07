@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import config from '@/config';
+import { safeErrorMessage } from '@/lib/errors';
 
 export default function AdminProfilePage() {
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,7 @@ export default function AdminProfilePage() {
         if (!json.success) throw new Error(json.message || 'Failed to load profile');
         setProfile(json.data);
       } catch (e: any) {
-        setError(e.message || 'Failed to load profile');
+        setError(safeErrorMessage(e.message || 'Failed to load profile'));
       } finally {
         setLoading(false);
       }

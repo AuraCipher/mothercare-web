@@ -14,6 +14,7 @@ import Lightbox from '@/components/lightbox';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
+import { safeErrorMessage } from '@/lib/errors';
 
 export default function StudentDetailPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function StudentDetailPage() {
     setLoading(true);
     api.getStudent(id)
       .then(d => { if (d.success) { setData(d.data); setEcList(d.data.emergencyContacts || []); if (d.data.groupId && branchId) { api.getSectionSubjects(branchId, d.data.groupId).then(r => { if (r.success) setSubjects(r.data); }).catch(() => {}); } } })
-      .catch(e => setError(e.message || 'Failed to load student'))
+      .catch(e => setError(safeErrorMessage(e.message || 'Failed to load student')))
       .finally(() => setLoading(false));
   };
 

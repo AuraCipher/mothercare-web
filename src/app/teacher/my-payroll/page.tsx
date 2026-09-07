@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { TeacherPageLoading, TeacherPageShell } from '@/components/teacher/teacher-page-shell';
+import { safeErrorMessage } from '@/lib/errors';
 
 type PayrollRow = {
   salaryMonth?: string;
@@ -33,7 +34,7 @@ export default function TeacherMyPayrollPage() {
         if (!res.success) throw new Error('Failed to load payroll');
         setRows((res.data as PayrollRow[]) || []);
       } catch (e: any) {
-        setError(e.message || 'Failed to load payroll');
+        setError(safeErrorMessage(e.message || 'Failed to load payroll'));
       } finally {
         setLoading(false);
       }

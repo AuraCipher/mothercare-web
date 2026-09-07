@@ -13,6 +13,7 @@ import {
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { formatGroupLabel } from '@/lib/teacher/types';
 import { api } from '@/lib/api';
+import { safeErrorMessage } from '@/lib/errors';
 
 type HodMarksRow = {
   id: string;
@@ -47,7 +48,7 @@ export default function TeacherHodMarksPage() {
       setOverview(dept.data);
       setRows(marks.data || []);
     } catch (e: any) {
-      setError(e.message || 'Failed to load department marks');
+      setError(safeErrorMessage(e.message || 'Failed to load department marks'));
       setRows([]);
     } finally {
       setLoading(false);

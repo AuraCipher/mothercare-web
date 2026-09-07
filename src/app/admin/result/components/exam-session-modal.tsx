@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import { X } from 'lucide-react';
+import { safeErrorMessage } from '@/lib/errors';
 
 export interface ExamSessionFormValues {
   id?: string;
@@ -79,7 +80,7 @@ export default function ExamSessionModal({
       }
       onClose();
     } catch (e: any) {
-      setError(e.message || 'Failed to save session');
+      setError(safeErrorMessage(e.message || 'Failed to save session'));
     } finally {
       setSaving(false);
     }

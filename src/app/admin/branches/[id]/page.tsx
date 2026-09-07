@@ -7,6 +7,7 @@ import { Building2, Calendar, Plus, ArrowLeft, CheckCircle, Archive, ExternalLin
 import ConfirmModal from '@/components/confirm-modal';
 import { showToast } from '@/components/toast';
 import { BranchChatSettingsPanel } from '@/components/admin/branch-chat-settings-panel';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface BranchDetail {
   id: string;
@@ -100,7 +101,7 @@ export default function BranchDetailPage() {
       });
       setAcademicYears(ayData.data || []);
     } catch (e: any) {
-      setError(e.message || 'Failed to load branch data');
+      setError(safeErrorMessage(e.message || 'Failed to load branch data'));
     } finally {
       setLoading(false);
     }

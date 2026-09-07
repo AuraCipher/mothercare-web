@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { safeErrorMessage } from '@/lib/errors';
 import {
   Users, BookOpen, GraduationCap, ArrowRight,
   UserPlus, School, ClipboardList, UserCog,
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
           }
         }
       })
-      .catch(e => setError(e.message || 'Failed to load'))
+      .catch(e => setError(safeErrorMessage(e.message || 'Failed to load')))
       .finally(() => setLoading(false));
   }, []);
 

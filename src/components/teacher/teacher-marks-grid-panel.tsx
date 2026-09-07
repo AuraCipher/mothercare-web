@@ -10,6 +10,7 @@ import {
   TeacherEmptyState,
 } from '@/components/teacher/teacher-ui';
 import { formatGroupLabel } from '@/lib/teacher/types';
+import { safeErrorMessage } from '@/lib/errors';
 
 type StudentRow = {
   id: string;
@@ -82,7 +83,7 @@ export function TeacherMarksGridPanel({ examClassSubjectId }: { examClassSubject
         }),
       );
     } catch (e: any) {
-      setError(e.message || 'Failed to load marks');
+      setError(safeErrorMessage(e.message || 'Failed to load marks'));
       setGrid(null);
     } finally {
       setLoading(false);
@@ -207,7 +208,7 @@ export function TeacherMarksGridPanel({ examClassSubjectId }: { examClassSubject
         }),
       );
     } catch (e: any) {
-      setError(e.message || 'Failed to save marks');
+      setError(safeErrorMessage(e.message || 'Failed to save marks'));
     } finally {
       setSaving(false);
     }

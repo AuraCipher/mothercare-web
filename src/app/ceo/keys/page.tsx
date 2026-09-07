@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ConfirmModal from '@/components/confirm-modal';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface ApiKey {
   id: string;
@@ -70,7 +71,7 @@ export default function CeoApiKeys() {
       const d = await api.getApiKeys();
       if (d.success) setKeys(d.data || []);
     } catch (e: any) {
-      setError(e.message || 'Failed to load API keys');
+      setError(safeErrorMessage(e.message || 'Failed to load API keys'));
     } finally {
       setLoading(false);
     }

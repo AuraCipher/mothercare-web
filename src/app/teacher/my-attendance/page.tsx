@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { TeacherPageLoading, TeacherPageShell } from '@/components/teacher/teacher-page-shell';
+import { safeErrorMessage } from '@/lib/errors';
 
 type AttendanceRow = {
   id: string;
@@ -25,7 +26,7 @@ export default function TeacherMyAttendancePage() {
         if (!res.success) throw new Error('Failed to load attendance');
         setRows((res.data as AttendanceRow[]) || []);
       } catch (e: any) {
-        setError(e.message || 'Failed to load attendance');
+        setError(safeErrorMessage(e.message || 'Failed to load attendance'));
       } finally {
         setLoading(false);
       }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import { ChevronDown, ChevronRight, Lock, RefreshCw } from 'lucide-react';
+import { safeErrorMessage } from '@/lib/errors';
 
 export interface StructureSubject {
   id: string;
@@ -86,7 +87,7 @@ export default function ExamStructureSection({
     setError('');
     api.getResultExamStructure(examId)
       .then((res) => applyStructure(res.data || []))
-      .catch((e: any) => setError(e.message || 'Failed to load structure'))
+      .catch((e: any) => setError(safeErrorMessage(e.message || 'Failed to load structure')))
       .finally(() => setLoading(false));
   }, [examId, applyStructure]);
 

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface BranchStats {
   id: string; name: string; code: string; address: string | null;
@@ -41,7 +42,7 @@ export default function CeoBranchDetail() {
     setLoading(true);
     api.getBranchStats(id)
       .then(d => { if (d.success) setData(d.data); })
-      .catch(e => setError(e.message || 'Failed to load branch'))
+      .catch(e => setError(safeErrorMessage(e.message || 'Failed to load branch')))
       .finally(() => setLoading(false));
   };
 

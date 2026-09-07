@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import type { ExamType } from './exam-type-manager-modal';
 import { X, Plus } from 'lucide-react';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface CreateExamModalProps {
   sessionId: string;
@@ -41,7 +42,7 @@ export default function CreateExamModal({ sessionId, open, onClose, onCreated }:
     setLoadingTypes(true);
     api.getResultExamTypes(sessionId)
       .then((res) => setTypes(res.data || []))
-      .catch((e: any) => setError(e.message || 'Failed to load exam types'))
+      .catch((e: any) => setError(safeErrorMessage(e.message || 'Failed to load exam types')))
       .finally(() => setLoadingTypes(false));
   }, [open, sessionId]);
 
@@ -81,7 +82,7 @@ export default function CreateExamModal({ sessionId, open, onClose, onCreated }:
       onClose();
       onCreated(res.data.id);
     } catch (e: any) {
-      setError(e.message || 'Failed to create exam');
+      setError(safeErrorMessage(e.message || 'Failed to create exam'));
     } finally {
       setCreating(false);
     }

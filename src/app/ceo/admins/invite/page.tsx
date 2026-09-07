@@ -7,6 +7,7 @@ import {
   ArrowLeft, Mail, MapPin, Check, Copy, X,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface Branch {
   id: string; name: string; code: string;
@@ -56,7 +57,7 @@ export default function InviteAdminPage() {
         showToast('success', d.data.message || 'Invitation created');
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to create invitation');
+      setError(safeErrorMessage(e.message || 'Failed to create invitation'));
     } finally {
       setSending(false);
     }

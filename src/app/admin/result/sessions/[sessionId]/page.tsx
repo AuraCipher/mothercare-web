@@ -9,6 +9,7 @@ import CreateExamModal from '../../components/create-exam-modal';
 import ExamSessionModal from '../../components/exam-session-modal';
 import ExamListSection, { type ExamListItem } from '../../components/exam-list-section';
 import CollapsibleSection, { MiniProgressBar } from '../../components/collapsible-section';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface SessionSummary {
   session: { id: string; name: string; startDate: string; endDate: string };
@@ -60,7 +61,7 @@ export default function ResultSessionPage() {
         setExams(examsRes.data || []);
       })
       .catch((e: any) => {
-        if (!silent) setError(e.message || 'Failed to load session');
+        if (!silent) setError(safeErrorMessage(e.message || 'Failed to load session'));
       })
       .finally(() => {
         if (!silent) setLoading(false);

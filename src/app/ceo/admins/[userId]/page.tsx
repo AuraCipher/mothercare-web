@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 export default function CeoAdminDetailPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function CeoAdminDetailPage() {
           status: d.status ?? '',
         });
       } catch (e: any) {
-        setError(e.message || 'Failed to load admin');
+        setError(safeErrorMessage(e.message || 'Failed to load admin'));
       } finally {
         setLoading(false);
       }

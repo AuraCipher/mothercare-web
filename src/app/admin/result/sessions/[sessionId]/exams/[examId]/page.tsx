@@ -10,6 +10,7 @@ import ExamStructureSection, { structureSummary } from '../../../../components/e
 import MarksEntrySection from '../../../../components/marks-entry-section';
 import type { ExamType } from '../../../../components/exam-type-manager-modal';
 import { ChevronLeft, FileText, Trash2 } from 'lucide-react';
+import { safeErrorMessage } from '@/lib/errors';
 
 const inputClass =
   'w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors';
@@ -89,7 +90,7 @@ export default function ExamDetailPage() {
         setTypes(typesRes.data || []);
         populateForm(examRes.data);
       })
-      .catch((e: any) => setError(e.message || 'Failed to load exam'))
+      .catch((e: any) => setError(safeErrorMessage(e.message || 'Failed to load exam')))
       .finally(() => setLoading(false));
   }, [examId, sessionId, populateForm]);
 

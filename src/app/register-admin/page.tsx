@@ -7,6 +7,7 @@ import {
   Check, X, Eye, EyeOff, Mail, MapPin, User, Lock, Phone,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
+import { safeErrorMessage } from '@/lib/errors';
 
 function RegisterAdminInner() {
   const router = useRouter();
@@ -63,7 +64,7 @@ function RegisterAdminInner() {
         }
       })
       .catch((e) => {
-        setError(e.message || 'Invalid or expired invitation link');
+        setError(safeErrorMessage(e.message || 'Invalid or expired invitation link'));
         setInvalid(true);
         setValidating(false);
       });

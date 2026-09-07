@@ -8,6 +8,7 @@ import {
   TeacherEmptyState,
 } from '@/components/teacher/teacher-ui';
 import { api } from '@/lib/api';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface NotificationItem {
   id: string;
@@ -34,7 +35,7 @@ export default function TeacherNotificationsPage() {
       setItems(res.data?.items || []);
       setUnreadCount(res.data?.unreadCount ?? 0);
     } catch (e: any) {
-      setError(e.message || 'Failed to load notifications');
+      setError(safeErrorMessage(e.message || 'Failed to load notifications'));
       setItems([]);
     } finally {
       setLoading(false);

@@ -13,6 +13,7 @@ import {
 } from '@/components/teacher/teacher-ui';
 import { useTeacherBootstrap } from '@/lib/teacher/use-teacher-bootstrap';
 import { formatGroupLabel } from '@/lib/teacher/types';
+import { safeErrorMessage } from '@/lib/errors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type MarksSubjectRow = {
@@ -59,7 +60,7 @@ function TeacherMarksContent() {
       const res = await api.teacherMarksSubjects();
       setRows(res.data || []);
     } catch (e: any) {
-      setError(e.message || 'Failed to load exam subjects');
+      setError(safeErrorMessage(e.message || 'Failed to load exam subjects'));
       setRows([]);
     } finally {
       setLoading(false);

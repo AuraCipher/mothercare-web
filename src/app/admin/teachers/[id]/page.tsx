@@ -18,6 +18,7 @@ import PayrollHistoryPanel from '@/components/payroll-history-panel';
 import TenureHistoryPanel from '@/components/tenure-history-panel';
 import { TeacherPermissionsPanel } from '@/components/admin/teacher-permissions-panel';
 import config from '@/config';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface TeacherDetail {
   id: string;
@@ -231,7 +232,7 @@ export default function TeacherDetailPage() {
           setData(d.data);
         }
       })
-      .catch(e => setError(e.message || 'Failed to load teacher'))
+      .catch(e => setError(safeErrorMessage(e.message || 'Failed to load teacher')))
       .finally(() => setLoading(false));
   };
 

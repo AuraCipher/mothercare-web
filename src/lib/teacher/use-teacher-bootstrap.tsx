@@ -59,9 +59,6 @@ export function TeacherBootstrapProvider({ children }: { children: ReactNode }) 
             branchId = ayRes.data.branchId;
             localStorage.setItem('activeBranchId', ayRes.data.branchId);
           }
-          // #region agent log
-          fetch('http://127.0.0.1:7275/ingest/ce52f613-123c-4e37-baf2-26dca66dcf5d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'062214'},body:JSON.stringify({sessionId:'062214',runId:'post-fix',hypothesisId:'H5',location:'use-teacher-bootstrap.tsx:load',message:'teacher scope via meAcademicYear',data:{ok:true,academicYearId:ayRes.data.id,branchId:ayRes.data.branchId},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
         }
       } catch {
         /* handled below */

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ClipboardList, ChevronRight, Calendar, Plus, BarChart3, TrendingUp, GraduationCap } from 'lucide-react';
 import ExamSessionModal from './components/exam-session-modal';
+import { safeErrorMessage } from '@/lib/errors';
 
 interface ExamSession {
   id: string;
@@ -67,7 +68,7 @@ export default function ResultGradeHubPage() {
         );
         setSummaries(rows.filter(Boolean) as SessionSummary[]);
       })
-      .catch((e: any) => setError(e.message || 'Failed to load exam sessions'))
+      .catch((e: any) => setError(safeErrorMessage(e.message || 'Failed to load exam sessions')))
       .finally(() => setLoading(false));
   };
 
