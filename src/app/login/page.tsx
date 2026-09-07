@@ -40,7 +40,32 @@ export function mapLoginErrorMessage(msg: string): string {
   if (lower.includes('teacher profile not found') || lower.includes('teacher branch membership')) {
     return 'Teacher portal access is not set up. Contact school administration.';
   }
-  return msg;
+  if (lower.includes('invalid credentials')) {
+    return 'Incorrect username or password.';
+  }
+  if (lower.includes('not active')) {
+    return 'This account is inactive. Contact school admin.';
+  }
+  if (lower.includes('web portal only')) {
+    return 'This account uses the web admin portal only.';
+  }
+  if (lower.includes('cannot reach') || lower.includes('failed to fetch') || lower.includes('network')) {
+    return 'Unable to reach the server. Please check your internet connection.';
+  }
+  if (lower.includes('jwt expired') || lower.includes('token expired')) {
+    return 'Your session has expired. Please log in again.';
+  }
+  if (lower.includes('request failed (403)')) {
+    return 'You do not have permission to log in.';
+  }
+  if (lower.includes('request failed (5')) {
+    return 'Something went wrong on our end. Please try again later.';
+  }
+  // Fallback: only pass through if short and safe
+  if (msg.length < 80 && !msg.includes('prisma') && !msg.includes('P20') && !msg.includes('http://') && !msg.includes('localhost')) {
+    return msg;
+  }
+  return 'Login failed. Please try again or contact support.';
 }
 
 const portals = [

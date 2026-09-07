@@ -81,7 +81,7 @@ export async function apiRequest<T = any>(
   } catch (err) {
     const hint =
       err instanceof TypeError && err.message === 'Failed to fetch'
-        ? `Cannot reach API at ${config.apiUrl}. Check that the backend is running and NEXT_PUBLIC_API_URL is correct.`
+        ? 'Unable to reach the server. Please check your internet connection and try again.'
         : err instanceof Error
           ? err.message
           : 'Network request failed';
