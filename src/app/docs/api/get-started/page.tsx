@@ -106,10 +106,12 @@ flutter pub get`}
       <DocTable
         headers={['Variable', 'Description']}
         rows={[
-          [<code>META_WHATSAPP_PHONE_NUMBER_ID</code>, 'Sender phone number ID from Meta Business'],
-          [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'Permanent or system user token'],
-          [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'WABA ID for template management'],
-          [<code>META_WHATSAPP_API_VERSION</code>, 'Default v21.0 — Graph API version'],
+          [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Account SID from twilio.com/console'],
+          [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Auth Token from twilio.com/console'],
+          [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number'],
+          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
+          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
+          [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
           [<code>APP_DOWNLOAD_URL</code>, 'Play Store / App Store link in template body'],
         ]}
       />

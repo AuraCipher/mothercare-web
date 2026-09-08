@@ -219,7 +219,7 @@ export default function ApiArchitecturePage() {
 
   subgraph msgQ [messages queue]
     MW[message.worker]
-    WA[meta-whatsapp.service]
+    WA[twilio-whatsapp.service]
   end
 
   subgraph chatQ [chat queue]

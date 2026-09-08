@@ -77,7 +77,7 @@ export default function ApiIntroPage() {
           ['Realtime', 'Socket.IO + optional Redis adapter', 'backend/src/modules/chat/socket/'],
           ['Mobile', 'Flutter', 'mobile/'],
           ['File storage', 'Cloudflare R2 or local uploads/', 'backend/src/modules/upload/'],
-          ['Credentials', 'Meta WhatsApp Cloud API', 'backend/src/services/meta-whatsapp.service.ts'],
+          ['Credentials', 'Twilio WhatsApp API', 'backend/src/services/twilio-whatsapp.service.ts'],
           ['Email (future)', 'Resend env vars only — not wired', 'backend/src/config/env.ts'],
           ['Observability', 'Sentry, structured logging', 'backend/src/lib/sentry.ts'],
         ]}
@@ -163,7 +163,7 @@ export default function ApiIntroPage() {
           ['URLs', 'FRONTEND_URL, APP_URL, APP_DOWNLOAD_URL', 'Used in invitations + WhatsApp templates'],
           ['Redis REST', 'UPSTASH_REDIS_REST_URL + TOKEN', 'JWT blacklist; fails closed if unreachable at check'],
           ['Redis TCP', 'REDIS_URL', 'BullMQ: WhatsApp queue + chat push worker'],
-          ['WhatsApp', 'META_WHATSAPP_*', 'Credential delivery — see Email docs'],
+          ['WhatsApp', 'TWILIO_*', 'Credential delivery — see WhatsApp docs'],
           ['R2', 'R2_ACCOUNT_ID, keys, buckets', 'Falls back to local uploads/ when unset'],
           ['FCM', 'FCM_ENABLED, Firebase SA, PUSH_MASTER_SECRET', 'Encrypted mobile push'],
           ['Unused', 'RESEND_API_KEY, RESEND_FROM_EMAIL', 'Reserved — no backend sender yet'],

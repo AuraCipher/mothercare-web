@@ -193,7 +193,7 @@ Response 200:
   F --> H[message.worker]
   H --> I[credential-delivery.service]
   G --> I
-  I --> J[meta-whatsapp.service sendTemplateMessage]
+  I --> J[twilio-whatsapp.service sendTemplateMessage]
   J --> K[CredentialSend audit row]
   K --> L[Update student.credentialStatus]`}
       </pre>
@@ -202,17 +202,19 @@ Response 200:
       <DocTable
         headers={['Variable', 'Description']}
         rows={[
-          [<code>META_WHATSAPP_PHONE_NUMBER_ID</code>, 'Sender phone number ID from Meta Business Suite'],
-          [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'System user or permanent token with whatsapp_business_messaging'],
-          [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'WABA ID — template namespace'],
-          [<code>META_WHATSAPP_API_VERSION</code>, 'Graph API version (default v21.0)'],
+          [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Account SID from twilio.com/console'],
+          [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Auth Token from twilio.com/console'],
+          [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number (E.164 without +)'],
+          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
+          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
+          [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
           [<code>FRONTEND_URL</code>, 'Web portal link in template body parameter'],
           [<code>APP_DOWNLOAD_URL</code>, 'Mobile app store link in template body parameter'],
         ]}
       />
 
       <h3>Template selection</h3>
-      <p>File: <code>backend/src/services/meta-whatsapp.service.ts</code></p>
+      <p>File: <code>backend/src/services/twilio-whatsapp.service.ts</code></p>
       <DocTable
         headers={['recipientType', 'Template purpose']}
         rows={[
@@ -252,7 +254,7 @@ Response 200:
           ['130429', 'Yes', 'Rate limit — worker retries with exponential backoff'],
           ['queue_failed', 'Yes', 'BullMQ job failed after 3 attempts'],
           ['unknown_error', 'Yes', 'Unexpected network or parse error'],
-          ['missing_whatsapp_config', 'No', 'META_WHATSAPP_* env not set'],
+          ['missing_whatsapp_config', 'No', 'TWILIO_* env not set'],
         ]}
       />
 

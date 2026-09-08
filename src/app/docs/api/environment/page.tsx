@@ -72,10 +72,12 @@ export default function ApiEnvironmentPage() {
           [<code>REDIS_URL</code>, 'No', '—', 'BullMQ workers, Socket.IO adapter'],
           [<code>MESSAGE_QUEUE_CONCURRENCY</code>, 'No', '3', 'message.worker.ts'],
           [<code>CHAT_QUEUE_CONCURRENCY</code>, 'No', '5', 'chat.worker.ts'],
-          [<code>META_WHATSAPP_PHONE_NUMBER_ID</code>, 'For WA', '—', 'meta-whatsapp.service.ts'],
-          [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'For WA', '—', 'meta-whatsapp.service.ts'],
-          [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'No', '—', 'Not read by send code — dashboard only'],
-          [<code>META_WHATSAPP_API_VERSION</code>, 'No', 'v21.0', 'meta-whatsapp.service.ts'],
+          [<code>TWILIO_ACCOUNT_SID</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
+          [<code>TWILIO_AUTH_TOKEN</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
+          [<code>TWILIO_WHATSAPP_FROM</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
+          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
+          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
+          [<code>TWILIO_TEMPLATE_STAFF</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
           [<code>RESEND_API_KEY</code>, 'For email invites', '—', 'resend.service.ts → sendAdminInvitationEmail'],
           [<code>RESEND_FROM_EMAIL</code>, 'For email invites', '—', 'resend.service.ts (verified sender domain)'],
           [<code>R2_ACCOUNT_ID</code>, 'For R2', '—', 'upload.service.ts'],
@@ -141,9 +143,9 @@ export default function ApiEnvironmentPage() {
               'No automatic invitation email — you paste the link manually',
             ],
             [
-              <><code>META_WHATSAPP_*</code></>,
+              <><code>TWILIO_*</code></>,
               'Generate credentials still works; Send fails with an error',
-              'Cannot deliver login details via WhatsApp until Meta API is configured',
+              'Cannot deliver login details via WhatsApp until Twilio API is configured',
             ],
           ]}
         />
@@ -212,21 +214,20 @@ curl http://localhost:5000/health`}</DocCodeBlock>
         </p>
       </DocSection>
 
-      <DocSection title="Meta WhatsApp — credential delivery">
+      <DocSection title="Twilio WhatsApp — credential delivery">
         <p>
           WhatsApp is the <strong>only production credential channel</strong>. Flow: admin UI →{' '}
           <code>send-credentials</code> API → BullMQ (or sync) →{' '}
-          <code>meta-whatsapp.service.ts</code> → Graph API template message.
+          <code>twilio-whatsapp.service.ts</code> → Twilio API template message.
         </p>
         <DocSteps>
-          <DocStep title="Meta Business setup">
-            Create a Meta Business account → add WhatsApp product → verify a phone number → obtain a
-            WhatsApp Business Account (WABA).
+          <DocStep title="Twilio setup">
+            Create a Twilio account → provision a WhatsApp-enabled phone number → register WhatsApp sender.
           </DocStep>
-          <DocStep title="Create message templates">
-            In Meta Business Manager → WhatsApp → Message templates, create and get approved:
+          <DocStep title="Create content templates">
+            In Twilio Console → Messaging → Content Template Builder, create and submit for WhatsApp approval:
             <ul className="mt-2 list-disc pl-5">
-              <li><code>credential_send</code> — students</li>
+              <li><code>credential_send_student</code> — students</li>
               <li><code>credential_send_teacher</code> — teachers</li>
               <li><code>credential_send_staff</code> — staff</li>
             </ul>
@@ -236,10 +237,12 @@ curl http://localhost:5000/health`}</DocCodeBlock>
             <DocTable
               headers={['Env var', 'Where to find']}
               rows={[
-                [<code>META_WHATSAPP_PHONE_NUMBER_ID</code>, 'WhatsApp → API Setup → Phone number ID'],
-                [<code>META_WHATSAPP_ACCESS_TOKEN</code>, 'System user token with whatsapp_business_messaging'],
-                [<code>META_WHATSAPP_BUSINESS_ACCOUNT_ID</code>, 'WABA ID (optional — not used in send code)'],
-                [<code>META_WHATSAPP_API_VERSION</code>, 'Default v21.0 — match your Graph API version'],
+                [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Console → Account Info → Account SID'],
+                [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Console → Account Info → Auth Token'],
+                [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number (E.164 without +)'],
+                [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) from Content Template Builder'],
+                [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) from Content Template Builder'],
+                [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) from Content Template Builder'],
               ]}
             />
           </DocStep>
@@ -249,12 +252,12 @@ APP_DOWNLOAD_URL=https://play.google.com/store/apps/details?id=com.mothercare.ap
           </DocStep>
           <DocStep title="Test send">
             Admin portal → student with phone → Generate credentials → Send credentials (or Operations bulk).
-            Check API logs for <code>Credential WhatsApp sent</code> or classified Meta error codes.
+            Check API logs for <code>Credential WhatsApp sent</code> or classified Twilio error codes.
           </DocStep>
         </DocSteps>
         <DocCallout variant="warn" title="Without REDIS_URL">
           When <code>REDIS_URL</code> is unset, <code>enqueueCredentialSend()</code> calls{' '}
-          <code>deliverCredential()</code> synchronously — the admin HTTP request waits for Meta API
+          <code>deliverCredential()</code> synchronously — the admin HTTP request waits for Twilio API
           response (up to 60s with queue wait).
         </DocCallout>
       </DocSection>

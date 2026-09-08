@@ -198,7 +198,7 @@ export default function AdminStudentsPage() {
           <tr>
             <td>WhatsApp send failed</td>
             <td>Missing phone or Meta API error</td>
-            <td>Fill student/parent WhatsApp; check backend META_WHATSAPP_* config</td>
+            <td>Fill student/parent WhatsApp; check backend TWILIO_* config</td>
           </tr>
           <tr>
             <td>Cannot save password</td>

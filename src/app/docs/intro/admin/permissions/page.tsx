@@ -384,7 +384,7 @@ export default function AdminPermissionsPage() {
           },
           {
             q: 'Are credentials sent by email?',
-            a: 'No. Production delivery uses WhatsApp via Meta Cloud API. Ensure META_WHATSAPP_* env vars are configured on the backend.',
+            a: 'No. Production delivery uses WhatsApp via Twilio WhatsApp API. Ensure TWILIO_* env vars are configured on the backend.',
           },
           {
             q: 'How do archived-year permissions work?',

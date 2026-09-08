@@ -178,7 +178,7 @@ export default function AdminBranchesPage() {
           },
           {
             q: 'Does branch phone configure WhatsApp?',
-            a: 'No. Branch phone is display contact only. WhatsApp credential delivery uses META_WHATSAPP_* server environment variables.',
+            a: 'No. Branch phone is display contact only. WhatsApp credential delivery uses TWILIO_* server environment variables.',
           },
           {
             q: 'Can restricted staff switch branches?',

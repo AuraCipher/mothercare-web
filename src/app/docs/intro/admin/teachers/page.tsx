@@ -33,7 +33,7 @@ export default function AdminTeachersPage() {
         <li><strong>Branch selected</strong> in sidebar — teacher list is branch-scoped.</li>
         <li><strong>Classes and subjects</strong> configured before adding assignments.</li>
         <li><strong>Phone number</strong> on profile required for WhatsApp credential delivery.</li>
-        <li><strong>WhatsApp API</strong> configured on backend (<code>META_WHATSAPP_*</code> env vars).</li>
+        <li><strong>WhatsApp API</strong> configured on backend (<code>TWILIO_*</code> env vars).</li>
       </ul>
 
       <h2>Step-by-step: common workflows</h2>
@@ -153,7 +153,7 @@ export default function AdminTeachersPage() {
           <tr>
             <td>Send credentials fails</td>
             <td>Missing phone or WhatsApp API</td>
-            <td>Add phone on profile; verify META_WHATSAPP_* backend config</td>
+            <td>Add phone on profile; verify TWILIO_* backend config</td>
           </tr>
           <tr>
             <td>Delete disabled</td>

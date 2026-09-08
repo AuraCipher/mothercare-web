@@ -138,7 +138,7 @@ NODE_ENV=production APP_MODE=production node dist/server.js`}</DocCodeBlock>
             [<code>R2_BACKUPS_BUCKET</code>, 'PostgreSQL backup uploads'],
             [<code>SENTRY_DSN</code>, 'Error tracking — initSentry() in server.ts'],
             [<><code>RESEND_API_KEY</code> + <code>RESEND_FROM_EMAIL</code></>, 'CEO admin invitation emails'],
-            [<code>META_WHATSAPP_*</code>, 'Credential delivery via WhatsApp'],
+            [<code>TWILIO_*</code>, 'Credential delivery via WhatsApp'],
             [<code>FCM_ENABLED=true</code>, 'Mobile push notifications'],
             [<code>FIREBASE_SERVICE_ACCOUNT_JSON</code>, 'FCM credentials (or path variant)'],
             [<code>PUSH_MASTER_SECRET</code>, 'Encrypt FCM payloads'],
@@ -338,7 +338,7 @@ npm run backup:postgres
             ['CORS error in browser', 'Web origin not in ALLOWED_ORIGINS', 'Add exact origin including https://'],
             ['Socket.IO connect_error', 'Same CORS issue or wrong SOCKET_PATH', 'Match client path to env'],
             ['Push not delivered', 'REDIS_URL unset or FCM misconfigured', 'Check chat worker logs + Firebase creds'],
-            ['WhatsApp credentials fail', 'META_WHATSAPP_* or queue down', 'Verify Meta template + Redis TCP'],
+            ['WhatsApp credentials fail', 'TWILIO_* or queue down', 'Verify Twilio template + Redis TCP'],
             ['401 after logout elsewhere', 'Expected — token blacklisted', 'Re-login'],
             ['Upload 403', 'Missing upload permission or R2 creds', 'Check staff permission + R2_* vars'],
           ]}
