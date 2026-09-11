@@ -72,15 +72,18 @@ describe('Login error message mapping matrix', () => {
     'blocked not enrolled in any active academic year',
   ];
 
+  const mappedVariants: Array<[string, string]> = [
+    ['Invalid credentials', 'Incorrect username or password.'],
+    ['Account is not active', 'This account is inactive. Contact school admin.'],
+    ['Cannot reach the server. Please try again.', 'Unable to reach the server. Please check your internet connection.'],
+    ['JWT expired', 'Your session has expired. Please log in again.'],
+  ];
+
   const passthroughVariants = [
-    'Invalid credentials',
-    'Account is not active',
-    'Cannot reach the server. Please try again.',
     'Too many attempts',
     'Password mismatch',
     'Unauthorized',
     'Unknown error',
-    'JWT expired',
     '403 forbidden',
     'random message',
   ];
@@ -96,6 +99,13 @@ describe('Login error message mapping matrix', () => {
     it(`maps enrollment message: ${msg.slice(0, 24)}`, async () => {
       const mod = await import('@/app/login/page');
       expect(mod.mapLoginErrorMessage(msg)).toContain('No active academic-year enrollment');
+    });
+  }
+
+  for (const [msg, expected] of mappedVariants) {
+    it(`maps generic message: ${msg.slice(0, 24)}`, async () => {
+      const mod = await import('@/app/login/page');
+      expect(mod.mapLoginErrorMessage(msg)).toBe(expected);
     });
   }
 
