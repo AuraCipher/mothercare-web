@@ -168,7 +168,7 @@ export default function LoginPage() {
             </Link>
           </div>
           <div>
-            <AppLogo size={80} priority className="mb-6 rounded-2xl shadow-lg shadow-black/30" />
+            <AppLogo size={120} priority className="mb-6 rounded-2xl shadow-lg shadow-black/30" />
             <h1 className="text-3xl font-light tracking-tight text-warm-cream">School Portal</h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-warm-muted">
               Secure sign-in for CEO, administrators, teachers, and students. One platform for ERP,
@@ -194,6 +194,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
             <div className="mb-8 text-center lg:text-left">
+              <AppLogo size={96} priority className="mx-auto mb-4 rounded-xl lg:hidden" />
               <h2 className="text-xl font-light text-warm-cream">Sign in</h2>
               <p className="mt-1 text-xs text-warm-muted">You will be routed to your role&apos;s portal automatically.</p>
             </div>

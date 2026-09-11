@@ -43,7 +43,7 @@ export default function Home() {
       <section className="relative flex min-h-screen flex-col items-center px-6 pt-32 text-center md:pt-48">
         {/* Logo */}
         <div className="mb-8">
-          <AppLogo size={72} priority className="mx-auto rounded-2xl shadow-lg shadow-black/20" />
+          <AppLogo size={120} priority className="mx-auto rounded-2xl shadow-lg shadow-black/20" />
         </div>
 
         <h1 className="mb-6 text-4xl font-light tracking-tight text-warm-cream md:text-5xl lg:text-6xl">
