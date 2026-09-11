@@ -194,7 +194,6 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
             <div className="mb-8 text-center lg:text-left">
-              <AppLogo size={56} priority className="mx-auto mb-4 rounded-xl lg:mx-0" />
               <h2 className="text-xl font-light text-warm-cream">Sign in</h2>
               <p className="mt-1 text-xs text-warm-muted">You will be routed to your role&apos;s portal automatically.</p>
             </div>
