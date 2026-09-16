@@ -369,8 +369,9 @@ export const api = {
     const q = new URLSearchParams();
     if (params?.role) q.set('role', params.role);
     if (params?.search) q.set('search', params.search);
+    q.set('limit', '100');
     const qs = q.toString();
-    return apiRequest<ApiJsonResult<any[]>>(`/admin/users${qs ? `?${qs}` : ''}`);
+    return apiRequest<ApiJsonResult<any[]>>(`/admin/users?${qs}`);
   },
 
   createUser: (data: { name: string; username: string; password: string; email?: string; phone?: string; role?: string }) =>

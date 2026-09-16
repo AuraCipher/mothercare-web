@@ -92,6 +92,28 @@ async function fetchAllStudentsList(
   return all;
 }
 
+async function fetchAllStudentFees(
+  token: string,
+  q: string,
+): Promise<any[]> {
+  const all: any[] = [];
+  let page = 1;
+  let totalPages = 1;
+  while (page <= totalPages) {
+    const sep = q.includes('?') ? '&' : '?';
+    const pq = new URLSearchParams({ page: String(page), limit: '200' });
+    const res = await fetch(`${config.apiUrl}/admin/student-fees${q}${sep}${pq}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!json.success) break;
+    all.push(...(json.data || []));
+    totalPages = json.pagination?.totalPages || 1;
+    page++;
+  }
+  return all;
+}
+
 async function fetchStudentRowsForPeriod(
   token: string,
   period: FeeReportPeriod,
@@ -161,14 +183,10 @@ async function fetchStudentRowsForPeriod(
     ...(groupId ? { groupId } : {}),
     ...(statusParam ? { status: statusParam } : {}),
   });
-  const res = await fetch(`${config.apiUrl}/admin/student-fees${q}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const json = await res.json();
-  if (!json.success) return [];
+  const allFees = await fetchAllStudentFees(token, q);
 
   const studentMap: Record<string, ReportRow> = {};
-  for (const f of json.data || []) {
+  for (const f of allFees || []) {
     const inRange = monthPairs.some(p => p.month === f.month && p.year === f.year);
     if (!inRange) continue;
     const sid = f.student?.id || f.studentId;
