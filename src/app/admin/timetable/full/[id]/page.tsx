@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ArrowLeft, BookOpen, RefreshCw, Trash2, Download, Printer } from 'lucide-react';
 import { showToast } from '@/components/toast';
-import * as XLSX from 'xlsx';
+
+const XLSXPromise = import('xlsx');
 
 interface Slot {
   id: string; dayOfWeek?: number | null; lectureNumber: number; startTime: string; endTime: string;
@@ -210,7 +211,8 @@ export default function FullTimetablePage() {
     printWin.document.close();
   };
 
-  const downloadExcel = (gen: GeneratedTt) => {
+  const downloadExcel = async (gen: GeneratedTt) => {
+    const XLSX = await XLSXPromise;
     const headerRow = [gen.isDatesheet ? 'Class' : 'Class', ...gen.columns.map(c => c.label)];
     const dataRows = gen.selectedSections.map(sec => {
       const entries = gen.entriesBySection[sec.id] || [];
@@ -236,7 +238,7 @@ export default function FullTimetablePage() {
     const titleRow = [gen.name, ...gen.columns.map(() => '')];
     const titleWs = XLSX.utils.aoa_to_sheet([titleRow, headerRow, ...dataRows]);
     const mergeRange = { s: { r: 0, c: 0 }, e: { r: 0, c: gen.columns.length } };
-    titleWs['!merges'] = [mergeRange as XLSX.Range];
+    titleWs['!merges'] = [mergeRange as any];
     if (!titleWs['!rows']) titleWs['!rows'] = [];
     titleWs['!rows'][0] = { hpx: 30 };
     titleWs['!cols'] = [{ wch: 20 }, ...gen.columns.map(() => ({ wch: 22 }))];

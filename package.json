@@ -19,9 +19,7 @@
     "test:all": "bash scripts/test-all.sh"
   },
   "dependencies": {
-    "@types/three": "^0.184.1",
     "dotenv": "^17.4.2",
-    "jsbarcode": "^3.12.3",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
     "react": "19.2.4",
@@ -38,11 +36,10 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/jsbarcode": "^3.11.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/ws": "^8.18.1",
+    "@types/three": "^0.184.1",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
@@ -50,7 +47,6 @@
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",
-    "vitest": "^4.1.8",
-    "ws": "^8.21.0"
+    "vitest": "^4.1.8"
   }
 }

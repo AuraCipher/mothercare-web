@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Trash2, FileText } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
-import * as XLSX from 'xlsx';
 import config from '@/config';
+
+const ReactMarkdown = lazy(() => import('react-markdown'));
+const remarkGfmPromise = import('remark-gfm');
+const rehypeSanitizePromise = import('rehype-sanitize');
+const XLSXPromise = import('xlsx');
 
 interface FileMeta {
   id: string;
@@ -61,6 +62,17 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
 
 // ─── Markdown Viewer ───────────────────────────────────────────
 function MarkdownViewer({ content }: { content: string }) {
+  const [plugins, setPlugins] = useState<{ remark: any[]; rehype: any[] } | null>(null);
+
+  useEffect(() => {
+    Promise.all([remarkGfmPromise, rehypeSanitizePromise]).then(([remarkGfmMod, rehypeSanitizeMod]) => {
+      setPlugins({
+        remark: [(remarkGfmMod as any).default ?? remarkGfmMod],
+        rehype: [(rehypeSanitizeMod as any).default ?? rehypeSanitizeMod],
+      });
+    });
+  }, []);
+
   // Strip YAML front matter (--- ... ---) at the start of the file
   const cleanContent = content.replace(/^---[\s\S]*?---\s*/m, '');
 
@@ -75,9 +87,10 @@ function MarkdownViewer({ content }: { content: string }) {
   return (
     <div className="max-w-none rounded-lg border border-warm-card-border bg-warm-card/30 p-6">
       <div className="prose prose-sm prose-invert max-w-none">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeSanitize]}
+        <Suspense fallback={<p className="text-sm text-warm-muted animate-pulse">Loading markdown…</p>}>
+          <ReactMarkdown
+          remarkPlugins={plugins?.remark ?? []}
+          rehypePlugins={plugins?.rehype ?? []}
           components={{
             p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
             h1: ({ children }) => <h1 className="text-xl font-semibold mb-3 mt-6 text-warm-cream">{children}</h1>,
@@ -116,6 +129,7 @@ function MarkdownViewer({ content }: { content: string }) {
           }}>
           {cleanContent}
         </ReactMarkdown>
+        </Suspense>
       </div>
     </div>
   );
@@ -137,17 +151,19 @@ function ExcelViewer({ data }: { data: Uint8Array }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    try {
-      const workbook = XLSX.read(data, { type: 'array' });
-      const parsed = workbook.SheetNames.map(name => {
-        const worksheet = workbook.Sheets[name];
-        const rows: (string | number | boolean | null)[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        return { name, rows };
-      });
-      setSheets(parsed);
-    } catch {
-      setError(true);
-    }
+    XLSXPromise.then((XLSX) => {
+      try {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const parsed = workbook.SheetNames.map(name => {
+          const worksheet = workbook.Sheets[name];
+          const rows: (string | number | boolean | null)[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          return { name, rows };
+        });
+        setSheets(parsed);
+      } catch {
+        setError(true);
+      }
+    });
   }, [data]);
 
   if (error) {
