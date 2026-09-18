@@ -7,6 +7,7 @@ const isLiveE2E = process.env.E2E_SKIP_LIVE !== '1';
 export default defineConfig({
   testDir: './e2e',
   timeout: isLiveE2E ? 90_000 : 60_000,
+  retries: isCI ? 2 : 0,
   expect: {
     timeout: 15_000,
   },

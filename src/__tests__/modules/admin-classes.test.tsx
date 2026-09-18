@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '../helpers/test-utils';
+import { render, screen, waitFor } from '../helpers/test-utils';
 import userEvent from '@testing-library/user-event';
 
 // Mock Next.js router
@@ -330,8 +330,9 @@ describe('ClassesPage — edit modal', () => {
     await userEvent.setup().click(await screen.findByText('Save Changes'));
 
     // Wait for the async handleUpdate to complete
-    await new Promise(r => setTimeout(r, 100));
-    expect(api.deleteSection).toHaveBeenCalledWith('branch-1', 'null-sec');
+    await waitFor(() => {
+      expect(api.deleteSection).toHaveBeenCalledWith('branch-1', 'null-sec');
+    });
   });
 
 describe('ClassesPage — delete section', () => {
