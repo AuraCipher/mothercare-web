@@ -112,9 +112,14 @@ export default function DocNav() {
       .catch(() => {});
   }, [entityType, entityId]);
 
+  const MAX_DOC_SIZE_MB = 20;
   const handleUpload = useCallback(async (file: File) => {
     if (!canCreate) {
       showToast('error', 'No permission to upload documents');
+      return;
+    }
+    if (file.size > MAX_DOC_SIZE_MB * 1024 * 1024) {
+      showToast('error', `File too large (max ${MAX_DOC_SIZE_MB}MB)`);
       return;
     }
     const isImage = file.type.startsWith('image/');
@@ -278,7 +283,7 @@ export default function DocNav() {
                   </div>
                   <p className="text-sm font-medium text-warm-cream">Paste or upload</p>
                 </div>
-                <input ref={inputRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                <input ref={inputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.md,.zip,.rar,.7z,.mp4,.webm,.mp3,.m4a,.ogg,.wav,.ttf,.otf,.woff,.woff2" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
               </>
             ) : (
               <p className="rounded-lg border border-warm-card-border bg-warm-card/30 px-3 py-2 text-xs text-warm-muted">
