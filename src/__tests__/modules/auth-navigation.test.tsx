@@ -160,7 +160,11 @@ describe('Auth Navigation — Login Page', () => {
     await user.click(screen.getByText('Sign In'));
 
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument();
+      // M9: the page maps raw provider errors to user-safe text
+      // (mapLoginErrorMessage: 'Network error' → server-unreachable copy).
+      expect(
+        screen.getByText('Unable to reach the server. Please check your internet connection.'),
+      ).toBeInTheDocument();
     });
   });
 });
