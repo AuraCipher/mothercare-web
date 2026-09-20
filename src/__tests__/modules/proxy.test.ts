@@ -108,4 +108,12 @@ describe('Proxy route logic', () => {
       expect(isAuthRoute('/admin')).toBe(false);
     });
   });
+
+  describe('M11 portal-boundary routing', () => {
+    it('/access-denied falls through proxy (reachable, no loop with layout guard)', () => {
+      expect(isPublicRoute('/access-denied')).toBe(false);
+      expect(isProtectedRoute('/access-denied')).toBe(false);
+      expect(isAuthRoute('/access-denied')).toBe(false);
+    });
+  });
 });
