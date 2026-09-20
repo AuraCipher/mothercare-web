@@ -95,6 +95,38 @@ export function firstAllowedPath(access: StaffAccess): string {
   return moduleDefaultPath(mods[0].module, access.permissions);
 }
 
+/**
+ * M10: Admin Portal UI boundary (frontend guard; backend module APIs are
+ * intentionally unchanged — see M9 §H / M10 §1).
+ *
+ * Allowed into the full /admin portal UI:
+ * - branch administrators (isFullAdmin: branch_admin/sub_admin membership),
+ * - module-scoped staff (isRestricted: they render StaffModuleShell, not the
+ *   full portal nav),
+ * - super_admin is routed to /ceo elsewhere but is never denied here.
+ *
+ * Denied:
+ * - legacy-unrestricted non-admin logins (isRestricted=false AND
+ *   isFullAdmin=false — the backward-compat path that used to render the
+ *   full portal nav, e.g. plain `management` with no permission rows and no
+ *   branch-admin membership),
+ * - non-staff roles that must never see /admin UI (teacher/student/parent).
+ *
+ * `access === null` (permissions not loaded / request failed) returns true:
+ * the layout shows its loading state first and only redirects on a loaded
+ * deny verdict — never lock out admins on an API hiccup.
+ */
+export function isAdminPortalAllowedForRole(
+  role: string | undefined,
+  access: StaffAccess | null,
+): boolean {
+  if (role === 'teacher' || role === 'student' || role === 'parent') return false;
+  if (access == null) return true;
+  if (access.isFullAdmin) return true;
+  if (access.isRestricted) return true;
+  return false;
+}
+
 export function canCrud(
   access: StaffAccess | null,
   module: StaffModuleKey,

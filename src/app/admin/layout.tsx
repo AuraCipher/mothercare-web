@@ -7,7 +7,7 @@ import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
 import { DocsHelpLink } from '@/components/docs/help-link';
 import { StaffModuleShell } from '@/components/staff-module-shell';
-import { firstAllowedPath, isAyReadOnlyForPath, type StaffAccess } from '@/lib/staff-permissions';
+import { firstAllowedPath, isAdminPortalAllowedForRole, isAyReadOnlyForPath, type StaffAccess } from '@/lib/staff-permissions';
 import { filterAcademicYearsForAccess } from '@/lib/ay-access';
 import { AyPermissionsProvider } from '@/hooks/use-ay-permissions';
 import {
@@ -161,11 +161,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [activeBranchId, loadingUser]);
 
   useEffect(() => {
-    if (!staffAccess?.isRestricted || loadingPermissions) return;
+    if (staffAccess?.isRestricted && !loadingPermissions) return;
+    if (staffAccess == null) return;
     if (pathname === '/admin' || pathname === '/admin/') {
       router.replace(firstAllowedPath(staffAccess));
     }
   }, [staffAccess, loadingPermissions, pathname, router]);
+
+  // M10: Admin Portal UI boundary — plain management with neither branch-admin
+  // membership nor module rows (legacy-unrestricted) must not see or open the
+  // portal UI. Backend module APIs are intentionally untouched. Redirects to a
+  // dedicated page (NOT /login, which would auto-route back here).
+  const portalDenied =
+    !loadingUser &&
+    !loadingPermissions &&
+    !authError &&
+    user != null &&
+    staffAccess != null &&
+    !isAdminPortalAllowedForRole(user.role, staffAccess);
+  useEffect(() => {
+    if (portalDenied) router.replace('/access-denied');
+  }, [portalDenied, router]);
 
   // Cross-tab logout sync:
   // immediately log out this tab too.
@@ -251,6 +267,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#1a1614]">
         <p className="text-sm text-warm-muted">Loading access…</p>
+      </div>
+    );
+  }
+
+  // M10: hold a neutral screen while the access-denied redirect above fires,
+  // so denied users never glimpse portal navigation.
+  if (portalDenied) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#1a1614]">
+        <p className="text-sm text-warm-muted">Checking access…</p>
       </div>
     );
   }
