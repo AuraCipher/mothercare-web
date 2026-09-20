@@ -111,6 +111,8 @@ export default function StudentFeeDetailPage() {
     }
     setSaving(true);
     try {
+      // M14.1: stable per-operation key so a lost response + retry converges
+      // instead of double-charging (fresh UUID per user submit).
       const res = await fetch(`${config.apiUrl}/admin/payments/waterfall`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -119,6 +121,7 @@ export default function StudentFeeDetailPage() {
           amount: amountPaise,
           paymentMethod: payMethod,
           reference: payRef,
+          idempotencyKey: crypto.randomUUID(),
         }),
       });
       const json = await res.json();

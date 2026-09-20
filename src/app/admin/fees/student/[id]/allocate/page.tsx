@@ -143,6 +143,8 @@ export default function AllocatePaymentPage() {
         paymentMethod: pending.paymentMethod,
         reference: pending.reference || undefined,
         previousMonths,
+        // M14.1: stable per-operation key (see waterfall page).
+        idempotencyKey: crypto.randomUUID(),
       };
       if (currentStudentFeeId) {
         payload.currentMonth = {
