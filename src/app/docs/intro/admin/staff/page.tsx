@@ -95,7 +95,7 @@ export default function AdminStaffPage() {
           <tr><td>Archived Read/Create/Update/Delete</td><td>Same actions when academic year is ARCHIVED</td></tr>
         </tbody>
       </table>
-      <p>Modules: Students, Operations, Timetable, Attendance, Fees, Result, Canteen, Stationary, Payments, Documents.</p>
+      <p>Modules: Students, Operations, Timetable, Attendance, Fees, Result, Canteen, Stationary, Expenses, Documents.</p>
 
       <h2>Field reference — profile sections</h2>
       <table>

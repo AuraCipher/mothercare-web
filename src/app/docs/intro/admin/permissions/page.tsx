@@ -253,8 +253,8 @@ export default function AdminPermissionsPage() {
 
       <h3>Documents (DOCUMENTS)</h3>
       <p>
-        Reserved module key — not shown as a separate sidebar item for restricted users. Used for
-        future document workflows. Defaults to no access unless explicitly granted.
+        Controls access to document uploads and file management. Used for uploaded student documents,
+        receipts, and other file-based resources. Defaults to no access unless explicitly granted.
       </p>
 
       <h2>Pages outside the staff module matrix</h2>

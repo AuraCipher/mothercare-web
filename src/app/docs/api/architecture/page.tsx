@@ -111,6 +111,7 @@ export default function ApiArchitecturePage() {
           [<code>sub_admin</code>, 'Deputy principal'],
           [<code>management</code>, 'Accountant, admin staff with module RBAC'],
           [<code>teacher</code>, 'Teaching staff branch membership'],
+          [<code>parent</code>, 'Legacy parent account type in schema'],
           [<code>canteen_staff</code>, 'Canteen daily sales only'],
           [<code>worker</code>, 'Non-teaching staff — payroll + attendance'],
         ]}

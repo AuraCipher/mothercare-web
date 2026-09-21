@@ -166,7 +166,7 @@ export default function AdminResultComputePage() {
             ['POST compute-results', 'Recalculates SubjectResult rows from published exam marks × weights'],
             ['POST compute-report-cards (session)', 'Creates/updates ReportCard with overall %, grade, rank per student'],
             ['POST compute-report-cards (class)', 'Same scoped to one class'],
-            ['POST publish report card', 'Sets card status PUBLISHED — visible to student/parent portals if enabled'],
+            ['POST publish report card', 'Sets card status PUBLISHED — visible to student app and web student portal'],
             ['GET class results', 'Loads subject percentages for result sheet table'],
             ['GET class report cards', 'Lists DRAFT/PUBLISHED cards for publish workflow'],
           ]}

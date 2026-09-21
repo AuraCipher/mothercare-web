@@ -232,7 +232,7 @@ export default function GetStartedPage() {
           },
           {
             q: 'Can parents log in?',
-            a: 'Parent accounts exist in the database for legacy family linking, but the primary student experience uses the student login. Ask your school whether parent portal access is enabled for your branch.',
+            a: 'Each student has their own login. There is no separate parent portal — parents use the student\'s credentials to view academic data on the student app.',
           },
         ]}
       />

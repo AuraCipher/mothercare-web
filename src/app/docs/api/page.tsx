@@ -78,7 +78,7 @@ export default function ApiIntroPage() {
           ['Mobile', 'Flutter', 'mobile/'],
           ['File storage', 'Cloudflare R2 or local uploads/', 'backend/src/modules/upload/'],
           ['Credentials', 'Twilio WhatsApp API', 'backend/src/services/twilio-whatsapp.service.ts'],
-          ['Email (future)', 'Resend env vars only — not wired', 'backend/src/config/env.ts'],
+          ['Email', 'Resend API — admin invitation emails', 'backend/src/lib/email/resend.service.ts'],
           ['Observability', 'Sentry, structured logging', 'backend/src/lib/sentry.ts'],
         ]}
       />

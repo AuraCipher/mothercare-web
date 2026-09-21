@@ -81,6 +81,7 @@ export const introNav: DocsNavItem[] = [
       { title: 'Stationary', href: '/docs/intro/admin/stationary' },
       { title: 'Canteen', href: '/docs/intro/admin/canteen' },
       { title: 'Timetable', href: '/docs/intro/admin/timetable' },
+      { title: 'Announcements', href: '/docs/intro/admin/announcements' },
       { title: 'Teachers', href: '/docs/intro/admin/teachers' },
       { title: 'Staff', href: '/docs/intro/admin/staff' },
       { title: 'Settings', href: '/docs/intro/admin/settings' },
@@ -105,6 +106,9 @@ export const introNav: DocsNavItem[] = [
       { title: 'Mobile App', href: '/docs/intro/student/mobile-app' },
     ],
   },
+  { title: 'Chat', href: '/docs/intro/chat' },
+  { title: 'Notifications', href: '/docs/intro/notifications' },
+  { title: 'Troubleshooting', href: '/docs/intro/troubleshooting' },
 ];
 
 export const apiNav: DocsNavItem[] = [
@@ -119,5 +123,16 @@ export const apiNav: DocsNavItem[] = [
   { title: 'REST Endpoints', href: '/docs/api/endpoints' },
   { title: 'OpenAPI Specification', href: '/docs/api/openapi' },
   { title: 'Chat & Realtime', href: '/docs/api/chat' },
+  { title: 'Database', href: '/docs/api/database' },
+  { title: 'Notifications', href: '/docs/api/notifications' },
+  { title: 'Financial System', href: '/docs/api/financial-system' },
+  { title: 'Files & Media', href: '/docs/api/files-media' },
+  { title: 'Results & Exams', href: '/docs/api/results' },
+  { title: 'Attendance', href: '/docs/api/attendance' },
+  { title: 'Payroll & Expenses', href: '/docs/api/payroll' },
+  { title: 'Mobile Architecture', href: '/docs/api/mobile' },
+  { title: 'Backup & Restore', href: '/docs/api/backup-restore' },
+  { title: 'Operations', href: '/docs/api/operations' },
+  { title: 'Testing', href: '/docs/api/testing' },
   { title: 'Deployment', href: '/docs/api/deployment' },
 ];
