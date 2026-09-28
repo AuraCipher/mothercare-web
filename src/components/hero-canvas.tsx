@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 export default function HeroCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [webglFailed, setWebglFailed] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#1a1614');
@@ -15,10 +17,20 @@ export default function HeroCanvas() {
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 30;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // The renderer constructor throws when WebGL is unavailable or blocked
+    // (e.g. after context loss). This canvas is purely decorative, so degrade
+    // to a static background instead of crashing the whole page.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    } catch (err) {
+      console.warn('HeroCanvas: WebGL unavailable, using static background.', err);
+      setWebglFailed(true);
+      return;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    containerRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
     const particleCount = 100;
     const geometry = new THREE.BufferGeometry();
@@ -84,6 +96,9 @@ export default function HeroCanvas() {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
+      // Release the GL context immediately so repeated visits/reloads don't
+      // exhaust the browser's WebGL context budget.
+      renderer.forceContextLoss();
       geometry.dispose();
       material.dispose();
       shapes.forEach((s) => {
@@ -91,11 +106,22 @@ export default function HeroCanvas() {
         const mats = Array.isArray(s.material) ? s.material : [s.material];
         mats.forEach((m) => m.dispose());
       });
-      if (containerRef.current?.contains(renderer.domElement)) {
-        containerRef.current.removeChild(renderer.domElement);
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
       }
     };
   }, []);
+
+  if (webglFailed) {
+    return (
+      <div
+        data-testid="hero-canvas-fallback"
+        aria-hidden="true"
+        className="fixed inset-0 -z-10"
+        style={{ background: 'radial-gradient(ellipse at 50% 0%, #2a2422 0%, #1a1614 60%, #14110f 100%)' }}
+      />
+    );
+  }
 
   return (
     <div

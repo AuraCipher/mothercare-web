@@ -223,6 +223,17 @@ describe('CanteenSalesPage — product picker', () => {
     },
   );
 
+  it('shows total units (not just the box count) in the picker stock label', async () => {
+    // Regression: inventory shows "6 units" (Total units column) while the
+    // picker used to show only "1 box" for the same stock — the same product
+    // must show the same number on both pages.
+    render(<CanteenSalesPage />);
+    await openProductPicker();
+    const labels = await screen.findAllByText('Stock: 29 units (2 boxes · 5 units)');
+    expect(labels.length).toBeGreaterThan(0);
+    expect(screen.queryByText('Stock: 2 boxes')).not.toBeInTheDocument();
+  });
+
   it('filters products by search', async () => {
     render(<CanteenSalesPage />);
     await openProductPicker();
@@ -321,6 +332,19 @@ describe('CanteenSalesPage — cart interactions', () => {
     fireEvent.click(screen.getByLabelText('Increase quantity'));
     fireEvent.click(screen.getByLabelText('Decrease quantity'));
     expect(await screen.findByText(/1 unit/)).toBeInTheDocument();
+  });
+
+  it('caps quantity at stock and toasts once when exceeding it', async () => {
+    render(<CanteenSalesPage />);
+    await addProductToCart('Samosa'); // on hand: 2 boxes * 12 + 5 = 29, starts at qty 1
+    fireEvent.click(screen.getByText('Done'));
+    // 28 clicks bring 1 -> 29 (at stock), the 29th is rejected
+    for (let i = 0; i < 29; i += 1) {
+      fireEvent.click(screen.getByLabelText('Increase quantity'));
+    }
+    expect(await screen.findByText(/29 unit/)).toBeInTheDocument();
+    const stockToasts = mockShowToast.mock.calls.filter((c) => c[1] === 'Not enough stock');
+    expect(stockToasts).toHaveLength(1);
   });
 
   it('shows payment mismatch warning', async () => {

@@ -160,9 +160,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => { cancelled = true; };
   }, [activeBranchId, loadingUser]);
 
+  // Restricted staff must never sit on the bare dashboard: send them to their
+  // first allowed module (StaffModuleShell enforces the same rule on mount).
+  // Unrestricted admins must STAY on /admin — firstAllowedPath() returns
+  // '/login' for them (no module rows → allowedModules() is empty), which
+  // ping-pongs with the login page's token auto-redirect
+  // (login → resolveAdminLanding → /admin → /login → …).
   useEffect(() => {
-    if (staffAccess?.isRestricted && !loadingPermissions) return;
-    if (staffAccess == null) return;
+    if (loadingPermissions || !staffAccess?.isRestricted) return;
     if (pathname === '/admin' || pathname === '/admin/') {
       router.replace(firstAllowedPath(staffAccess));
     }

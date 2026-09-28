@@ -104,13 +104,15 @@ function CanteenSalesContent() {
       showToast('error', 'Out of stock');
       return;
     }
+    // Validate before setState — toasts must not fire inside a state updater.
+    const existing = cart.find((l) => l.product.id === product.id);
+    if (existing && existing.quantity >= onHand) {
+      showToast('error', 'Not enough stock');
+      return;
+    }
     setCart((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
-      if (existing) {
-        if (existing.quantity >= onHand) {
-          showToast('error', 'Not enough stock');
-          return prev;
-        }
+      const current = prev.find((l) => l.product.id === product.id);
+      if (current) {
         return prev.map((l) =>
           l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l,
         );
@@ -175,16 +177,22 @@ function CanteenSalesContent() {
       delete next[productId];
       return next;
     });
-    setCart((prev) => prev.flatMap((l) => {
-      if (l.product.id !== productId) return [l];
-      const next = l.quantity + delta;
-      if (next <= 0) return [];
-      if (next > totalStockUnits(l.product)) {
-        showToast('error', 'Not enough stock');
-        return [l];
-      }
-      return [{ ...l, quantity: next }];
-    }));
+    // Validate against current cart state before setState — toasts must not
+    // fire inside a state updater (React "update during render" warning).
+    const line = cart.find((l) => l.product.id === productId);
+    if (!line) return;
+    const next = line.quantity + delta;
+    if (next <= 0) {
+      setCart((prev) => prev.filter((l) => l.product.id !== productId));
+      return;
+    }
+    if (next > totalStockUnits(line.product)) {
+      showToast('error', 'Not enough stock');
+      return;
+    }
+    setCart((prev) =>
+      prev.map((l) => (l.product.id === productId ? { ...l, quantity: next } : l)),
+    );
   };
 
   const creditTotal = creditAmount.trim() === '' ? 0 : Number(creditAmount);

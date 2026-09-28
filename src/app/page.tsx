@@ -40,17 +40,17 @@ export default function Home() {
       <HeroCanvas />
 
       {/* ── Hero ──────────────────────────────────── */}
-      <section className="relative flex min-h-screen flex-col items-center px-6 pt-32 text-center md:pt-48">
+      <section className="relative flex min-h-screen flex-col items-center justify-center px-6 py-12 text-center md:py-16">
         {/* Logo */}
-        <div className="mb-8">
-          <AppLogo size={120} priority className="mx-auto rounded-2xl shadow-lg shadow-black/20" />
+        <div className="mb-5">
+          <AppLogo size={120} priority className="mx-auto h-auto w-24 rounded-2xl shadow-lg shadow-black/20 md:w-[120px]" />
         </div>
 
-        <h1 className="mb-6 text-4xl font-light tracking-tight text-warm-cream md:text-5xl lg:text-6xl">
+        <h1 className="mb-4 text-4xl font-light tracking-tight text-warm-cream md:text-5xl lg:text-6xl">
           {config.appName}
         </h1>
 
-        <p className="mb-10 max-w-lg text-base leading-relaxed text-warm-muted md:text-lg">
+        <p className="mb-8 max-w-lg text-base leading-relaxed text-warm-muted md:text-lg">
           School broadcasting &amp; communication platform. Built for privacy, role-based access, and seamless
           parent-teacher connection.
         </p>

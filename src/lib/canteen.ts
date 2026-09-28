@@ -66,20 +66,19 @@ export function totalStockUnits(
 export function formatStockDisplay(
   product: Pick<CanteenProduct, 'stockBoxes' | 'stockUnits' | 'unitsPerBox'>,
 ): string {
+  const total = totalStockUnits(product);
   const upb = unitsPerBoxOf(product.unitsPerBox);
-  if (upb <= 1) {
-    const u = product.stockUnits;
-    return `${u} unit${u === 1 ? '' : 's'}`;
+  // Always lead with the total units so every surface (inventory "Total units",
+  // sales picker "Stock:", supplier restock) agrees on the same number. Box
+  // breakdown follows in parentheses only when it adds information.
+  if (upb <= 1 || product.stockBoxes <= 0) {
+    return `${total} unit${total === 1 ? '' : 's'}`;
   }
-  const parts: string[] = [];
-  if (product.stockBoxes > 0) {
-    parts.push(`${product.stockBoxes} box${product.stockBoxes === 1 ? '' : 'es'}`);
-  }
+  const parts: string[] = [`${product.stockBoxes} box${product.stockBoxes === 1 ? '' : 'es'}`];
   if (product.stockUnits > 0) {
     parts.push(`${product.stockUnits} unit${product.stockUnits === 1 ? '' : 's'}`);
   }
-  if (parts.length === 0) return '0 units';
-  return parts.join(' · ');
+  return `${total} units (${parts.join(' · ')})`;
 }
 
 export function formatCanteenDateTime(value: string | Date) {

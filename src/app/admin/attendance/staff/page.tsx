@@ -530,8 +530,7 @@ export default function StaffAttendancePage() {
                       )}
                       <td className="px-4 py-3 text-center">
                         {dayView ? (
-                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(t).status)}`}
-                            onClick={() => toggleStatus(t.id)}>
+                          <span className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium min-w-[100px] cursor-pointer ${statusClass(getDayStatus(t).status)}`}>
                             {getDayStatus(t).label}
                           </span>
                         ) : (
