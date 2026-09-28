@@ -104,11 +104,13 @@ export default function ExamStructureSection({
       const rows = await Promise.all(
         sections.map(async (sec: any) => {
           const subRes = await api.getSectionSubjects(branchId, sec.id);
-          const subjects = (subRes.data || []).map((link: any) => ({
-            id: link.subject?.id || link.subjectId,
-            name: link.subject?.name || 'Subject',
-            code: link.subject?.code ?? null,
-          })).filter((s: any) => s.id);
+          // Endpoint returns bare subjects [{ id, name, code }]; also tolerate
+          // legacy link rows shaped { subjectId, subject: { … } }.
+          const subjects = (subRes.data || []).map((row: any) => {
+            const sub = row?.subject ?? row;
+            const id = row?.subjectId ?? sub?.id;
+            return { id, name: sub?.name || 'Subject', code: sub?.code ?? null };
+          }).filter((s: any) => s.id);
           return {
             classId: sec.id,
             name: sec.name,

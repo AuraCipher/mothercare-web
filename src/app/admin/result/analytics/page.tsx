@@ -100,7 +100,10 @@ export default function ResultAnalyticsPage() {
     }
     api.getSectionSubjects(branchId, classFilter)
       .then((res) => {
-        const rows = (res.data || []).map((gs: { subject: Subject }) => gs.subject).filter(Boolean);
+        // Endpoint returns bare subjects; tolerate legacy { subject: { … } } link rows too.
+        const rows = (res.data || [])
+          .map((gs: { subject?: Subject } | Subject) => ('subject' in gs ? gs.subject : gs))
+          .filter((s): s is Subject => Boolean(s));
         setClassSubjects(rows);
       })
       .catch(() => setClassSubjects([]));
