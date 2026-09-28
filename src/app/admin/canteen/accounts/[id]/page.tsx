@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft, ShoppingCart, Wallet, User } from 'lucide-react';
+import { ChevronLeft, Wallet, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatCanteenDateTime, formatCanteenMoney } from '@/lib/canteen';
 import { showToast } from '@/components/toast';
@@ -134,15 +134,8 @@ export default function CanteenAccountDetailPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => router.push(`/admin/canteen/sales?accountId=${id}`)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]"
-          >
-            <ShoppingCart size={14} /> New order
-          </button>
-          <button
-            type="button"
             onClick={() => setActivePanel('pay')}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-cream hover:border-warm-accent/50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]"
           >
             <Wallet size={14} /> Record payment
           </button>
