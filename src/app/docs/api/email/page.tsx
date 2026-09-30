@@ -208,22 +208,21 @@ Response 200:
           [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
           [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
           [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
-          [<code>FRONTEND_URL</code>, 'Web portal link in template body parameter'],
-          [<code>APP_DOWNLOAD_URL</code>, 'Mobile app store link in template body parameter'],
+          [<code>FRONTEND_URL</code>, 'Website slot in approved WhatsApp templates ({{2}} teacher / {{3}} staff+student)'],
         ]}
       />
 
       <h3>Template selection</h3>
       <p>File: <code>backend/src/services/twilio-whatsapp.service.ts</code></p>
       <DocTable
-        headers={['recipientType', 'Template purpose']}
+        headers={['recipientType', 'Approved template', 'Variables']}
         rows={[
-          [<code>student</code>, 'Student login credentials template'],
-          [<code>teacher</code>, 'Teacher login credentials template'],
-          [<code>staff</code>, 'Staff login credentials template'],
+          [<code>teacher</code>, 'teacher_wc (4 vars)', '{{1}} teacher name, {{2}} website, {{3}} username, {{4}} password'],
+          [<code>staff</code>, 'staff_wc (5 vars)', '{{1}} designation, {{2}} staff name, {{3}} website, {{4}} username, {{5}} password'],
+          [<code>student</code>, 'student_wc (5 vars)', '{{1}} student name, {{2}} class, {{3}} website, {{4}} username, {{5}} password'],
         ]}
       />
-      <p>Body parameters (via <code>buildCredentialParameters()</code>): name, username, temporary password, portal URL, app download URL.</p>
+      <p>Body parameters are built per template (<code>buildTeacherParameters()</code>, <code>buildStaffParameters()</code>, <code>buildStudentParameters()</code>). Variable counts are enforced before any provider request — a mismatch fails closed and nothing is sent.</p>
 
       <h3>SendCredentialResult shape</h3>
       <pre className={pre}>

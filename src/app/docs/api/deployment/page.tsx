@@ -179,7 +179,7 @@ NEXT_PUBLIC_APP_MODE=production`}</DocCodeBlock>
             <code>flutter build apk --dart-define=API_BASE_URL=https://api.yourschool.pk</code>
           </li>
           <li>Configure Firebase for FCM on Android and iOS</li>
-          <li>Set <code>APP_DOWNLOAD_URL</code> in backend env for credential messages</li>
+          <li>Set <code>FRONTEND_URL</code> in backend env — website slot in approved WhatsApp templates</li>
           <li>Distribute APK/IPA directly or publish to app stores</li>
         </ul>
         <DocCallout variant="info" title="Push on first login">

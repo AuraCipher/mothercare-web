@@ -112,7 +112,7 @@ flutter pub get`}
           [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
           [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
           [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
-          [<code>APP_DOWNLOAD_URL</code>, 'Play Store / App Store link in template body'],
+          [<code>FRONTEND_URL</code>, 'Website slot in approved WhatsApp templates'],
         ]}
       />
 

@@ -160,7 +160,7 @@ export default function ApiIntroPage() {
         rows={[
           ['Core', 'DATABASE_URL, JWT_SECRET (≥32 chars)', 'Server exits on invalid env at boot'],
           ['HTTP', 'PORT, HOST, ALLOWED_ORIGINS (prod)', 'APP_MODE=development relaxes CORS'],
-          ['URLs', 'FRONTEND_URL, APP_URL, APP_DOWNLOAD_URL', 'Used in invitations + WhatsApp templates'],
+          ['URLs', 'FRONTEND_URL, APP_URL', 'Used in invitations + WhatsApp templates (FRONTEND_URL = website slot)'],
           ['Redis REST', 'UPSTASH_REDIS_REST_URL + TOKEN', 'JWT blacklist; fails closed if unreachable at check'],
           ['Redis TCP', 'REDIS_URL', 'BullMQ: WhatsApp queue + chat push worker'],
           ['WhatsApp', 'TWILIO_*', 'Credential delivery — see WhatsApp docs'],
