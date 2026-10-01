@@ -84,6 +84,14 @@ describe('drawer open/close', () => {
     expect(screen.getByRole('button', { name: 'Open credentials for Ali Khan' })).toHaveFocus();
   });
 
+  it('slides in with transition classes', async () => {
+    renderWith([studentNoExisting]);
+    await openDrawerFor('Ali Khan');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('transition-transform');
+    await waitFor(() => expect(dialog.className).toContain('translate-x-0'));
+  });
+
   it('closes on Escape', async () => {
     renderWith([studentNoExisting]);
     await openDrawerFor('Ali Khan');
@@ -186,7 +194,7 @@ describe('replacement confirmation', () => {
     await userEvent.type(screen.getByPlaceholderText('Your password'), 'AdminPass123!');
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Save' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as any)?.body ?? "{}"));
     expect(body.replaceExisting).toBe(true);
     expect(typeof body.password).toBe('string');
     expect(body.password).toHaveLength(12);

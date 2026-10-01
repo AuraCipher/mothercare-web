@@ -125,7 +125,16 @@ export default function StudentCredentialsPage() {
   useEffect(() => { loadStudents(); }, [statusFilter, search, groupId, rollNumber]);
 
   // ─── Drawer open/close + focus management ───
+  // drawerStudent mounts the drawer; drawerOpen drives the slide in/out
+  // animation (unmount happens after the slide-out finishes).
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const openDrawer = (student: any, trigger: HTMLButtonElement | null) => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
     triggerRef.current = trigger;
     setDrawerStudent(student);
     setPhase('ready');
@@ -140,23 +149,32 @@ export default function StudentCredentialsPage() {
     setDrawerError('');
     setHandoffUrl('');
     setSavedAt(null);
+    // Mount first, then animate in on the next frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawerOpen(true));
+    });
   };
 
   const closeDrawer = () => {
-    setDrawerStudent(null);
-    setPhase('ready');
+    setDrawerOpen(false);
     setShowReplaceConfirm(false);
-    setDrawerError('');
-    // Return focus to the triggering arrow
-    triggerRef.current?.focus();
-    triggerRef.current = null;
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setDrawerStudent(null);
+      setPhase('ready');
+      setDrawerError('');
+      // Return focus to the triggering arrow
+      triggerRef.current?.focus();
+      triggerRef.current = null;
+      closeTimer.current = null;
+    }, 300);
   };
 
   useEffect(() => {
-    if (drawerStudent) {
+    if (drawerStudent && drawerOpen) {
       closeRef.current?.focus();
     }
-  }, [drawerStudent]);
+  }, [drawerStudent, drawerOpen]);
 
   // Escape closes drawer (replacement modal handles its own Escape)
   useEffect(() => {
@@ -424,9 +442,9 @@ export default function StudentCredentialsPage() {
                         type="button"
                         aria-label={`Open credentials for ${s.name}`}
                         onClick={(e) => { e.stopPropagation(); openDrawer(s, e.currentTarget); }}
-                        className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors"
+                        className="rounded-lg bg-warm-accent/15 p-2 text-warm-accent transition-colors hover:bg-warm-accent hover:text-[#1a1614]"
                       >
-                        <ChevronRight size={14} />
+                        <ChevronRight size={18} strokeWidth={2.5} />
                       </button>
                     </td>
                   </tr>
@@ -453,14 +471,18 @@ export default function StudentCredentialsPage() {
       {/* ─── Credential drawer ─── */}
       {ds && (
         <div className="fixed inset-0 z-50" role="presentation">
-          <div className="absolute inset-0 bg-black/60" onClick={closeDrawer} aria-hidden="true" />
+          <div
+            className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ease-out ${drawerOpen ? 'opacity-100' : 'opacity-0'}`}
+            onClick={closeDrawer}
+            aria-hidden="true"
+          />
           <div
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label={`Student credentials for ${ds.name}`}
             onKeyDown={trapTab}
-            className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-warm-card-border bg-[#1a1614] shadow-2xl"
+            className={`absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-warm-card-border bg-[#1a1614] shadow-2xl transition-transform duration-300 ease-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
           >
             <div className="flex items-center justify-between border-b border-warm-card-border px-5 py-4">
               <h2 className="text-sm font-medium text-warm-cream">Student Credentials</h2>
