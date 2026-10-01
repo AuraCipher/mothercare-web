@@ -142,140 +142,118 @@ Response 201:
         ]}
       />
 
-      <h2>WhatsApp credential delivery</h2>
+      <h2>WhatsApp credential handoff (manual, no provider)</h2>
       <p>
-        Admin portal actions call <code>send-credentials</code> endpoints. Backend generates a fresh temporary
-        password, hashes it with bcrypt, updates the user record, and queues delivery via Meta WhatsApp template
-        API.
+        WhatsApp communication uses browser click-to-chat handoff with prefilled
+        message content. The application does not send WhatsApp messages directly.
+        The user completes the final Send action in WhatsApp. The application
+        records the initiated WhatsApp handoff, but cannot observe whether the
+        user actually presses Send or whether the recipient receives/reads the message.
       </p>
 
       <h3>Credential endpoints</h3>
       <DocTable
         headers={['Method', 'Path', 'Auth', 'Scope query params']}
         rows={[
-          ['POST', '/admin/students/:id/send-credentials', 'Admin + students module', 'branchId, academicYearId'],
-          ['POST', '/admin/students/send-credentials/bulk', 'Admin', 'branchId, academicYearId, studentIds[]'],
-          ['POST', '/admin/students/send-all-credentials', 'Admin', 'branchId, academicYearId'],
-          ['POST', '/admin/teachers/:id/send-credentials', 'Admin', 'branchId'],
-          ['POST', '/admin/staff/:userId/send-credentials', 'Admin + staff module', 'branchId'],
+          ['POST', '/admin/students/:id/save-credential', 'Admin + students module', 'branchId, academicYearId'],
+          ['POST', '/admin/teachers/:id/save-credential', 'Admin', 'branchId'],
+          ['POST', '/admin/staff/:userId/save-credential', 'Admin + staff module', 'branchId'],
         ]}
       />
 
-      <h3>POST /admin/students/:id/send-credentials — example</h3>
+      <h3>POST /admin/students/:id/save-credential — example</h3>
       <pre className={pre}>
-{`POST /admin/students/student-uuid/send-credentials?branchId=...&academicYearId=...
+{`POST /admin/students/student-uuid/save-credential?branchId=...
 Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "password": "<generated-12-char>",
+  "adminPassword": "<admin-own-password>",
+  "replaceExisting": true,
+  "idempotencyKey": "<uuid>"
+}
 
 Response 200:
 {
   "success": true,
   "data": {
-    "credentialStatus": "SENT",
-    "delivery": {
-      "success": true,
-      "channel": "whatsapp",
-      "messageStatus": "queued",
-      "messageId": "bullmq-job-id"
-    }
+    "website": "https://mothercareschool.pk",
+    "schoolName": "Mother Care School",
+    "appUrl": "https://play.google.com/...",
+    "credentialGeneratedAt": "...",
+    "credentialSentAt": "..."
   }
 }`}
       </pre>
 
-      <h3>Delivery pipeline</h3>
+      <h3>Handoff pipeline</h3>
       <pre className={pre}>
 {`flowchart TD
-  A[Admin POST send-credentials] --> B[studentService.sendCredentials]
-  B --> C[Generate temp password + hash]
-  C --> D[notificationService.sendCredential]
-  D --> E{REDIS_URL set?}
-  E -->|Yes| F[enqueueCredentialSend → messages queue]
-  E -->|No| G[deliverCredential sync]
-  F --> H[message.worker]
-  H --> I[credential-delivery.service]
-  G --> I
-  I --> J[twilio-whatsapp.service sendTemplateMessage]
-  J --> K[CredentialSend audit row]
-  K --> L[Update student.credentialStatus]`}
+  A[Generate password in browser] --> B[Replacement confirm if password exists]
+  B --> C[Admin authorizes with own password]
+  C --> D[POST save-credential: hash + audit + timestamps in one transaction]
+  D --> E[Build message text locally from save response]
+  E --> F[Open wa.me chat with prefilled text]
+  F --> G[User presses Send in WhatsApp]`}
       </pre>
 
-      <h3>WhatsApp environment variables</h3>
+      <h3>Message values</h3>
       <DocTable
         headers={['Variable', 'Description']}
         rows={[
-          [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Account SID from twilio.com/console'],
-          [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Auth Token from twilio.com/console'],
-          [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number (E.164 without +)'],
-          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
-          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
-          [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
-          [<code>FRONTEND_URL</code>, 'Website slot in approved WhatsApp templates ({{2}} teacher / {{3}} staff+student)'],
+          [<code>FRONTEND_URL</code>, 'Website slot in manual WhatsApp handoff messages'],
+          [<code>SCHOOL_NAME</code>, 'School-name slot in manual WhatsApp handoff messages'],
+          [<code>APP_DOWNLOAD_URL</code>, 'App-link slot in manual WhatsApp handoff messages'],
         ]}
       />
 
-      <h3>Template selection</h3>
-      <p>File: <code>backend/src/services/twilio-whatsapp.service.ts</code></p>
+      <h3>Message construction</h3>
+      <p>File: <code>web/src/lib/whatsappCredential.ts</code></p>
       <DocTable
-        headers={['recipientType', 'Approved template', 'Variables']}
+        headers={['Recipient', 'Slots']}
         rows={[
-          [<code>teacher</code>, 'teacher_wc (4 vars)', '{{1}} teacher name, {{2}} website, {{3}} username, {{4}} password'],
-          [<code>staff</code>, 'staff_wc (5 vars)', '{{1}} designation, {{2}} staff name, {{3}} website, {{4}} username, {{5}} password'],
-          [<code>student</code>, 'student_wc (5 vars)', '{{1}} student name, {{2}} class, {{3}} website, {{4}} username, {{5}} password'],
+          [<code>teacher</code>, 'school, teacher name, website, username, password, app link'],
+          [<code>staff</code>, 'school, staff name, designation, website, username, password, app link'],
+          [<code>student</code>, 'school, student name, class, website, username, password, app link'],
         ]}
       />
-      <p>Body parameters are built per template (<code>buildTeacherParameters()</code>, <code>buildStaffParameters()</code>, <code>buildStudentParameters()</code>). Variable counts are enforced before any provider request — a mismatch fails closed and nothing is sent.</p>
+      <p>Messages are pure string templates opened via <code>https://wa.me/&lt;digits&gt;?text=&lt;encoded&gt;</code>. The password appears only inside the encoded text.</p>
 
-      <h3>SendCredentialResult shape</h3>
+      <h3>SaveCredentialResult shape</h3>
       <pre className={pre}>
 {`{
   "success": true,
-  "channel": "whatsapp",
-  "messageId": "wamid.xxx",
-  "messageStatus": "sent"
+  "data": {
+    "website": "https://mothercareschool.pk",
+    "schoolName": "Mother Care School",
+    "appUrl": "https://play.google.com/...",
+    "credentialGeneratedAt": "...",
+    "credentialSentAt": "..."
+  }
 }
 
-// Failure:
+// Replacement required:
 {
   "success": false,
-  "channel": "whatsapp",
-  "messageStatus": "failed",
-  "errorCode": "131026",
-  "errorMessage": "Message undeliverable",
-  "retryable": true,
-  "solvable": false
+  "code": "PASSWORD_REPLACEMENT_REQUIRED",
+  "message": "Student already has a password. Confirm replacement first."
 }`}
       </pre>
-
-      <h3>WhatsApp error codes (examples)</h3>
-      <DocTable
-        headers={['errorCode', 'retryable', 'Meaning']}
-        rows={[
-          ['131026', 'Sometimes', 'Recipient not on WhatsApp or invalid number'],
-          ['130429', 'Yes', 'Rate limit — worker retries with exponential backoff'],
-          ['queue_failed', 'Yes', 'BullMQ job failed after 3 attempts'],
-          ['unknown_error', 'Yes', 'Unexpected network or parse error'],
-          ['missing_whatsapp_config', 'No', 'TWILIO_* env not set'],
-        ]}
-      />
 
       <h3>Credential tracking (Prisma)</h3>
       <DocTable
         headers={['Field / model', 'Purpose']}
         rows={[
-          [<code>Student.credentialSentAt</code>, 'Timestamp of last send'],
-          [<code>Student.credentialStatus</code>, 'SENT | FAILED | PENDING'],
+          [<code>Student.credentialSentAt</code>, 'Timestamp of last WhatsApp handoff (initiated, not delivered)'],
+          [<code>Student.credentialStatus</code>, 'sent = handoff initiated (manual flow)'],
           [<code>StudentCredentialTag</code>, 'CRED_NEW, CRED_RESEND, NO_LOGIN, etc.'],
-          [<code>CredentialSend</code>, 'Audit history — phone redacted in logs'],
+          [<code>CredentialSend</code>, 'Audit history of past automated sends (legacy) — phone redacted in logs'],
         ]}
       />
 
-      <DocCallout variant="tip" title="Queue fallback">
-        Without <code>REDIS_URL</code>, <code>enqueueCredentialSend()</code> calls{' '}
-        <code>deliverCredential()</code> synchronously. Admin UI waits up to 60s for queue completion when{' '}
-        <code>wait: true</code> (default).
-      </DocCallout>
-
       <DocCallout variant="info" title="Rate limiting">
-        <code>send-credentials</code> and <code>set-password</code> routes use <code>passwordSetLimiter</code> to
+        <code>save-credential</code> and <code>set-password</code> routes use <code>passwordSetLimiter</code> to
         prevent abuse. Expect 429 if exceeded.
       </DocCallout>
 

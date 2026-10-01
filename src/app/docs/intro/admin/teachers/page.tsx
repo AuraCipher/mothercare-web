@@ -33,7 +33,7 @@ export default function AdminTeachersPage() {
         <li><strong>Branch selected</strong> in sidebar — teacher list is branch-scoped.</li>
         <li><strong>Classes and subjects</strong> configured before adding assignments.</li>
         <li><strong>Phone number</strong> on profile required for WhatsApp credential delivery.</li>
-        <li><strong>WhatsApp API</strong> configured on backend (<code>TWILIO_*</code> env vars).</li>
+        <li><strong>WhatsApp handoff</strong> via browser click-to-chat with prefilled message (no provider needed).</li>
       </ul>
 
       <h2>Step-by-step: common workflows</h2>
@@ -115,7 +115,7 @@ export default function AdminTeachersPage() {
         <tbody>
           <tr><td>Teacher created</td><td>User account + teacher profile; temp password generated</td></tr>
           <tr><td>Assignment added</td><td>Teacher available in timetable and attendance for that class-subject</td></tr>
-          <tr><td>Send credentials</td><td><code>POST /admin/teachers/:id/send-credentials</code> — new temp password hashed, WhatsApp queued</td></tr>
+          <tr><td>Save & Send</td><td><code>POST /admin/teachers/:id/save-credential</code> — generated password hashed, WhatsApp opened prefilled</td></tr>
           <tr><td>Deactivate</td><td>Login blocked; assignments may remain until removed</td></tr>
           <tr><td>Delete attempted with assignments</td><td>Blocked — remove assignments first</td></tr>
           <tr><td>Photo uploaded</td><td>Stored via upload API, URL saved on profile</td></tr>
@@ -153,7 +153,7 @@ export default function AdminTeachersPage() {
           <tr>
             <td>Send credentials fails</td>
             <td>Missing phone or WhatsApp API</td>
-            <td>Add phone on profile; verify TWILIO_* backend config</td>
+            <td>Add phone on profile; use Save & Send to open WhatsApp with the message prefilled</td>
           </tr>
           <tr>
             <td>Delete disabled</td>
@@ -235,7 +235,7 @@ export default function AdminTeachersPage() {
           <tr><td>GET</td><td><code>/admin/teachers</code></td><td>List with search/qualification</td></tr>
           <tr><td>POST</td><td><code>/admin/teachers</code></td><td>Create teacher account</td></tr>
           <tr><td>PUT</td><td><code>/admin/teachers/:id</code></td><td>Update profile</td></tr>
-          <tr><td>POST</td><td><code>/admin/teachers/:id/send-credentials</code></td><td>WhatsApp credentials</td></tr>
+          <tr><td>POST</td><td><code>/admin/teachers/:id/save-credential</code></td><td>Manual WhatsApp handoff save</td></tr>
           <tr><td>POST</td><td><code>/admin/teachers/:id/deactivate</code></td><td>Deactivate teacher</td></tr>
         </tbody>
       </table>

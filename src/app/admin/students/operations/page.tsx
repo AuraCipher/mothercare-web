@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
   ArrowLeft, RefreshCw, Eye, EyeOff, X,
-  Users, Search, ChevronRight,
+  Search, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
@@ -302,12 +302,16 @@ export default function StudentCredentialsPage() {
       }
       // SUCCESS — build the message with EXACTLY the drawer password (P1).
       const website: string = data.data?.website || '';
+      const school: string = data.data?.schoolName || '';
+      const appUrl: string = data.data?.appUrl || '';
       const message = buildStudentCredentialMessage({
+        school,
         name: ds.name,
         className: formatClassLabel(ds.group.name, ds.group.section),
         website,
         username: ds.username,
         password: drawerPassword,
+        appUrl,
       });
       const digits = normalizePhoneDigits(rawPhone as string);
       const url = buildWhatsAppUrl(digits, message);

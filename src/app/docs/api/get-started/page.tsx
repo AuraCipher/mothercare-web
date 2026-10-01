@@ -106,13 +106,9 @@ flutter pub get`}
       <DocTable
         headers={['Variable', 'Description']}
         rows={[
-          [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Account SID from twilio.com/console'],
-          [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Auth Token from twilio.com/console'],
-          [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number'],
-          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) for student credential template'],
-          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) for teacher credential template'],
-          [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) for staff credential template'],
-          [<code>FRONTEND_URL</code>, 'Website slot in approved WhatsApp templates'],
+          [<code>FRONTEND_URL</code>, 'Website slot in manual WhatsApp handoff messages'],
+          [<code>SCHOOL_NAME</code>, 'School name slot in manual WhatsApp handoff messages'],
+          [<code>APP_DOWNLOAD_URL</code>, 'App-link slot in manual WhatsApp handoff messages'],
         ]}
       />
 

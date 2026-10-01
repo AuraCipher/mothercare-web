@@ -147,7 +147,7 @@ export default function AdminStudentsPage() {
           <tr><td>Class changed</td><td>Class movement logged in tenure history</td></tr>
           <tr><td>Status → WITHDRAWN</td><td>May affect fee dues and attendance expectations</td></tr>
           <tr><td>Generate credentials</td><td>Username created; password shown once until saved</td></tr>
-          <tr><td>Send credentials (WhatsApp)</td><td>Backend generates fresh temp password, hashes, queues Meta template</td></tr>
+          <tr><td>Save & Send (WhatsApp)</td><td>Generated password hashed via save-credential, WhatsApp opened prefilled</td></tr>
           <tr><td>Archived year active</td><td>Write actions blocked unless archived CRUD granted</td></tr>
           <tr><td>Empty roster</td><td>Often means no year selected — check sidebar Go button</td></tr>
         </tbody>
@@ -198,7 +198,7 @@ export default function AdminStudentsPage() {
           <tr>
             <td>WhatsApp send failed</td>
             <td>Missing phone or Meta API error</td>
-            <td>Fill student/parent WhatsApp; check backend TWILIO_* config</td>
+            <td>Fill student/parent WhatsApp; use Save & Send to open WhatsApp with the message prefilled</td>
           </tr>
           <tr>
             <td>Cannot save password</td>

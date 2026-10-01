@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft, Shield, Mail, Phone, User, Save, Edit3, X, Key, Copy, Check, HardHat,
-  Eye, EyeOff, RefreshCw, Send, Award, BookOpen, Calendar, MapPin, DollarSign,
+  Eye, EyeOff, RefreshCw, Award, BookOpen, Calendar, MapPin, DollarSign,
   Heart, CreditCard, AlertTriangle, Briefcase, FileText,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, scopeQuery } from '@/lib/api';
+import { buildStaffCredentialMessage, generateSecurePassword } from '@/lib/whatsappCredential';
+import { performManualHandoff } from '@/lib/manualHandoff';
 import config from '@/config';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -176,6 +178,10 @@ export default function StaffDetailPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPassError, setAdminPassError] = useState('');
   const [pendingSavePassword, setPendingSavePassword] = useState('');
+  const [idempotencyKey, setIdempotencyKey] = useState('');
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [handoffUrl, setHandoffUrl] = useState('');
+  const [savingCredential, setSavingCredential] = useState(false);
 
   const [confirm, setConfirm] = useState<{
     open: boolean; title: string; message: string;
@@ -303,22 +309,11 @@ export default function StaffDetailPage() {
   };
 
   const generatePassword = () => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const all = upper + lower + digits + special;
-    let pw = upper[Math.floor(Math.random() * upper.length)]
-      + lower[Math.floor(Math.random() * lower.length)]
-      + digits[Math.floor(Math.random() * digits.length)]
-      + special[Math.floor(Math.random() * special.length)];
-    for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
-    const arr = pw.split('');
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    setGeneratedPassword(arr.join(''));
+    // M22: cryptographically secure generation (crypto.getRandomValues).
+    setGeneratedPassword(generateSecurePassword());
+    setIdempotencyKey(crypto.randomUUID());
+    setReplaceConfirmed(false);
+    setHandoffUrl('');
     setPasswordSaved(false);
     setCopied(false);
     setTimeout(() => passwordInputRef.current?.focus(), 50);
@@ -336,6 +331,7 @@ export default function StaffDetailPage() {
   const handleSavePasswordClick = () => {
     if (!generatedPassword) return;
     setPendingSavePassword(generatedPassword);
+    setHandoffUrl('');
     setShowAdminPassPopup(true);
     setAdminPassword('');
     setAdminPassError('');
@@ -346,32 +342,69 @@ export default function StaffDetailPage() {
       setAdminPassError('Enter your password to confirm');
       return;
     }
-    try {
-      await api.setStaffPassword(userId, pendingSavePassword, adminPassword);
-      setShowAdminPassPopup(false);
-      setGeneratedPassword('');
-      setPendingSavePassword('');
-      setPasswordSaved(true);
-      setShowPassword(false);
-      showToast('success', 'Password saved successfully');
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed';
+    if (!pendingSavePassword || !data) return;
+    // M22: manual handoff — save EXACTLY the generated password, then open
+    // WhatsApp prefilled. The app never sends the message itself.
+    // Staff has no passwordSetAt signal: replacement is detected
+    // authoritatively by the backend (409 → confirm dialog).
+    setSavingCredential(true);
+    const result = await performManualHandoff({
+      saveUrl: `${config.apiUrl}/admin/staff/${userId}/save-credential${scopeQuery()}`,
+      token: localStorage.getItem('token'),
+      body: {
+        password: pendingSavePassword,
+        adminPassword,
+        replaceExisting: replaceConfirmed,
+        idempotencyKey: idempotencyKey || undefined,
+      },
+      buildMessage: (save) => buildStaffCredentialMessage({
+        school: save.schoolName || '',
+        name: data.name,
+        designation: data.workRole || data.branchRole || '',
+        website: save.website || '',
+        username: data.username || data.name,
+        password: pendingSavePassword,
+        appUrl: save.appUrl || '',
+      }),
+      rawPhone: displayPhone || '',
+    });
+    setSavingCredential(false);
+    if (result.status === 'failed') {
+      if (result.code === 'PASSWORD_REPLACEMENT_REQUIRED') {
+        setShowAdminPassPopup(false);
+        setAdminPassword('');
+        setConfirm({
+          open: true,
+          title: 'Password already exists',
+          message: 'This staff member already has a password. Do you want to replace it with the newly generated password?',
+          variant: 'warning',
+          confirmLabel: 'Yes, Replace',
+          action: async () => {
+            setReplaceConfirmed(true);
+            setShowAdminPassPopup(true);
+            setAdminPassword('');
+            setAdminPassError('');
+          },
+        });
+        return;
+      }
+      const msg = result.message || 'Failed';
       setAdminPassError(msg);
       showToast('error', msg);
+      return;
     }
-  };
-
-  const handleSendCredential = async () => {
-    try {
-      const res = await api.sendStaffCredentials(userId);
-      if (res.success) {
-        showToast('success', 'Credentials sent via WhatsApp');
-        setPasswordSaved(true);
-        setGeneratedPassword('');
-      }
-    } catch (e: unknown) {
-      showToast('error', e instanceof Error ? e.message : 'Failed to send');
+    if (result.status === 'blocked') {
+      setHandoffUrl(result.url);
+      showToast('success', 'Password saved — open WhatsApp manually');
+    } else {
+      setHandoffUrl('');
+      showToast('success', 'Password saved — WhatsApp opened');
     }
+    setShowAdminPassPopup(false);
+    setGeneratedPassword('');
+    setPendingSavePassword('');
+    setPasswordSaved(true);
+    setShowPassword(false);
   };
 
   const toggleStatus = () => {
@@ -675,14 +708,19 @@ export default function StaffDetailPage() {
           {generatedPassword && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" onClick={handleSavePasswordClick} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">
-                <Save size={13} /> Save
-              </button>
-              <button type="button" onClick={handleSendCredential} disabled={!displayPhone} className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream disabled:opacity-40">
-                <Send size={13} /> Send via WhatsApp
+                <Save size={13} /> Save & Send
               </button>
             </div>
           )}
           {!displayPhone && <p className="mt-2 text-[11px] text-amber-400/80">Add a phone number in profile to send credentials.</p>}
+          {handoffUrl && (
+            <div className="mt-2 rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
+              <p className="mb-2">Credential saved. WhatsApp could not be opened automatically.</p>
+              <a href={handoffUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">
+                Open WhatsApp
+              </a>
+            </div>
+          )}
         </div>
       </section>
       )}
@@ -696,7 +734,7 @@ export default function StaffDetailPage() {
             {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" onClick={() => setShowAdminPassPopup(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Cancel</button>
-              <button type="button" onClick={handleAdminPassVerify} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">Confirm</button>
+              <button type="button" onClick={handleAdminPassVerify} disabled={savingCredential} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">{savingCredential ? "Saving…" : "Confirm"}</button>
             </div>
           </div>
         </div>

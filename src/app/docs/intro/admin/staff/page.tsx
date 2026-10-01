@@ -54,9 +54,9 @@ export default function AdminStaffPage() {
           On profile (staff with login only): generate password, save with admin password
           confirmation.
         </DocStep>
-        <DocStep title="Send credentials via WhatsApp">
-          Click <strong>Send via WhatsApp</strong>. Disabled if phone is missing — warning shown.
-          Calls <code>api.sendStaffCredentials(userId)</code> → Meta template queued.
+        <DocStep title="Save & Send credentials via WhatsApp">
+          Click <strong>Save & Send</strong> after generating a password. The app saves the
+          credential and opens WhatsApp with the message prefilled — you press Send in WhatsApp.
         </DocStep>
         <DocStep title="Deactivate or reactivate">
           Deactivated staff cannot sign in; payroll history retained. Use for leavers instead of
@@ -75,7 +75,7 @@ export default function AdminStaffPage() {
         <tbody>
           <tr><td>Name</td><td>Yes</td><td>Display name</td></tr>
           <tr><td>Username</td><td>Yes (staff)</td><td>Portal login</td></tr>
-          <tr><td>Phone</td><td>For WhatsApp</td><td>Required to enable Send via WhatsApp</td></tr>
+          <tr><td>Phone</td><td>For WhatsApp</td><td>Required to enable Save & Send</td></tr>
           <tr><td>Email, employee ID, address, salary, etc.</td><td>No</td><td>HR profile fields</td></tr>
           <tr><td>Permission matrix</td><td>Yes (staff)</td><td>Min 1 module with Read</td></tr>
           <tr><td>Photo</td><td>No</td><td>Upload via file picker</td></tr>
@@ -107,7 +107,7 @@ export default function AdminStaffPage() {
           <tr><td>Module Permissions</td><td>Edit matrix</td><td>Hidden</td></tr>
           <tr><td>Payments</td><td>Payroll history</td><td>Payroll history</td></tr>
           <tr><td>Tenure history</td><td>Join/leave events</td><td>Join/leave events</td></tr>
-          <tr><td>Login Credentials</td><td>Username, password, Save, Send via WhatsApp</td><td>Hidden — &quot;payroll and attendance only&quot;</td></tr>
+          <tr><td>Login Credentials</td><td>Username, password, Save & Send</td><td>Hidden — &quot;payroll and attendance only&quot;</td></tr>
         </tbody>
       </table>
 
@@ -119,7 +119,7 @@ export default function AdminStaffPage() {
         <tbody>
           <tr><td>Restricted staff created</td><td><code>isRestricted: true</code>; slim shell on login</td></tr>
           <tr><td>Permissions updated</td><td>Sidebar modules add/remove on next load</td></tr>
-          <tr><td>Send via WhatsApp</td><td>Fresh temp password + Meta template to phone</td></tr>
+          <tr><td>Save & Send</td><td>Generated password saved, WhatsApp opened prefilled</td></tr>
           <tr><td>Worker created</td><td>No user login; appears in payroll list</td></tr>
           <tr><td>Canteen sales-only grant</td><td>User with Canteen read+create only → auto-redirect to sales POS</td></tr>
           <tr><td>Deactivate</td><td>Login blocked immediately</td></tr>
@@ -142,8 +142,8 @@ export default function AdminStaffPage() {
       </DocCallout>
 
       <DocCallout variant="info" title="WhatsApp credentials">
-        Staff credentials send via WhatsApp to the profile phone field. Button is disabled without
-        phone. Workers never receive login credentials from this screen.
+        Staff credentials open WhatsApp with a prefilled message to the profile phone field.
+        Save & Send is disabled without phone. Workers never receive login credentials from this screen.
       </DocCallout>
 
       <h2>Common issues &amp; fixes</h2>
@@ -230,7 +230,7 @@ export default function AdminStaffPage() {
           <tr><td>GET</td><td><code>/admin/staff</code></td><td>List staff and workers</td></tr>
           <tr><td>POST</td><td><code>/admin/staff</code></td><td>Create restricted staff</td></tr>
           <tr><td>PUT</td><td><code>/admin/staff/:userId/permissions</code></td><td>Update module matrix</td></tr>
-          <tr><td>POST</td><td><code>/admin/staff/:userId/send-credentials</code></td><td>WhatsApp credentials</td></tr>
+          <tr><td>POST</td><td><code>/admin/staff/:userId/save-credential</code></td><td>Manual WhatsApp handoff save</td></tr>
         </tbody>
       </table>
 

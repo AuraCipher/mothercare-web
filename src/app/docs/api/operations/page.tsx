@@ -164,7 +164,6 @@ redis-cli -h <host> -p 6379 ping
 PONG
 
 # Check queue lengths
-redis-cli -h <host> -p 6379 LLEN bull:messages:wait
 redis-cli -h <host> -p 6379 LLEN bull:chat:wait`}</DocCodeBlock>
       </DocSection>
 
@@ -173,7 +172,6 @@ redis-cli -h <host> -p 6379 LLEN bull:chat:wait`}</DocCodeBlock>
         <DocTable
           headers={['Worker', 'Queue', 'Check']}
           rows={[
-            ['message.worker', 'messages', 'BullMQ dashboard or redis-cli LLEN bull:messages:wait'],
             ['chat.worker', 'chat', 'BullMQ dashboard or redis-cli LLEN bull:chat:wait'],
             ['media.worker', 'media', 'BullMQ dashboard or redis-cli LLEN bull:media:wait'],
           ]}

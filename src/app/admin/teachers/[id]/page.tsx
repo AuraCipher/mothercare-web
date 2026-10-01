@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import {
   ArrowLeft, BookOpen, MapPin, Calendar, DollarSign,
   Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
-  Eye, EyeOff, Send, Save, RefreshCw, Plus, Edit3, Trash2, X,
+  Eye, EyeOff, Save, RefreshCw, Plus, Edit3, Trash2, X,
   CalendarDays, Clock, CreditCard, Briefcase, FileText,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
@@ -19,6 +19,8 @@ import TenureHistoryPanel from '@/components/tenure-history-panel';
 import { TeacherPermissionsPanel } from '@/components/admin/teacher-permissions-panel';
 import config from '@/config';
 import { safeErrorMessage } from '@/lib/errors';
+import { buildTeacherCredentialMessage, generateSecurePassword } from '@/lib/whatsappCredential';
+import { performManualHandoff } from '@/lib/manualHandoff';
 
 interface TeacherDetail {
   id: string;
@@ -36,6 +38,7 @@ interface TeacherDetail {
   gender: string | null;
   bloodGroup: string | null;
   cardId: string | null;
+  passwordSetAt: string | null;
   severeDisease: string | null;
   experience: string | null;
   bio: string | null;
@@ -103,6 +106,10 @@ export default function TeacherDetailPage() {
   const [pendingSavePassword, setPendingSavePassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPassError, setAdminPassError] = useState('');
+  const [idempotencyKey, setIdempotencyKey] = useState('');
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [handoffUrl, setHandoffUrl] = useState('');
+  const [savingCredential, setSavingCredential] = useState(false);
 
   // Profile edit
   const [profileEditing, setProfileEditing] = useState(false);
@@ -121,31 +128,11 @@ export default function TeacherDetailPage() {
   }, []);
 
   const generatePassword = () => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const all = upper + lower + digits + special;
-
-    let pw = '';
-    // Ensure at least one of each type
-    pw += upper[Math.floor(Math.random() * upper.length)];
-    pw += lower[Math.floor(Math.random() * lower.length)];
-    pw += digits[Math.floor(Math.random() * digits.length)];
-    pw += special[Math.floor(Math.random() * special.length)];
-
-    // Fill remaining 8 chars
-    for (let i = 0; i < 8; i++) {
-      pw += all[Math.floor(Math.random() * all.length)];
-    }
-
-    // Shuffle
-    const arr = pw.split('');
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    setGeneratedPassword(arr.join(''));
+    // M22: cryptographically secure generation (crypto.getRandomValues).
+    setGeneratedPassword(generateSecurePassword());
+    setIdempotencyKey(crypto.randomUUID());
+    setReplaceConfirmed(false);
+    setHandoffUrl('');
     setPasswordSaved(false);
     setCopied(false);
     setTimeout(() => passwordInputRef.current?.focus(), 50);
@@ -163,24 +150,28 @@ export default function TeacherDetailPage() {
   const handleSavePassword = () => {
     if (!generatedPassword) return;
     setPendingSavePassword(generatedPassword);
+    setHandoffUrl('');
+    // M22: existing password → explicit replacement confirmation first.
+    // Backend re-checks authoritatively (stale-row safe).
+    if (data?.passwordSetAt && !replaceConfirmed) {
+      setConfirm({
+        open: true,
+        title: 'Password already exists',
+        message: 'This teacher already has a password. Do you want to replace it with the newly generated password?',
+        variant: 'warning',
+        confirmLabel: 'Yes, Replace',
+        action: async () => {
+          setReplaceConfirmed(true);
+          setShowAdminPassPopup(true);
+          setAdminPassword('');
+          setAdminPassError('');
+        },
+      });
+      return;
+    }
     setShowAdminPassPopup(true);
     setAdminPassword('');
     setAdminPassError('');
-  };
-
-  const handleSendCredential = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-      if (!data) return;
-      const res = await fetch(`${config.apiUrl}/admin/teachers/${data.id}/send-credentials`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await res.json();
-      if (result.success) showToast('success', 'Credentials sent via WhatsApp');
-      else showToast('error', result.message || 'Failed to send');
-    } catch { showToast('error', 'Failed to send'); }
   };
 
   const handleAdminPassVerify = async () => {
@@ -192,19 +183,52 @@ export default function TeacherDetailPage() {
       setAdminPassError('No password generated');
       return;
     }
-    try {
-      await api.setTeacherPassword(data!.id, pendingSavePassword, adminPassword);
-      setShowAdminPassPopup(false);
-      setAdminPassword('');
-      setAdminPassError('');
-      setPendingSavePassword('');
-      setGeneratedPassword('');
-      setPasswordSaved(true);
-      setShowPassword(false);
-      showToast('success', 'Password saved successfully');
-    } catch (e: any) {
-      const msg = e.message || '';
-      // Map backend error messages to user-friendly versions
+    if (!data) return;
+    // M22: manual handoff — save EXACTLY the generated password, then open
+    // WhatsApp prefilled. The app never sends the message itself.
+    setSavingCredential(true);
+    const result = await performManualHandoff({
+      saveUrl: `${config.apiUrl}/admin/teachers/${data.id}/save-credential`,
+      token: localStorage.getItem('token'),
+      body: {
+        password: pendingSavePassword,
+        adminPassword,
+        replaceExisting: replaceConfirmed || !data.passwordSetAt,
+        idempotencyKey: idempotencyKey || undefined,
+        branchId: activeBranchId || undefined,
+      },
+      buildMessage: (save) => buildTeacherCredentialMessage({
+        school: save.schoolName || '',
+        name: data.user.name,
+        website: save.website || '',
+        username: data.user.username || data.user.name,
+        password: pendingSavePassword,
+        appUrl: save.appUrl || '',
+      }),
+      rawPhone: data.phone || data.user.phone || '',
+    });
+    setSavingCredential(false);
+    if (result.status === 'failed') {
+      if (result.code === 'PASSWORD_REPLACEMENT_REQUIRED') {
+        // Stale row data — backend is authoritative. Confirm, keep exact P1.
+        setShowAdminPassPopup(false);
+        setAdminPassword('');
+        setConfirm({
+          open: true,
+          title: 'Password already exists',
+          message: 'This teacher already has a password. Do you want to replace it with the newly generated password?',
+          variant: 'warning',
+          confirmLabel: 'Yes, Replace',
+          action: async () => {
+            setReplaceConfirmed(true);
+            setShowAdminPassPopup(true);
+            setAdminPassword('');
+            setAdminPassError('');
+          },
+        });
+        return;
+      }
+      const msg = result.message || '';
       if (msg.includes('incorrect')) {
         setAdminPassError('Your password is incorrect. Try again.');
         showToast('error', 'Wrong password. Please try again.');
@@ -221,9 +245,28 @@ export default function TeacherDetailPage() {
         setAdminPassError(msg || 'Failed to save password');
         showToast('error', msg || 'Failed to save password');
       }
+      return;
     }
+    if (result.status === 'blocked') {
+      setHandoffUrl(result.url);
+      showToast('success', 'Password saved — open WhatsApp manually');
+    } else {
+      setHandoffUrl('');
+      showToast('success', 'Password saved — WhatsApp opened');
+    }
+    try {
+      // Refresh row state so replacement detection stays truthful.
+      const d = await api.getTeacher(data.id);
+      if (d?.success) setData({ ...data, passwordSetAt: d.data?.passwordSetAt ?? new Date().toISOString() });
+    } catch { /* best-effort */ }
+    setShowAdminPassPopup(false);
+    setAdminPassword('');
+    setAdminPassError('');
+    setPendingSavePassword('');
+    setGeneratedPassword('');
+    setPasswordSaved(true);
+    setShowPassword(false);
   };
-
   const loadData = () => {
     setLoading(true);
     api.getTeacher(id)
@@ -753,19 +796,23 @@ export default function TeacherDetailPage() {
               </button>
             </div>
 
-            {/* Save + Send buttons */}
+            {/* Save & Send (manual WhatsApp handoff) */}
             {generatedPassword && (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button onClick={handleSavePassword}
                   className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
                 >
-                  <Save size={13} /> Save
+                  <Save size={13} /> Save & Send
                 </button>
-                <button onClick={handleSendCredential}
-                  className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors"
-                >
-                  <Send size={13} /> Send
-                </button>
+              </div>
+            )}
+            {handoffUrl && (
+              <div className="mt-3 rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
+                <p className="mb-2">Credential saved. WhatsApp could not be opened automatically.</p>
+                <a href={handoffUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-block rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
+                  Open WhatsApp
+                </a>
               </div>
             )}
           </div>
@@ -985,7 +1032,7 @@ export default function TeacherDetailPage() {
             )}
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setShowAdminPassPopup(false); setAdminPassword(''); setAdminPassError(''); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={handleAdminPassVerify} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Verify</button>
+              <button onClick={handleAdminPassVerify} disabled={savingCredential} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:opacity-50">{savingCredential ? "Saving…" : "Verify"}</button>
             </div>
           </div>
         </div>

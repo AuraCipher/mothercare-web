@@ -560,11 +560,6 @@ export const api = {
   reactivateTeacher: (id: string) =>
     apiRequest(`/admin/teachers/${id}/reactivate`, { method: 'POST' }),
 
-  setTeacherPassword: (id: string, newPassword: string, adminPassword: string) =>
-    apiRequest(`/admin/teachers/${id}/set-password`, {
-      method: 'POST',
-      body: JSON.stringify({ newPassword, adminPassword }),
-    }),
 
   getTeacherAssignments: (teacherId: string) =>
     apiRequest<ApiJsonResult<any[]>>(`/admin/teachers/${teacherId}/assignments`),
@@ -1282,14 +1277,6 @@ export const api = {
   reactivateStaffMember: (userId: string) =>
     apiRequest(`/admin/staff/${userId}/reactivate${scopeQuery()}`, { method: 'POST' }),
 
-  setStaffPassword: (userId: string, newPassword: string, adminPassword: string) =>
-    apiRequest(`/admin/staff/${userId}/set-password${scopeQuery()}`, {
-      method: 'POST',
-      body: JSON.stringify({ newPassword, adminPassword }),
-    }),
-
-  sendStaffCredentials: (userId: string) =>
-    apiRequest(`/admin/staff/${userId}/send-credentials${scopeQuery()}`, { method: 'POST' }),
 
   getBranchMemberTenures: (branchMemberId: string) =>
     apiRequest<ApiJsonResult<any[]>>(`/admin/branch-members/${branchMemberId}/tenures${scopeQuery()}`),

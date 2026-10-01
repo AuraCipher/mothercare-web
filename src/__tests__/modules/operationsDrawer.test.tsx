@@ -182,7 +182,7 @@ describe('replacement confirmation', () => {
     fetchMock.mockResolvedValue({
       json: async () => ({
         success: true,
-        data: { website: 'https://school.test', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
+        data: { website: 'https://school.test', schoolName: 'Test School', appUrl: 'https://school.test/app', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
       }),
     } as any);
     const openSpy = vi.spyOn(window, 'open').mockReturnValue({ closed: false, location: { href: '' } } as any);
@@ -208,7 +208,7 @@ describe('save flow + popup fallback', () => {
     fetchMock.mockResolvedValue({
       json: async () => ({
         success: true,
-        data: { website: 'https://school.test', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
+        data: { website: 'https://school.test', schoolName: 'Test School', appUrl: 'https://school.test/app', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
       }),
     } as any);
     const popup = { closed: false, location: { href: '' }, close: vi.fn() };
@@ -223,8 +223,9 @@ describe('save flow + popup fallback', () => {
     const url: string = popup.location.href;
     expect(url.startsWith('https://wa.me/923001234567?text=')).toBe(true);
     const text = decodeURIComponent(url.split('?text=')[1]);
-    expect(text).toContain('Student name: Ali Khan. He got admission in Class 3 - A.');
-    expect(text).toContain('website https://school.test');
+    expect(text).toContain('We are pleased to welcome Ali Khan to our school.');
+    expect(text).toContain('Class: 3 - A');
+    expect(text).toContain('Web Portal: https://school.test');
     openSpy.mockRestore();
   });
 
@@ -233,7 +234,7 @@ describe('save flow + popup fallback', () => {
     fetchMock.mockResolvedValue({
       json: async () => ({
         success: true,
-        data: { website: 'https://school.test', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
+        data: { website: 'https://school.test', schoolName: 'Test School', appUrl: 'https://school.test/app', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
       }),
     } as any);
     vi.spyOn(window, 'open').mockReturnValue(null);
@@ -272,7 +273,7 @@ describe('no-Twilio guarantee', () => {
     fetchMock.mockResolvedValue({
       json: async () => ({
         success: true,
-        data: { website: 'https://school.test', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
+        data: { website: 'https://school.test', schoolName: 'Test School', appUrl: 'https://school.test/app', credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z' },
       }),
     } as any);
     vi.spyOn(window, 'open').mockReturnValue({ closed: false, location: { href: '' } } as any);

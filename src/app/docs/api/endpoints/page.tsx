@@ -295,9 +295,7 @@ Authorization: Bearer <jwt>
             ['DELETE', '/admin/students/:id/parents/:parentUserId', 'Unlink parent'],
             ['PUT', '/admin/students/:id/generate-credentials', 'Generate login username/password'],
             ['PUT', '/admin/students/:id/set-password', 'Admin-set password (rate limited)'],
-            ['POST', '/admin/students/:id/send-credentials', 'WhatsApp credential delivery'],
-            ['POST', '/admin/students/send-to-new', 'Bulk send to new students'],
-            ['POST', '/admin/students/send-all-credentials', 'Bulk credential send'],
+            ['POST', '/admin/students/:id/save-credential', 'Manual WhatsApp handoff save'],
           ]}
         />
         <DocCodeBlock>{`POST /admin/students?branchId=clx…&academicYearId=clx…
@@ -326,7 +324,7 @@ Content-Type: application/json
             ['GET', '/admin/teachers/:id/portal-permissions', 'Teacher portal RBAC'],
             ['PUT', '/admin/teachers/:id/portal-permissions', 'Update portal permissions'],
             ['POST', '/admin/teachers/:id/set-password', 'Set password'],
-            ['POST', '/admin/teachers/:id/send-credentials', 'WhatsApp credentials'],
+            ['POST', '/admin/teachers/:id/save-credential', 'Manual WhatsApp handoff save'],
             ['GET', '/admin/teachers/:id/assignments', 'Subject assignments'],
             ['POST', '/admin/assignments', 'Create assignment'],
             ['GET', '/admin/groups/:groupId/assignments', 'Assignments for class'],
@@ -350,7 +348,7 @@ Content-Type: application/json
             ['GET', '/admin/staff/:userId/permissions', 'Module permissions'],
             ['PUT', '/admin/staff/:userId/permissions', 'Update permissions'],
             ['POST', '/admin/staff/:userId/set-password', 'Set password'],
-            ['POST', '/admin/staff/:userId/send-credentials', 'Send credentials'],
+            ['POST', '/admin/staff/:userId/save-credential', 'Manual WhatsApp handoff save'],
           ]}
         />
 

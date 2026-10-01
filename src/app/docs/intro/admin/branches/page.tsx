@@ -178,7 +178,7 @@ export default function AdminBranchesPage() {
           },
           {
             q: 'Does branch phone configure WhatsApp?',
-            a: 'No. Branch phone is display contact only. WhatsApp credential delivery uses TWILIO_* server environment variables.',
+            a: 'No. Branch phone is display contact only. WhatsApp credentials use browser click-to-chat handoff with a prefilled message — no provider or server env vars needed.',
           },
           {
             q: 'Can restricted staff switch branches?',

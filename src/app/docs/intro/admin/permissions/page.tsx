@@ -368,7 +368,7 @@ export default function AdminPermissionsPage() {
           },
           {
             q: 'Can I give someone Students but not Operations?',
-            a: 'Yes. Operations is a separate module for bulk credential workflows. Registrars may need Students full access but Operations only for send-credentials.',
+            a: 'Yes. Operations is a separate module for bulk credential workflows. Registrars may need Students full access but Operations only for credential handoff.',
           },
           {
             q: 'What is the difference between worker and restricted staff?',
@@ -384,7 +384,7 @@ export default function AdminPermissionsPage() {
           },
           {
             q: 'Are credentials sent by email?',
-            a: 'No. Production delivery uses WhatsApp via Twilio WhatsApp API. Ensure TWILIO_* env vars are configured on the backend.',
+            a: 'No. The app never sends WhatsApp directly — credentials use browser click-to-chat handoff. The user presses Send in WhatsApp.',
           },
           {
             q: 'How do archived-year permissions work?',

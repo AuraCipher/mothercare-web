@@ -211,16 +211,14 @@ export default function ApiArchitecturePage() {
       />
 
       <h2>Background workers</h2>
+      <p>
+        Credential delivery is a manual browser handoff (no queue, no provider).
+        Background workers serve chat push and media processing only.
+      </p>
       <pre className={pre}>
 {`flowchart LR
   subgraph admin [Admin Action]
-    SC[send-credentials]
     CM[chat:message:send]
-  end
-
-  subgraph msgQ [messages queue]
-    MW[message.worker]
-    WA[twilio-whatsapp.service]
   end
 
   subgraph chatQ [chat queue]
@@ -229,25 +227,10 @@ export default function ApiArchitecturePage() {
     SYS[system-notification.service]
   end
 
-  SC -->|enqueueCredentialSend| msgQ
-  MW --> WA
   CM -->|enqueueChatPushFanout| chatQ
   CW --> FCM
   CW --> SYS`}
       </pre>
-
-      <h3>Message worker (WhatsApp)</h3>
-      <DocTable
-        headers={['Property', 'Value']}
-        rows={[
-          ['Queue name', 'messages'],
-          ['Job type', 'credential_send'],
-          ['Concurrency', 'MESSAGE_QUEUE_CONCURRENCY (default 3)'],
-          ['Rate limit', '20 jobs / second'],
-          ['Requires', 'REDIS_URL (TCP)'],
-          ['Fallback', 'Synchronous deliverCredential() when queue unavailable'],
-        ]}
-      />
 
       <h3>Chat worker</h3>
       <DocTable

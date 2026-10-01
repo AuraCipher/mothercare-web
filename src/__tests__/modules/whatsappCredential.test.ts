@@ -1,7 +1,11 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
   STUDENT_CREDENTIAL_TEMPLATE,
+  TEACHER_CREDENTIAL_TEMPLATE,
+  STAFF_CREDENTIAL_TEMPLATE,
   buildStudentCredentialMessage,
+  buildTeacherCredentialMessage,
+  buildStaffCredentialMessage,
   buildWhatsAppUrl,
   formatClassLabel,
   generateSecurePassword,
@@ -33,38 +37,104 @@ describe('generateSecurePassword', () => {
   });
 });
 
-describe('buildStudentCredentialMessage', () => {
+describe('buildStudentCredentialMessage (7 slots)', () => {
   const values = {
+    school: 'Test School',
     name: 'Ali Khan',
     className: '3 - A',
-    website: 'https://mothercareschool.pk',
+    website: 'https://school.test',
     username: 'ali_khan',
     password: 'Xk9mP2qR!aB1',
+    appUrl: 'https://school.test/app',
   };
 
-  test('substitutes all five slots, no placeholders remain', () => {
+  test('substitutes all seven slots, no placeholders remain', () => {
     const msg = buildStudentCredentialMessage(values);
     expect(msg).not.toContain('{{');
-    expect(msg).toContain('Student name: Ali Khan. He got admission in Class 3 - A.');
-    expect(msg).toContain('website https://mothercareschool.pk');
-    expect(msg).toContain('Account details: ali_khan and Xk9mP2qR!aB1.');
-  });
-
-  test('preserves approved wording byte-for-byte around slots', () => {
-    const msg = buildStudentCredentialMessage({ ...values, name: 'N', className: 'C', website: 'W', username: 'U', password: 'P' });
-    expect(msg).toBe(STUDENT_CREDENTIAL_TEMPLATE
-      .replace('{{1}}', 'N').replace('{{2}}', 'C').replace('{{3}}', 'W')
-      .replace('{{4}}', 'U').replace('{{5}}', 'P'));
+    expect(msg).toContain('Welcome to Test School!');
+    expect(msg).toContain('We are pleased to welcome Ali Khan to our school.');
+    expect(msg).toContain('Class: 3 - A');
+    expect(msg).toContain('Web Portal: https://school.test');
+    expect(msg).toContain('Login ID: ali_khan');
+    expect(msg).toContain('Security Key: Xk9mP2qR!aB1');
+    expect(msg).toContain('App Link: https://school.test/app');
+    expect(msg.endsWith('Regards,\nTest School')).toBe(true);
   });
 
   test.each([
-    ['Urdu name', 'علی خان', 'علی خان'],
-    ['ampersand', 'A&B', 'A&B'],
-    ['percent/question/hash', '100%?#ok', '100%?#ok'],
-    ['multiline-safe class', '8 - CS', '8 - CS'],
-  ])('handles %s', (_label, input, expected) => {
+    ['Urdu name', 'علی خان'],
+    ['ampersand', 'A&B'],
+    ['percent/question/hash', '100%?#ok'],
+  ])('handles %s', (_label, input) => {
     const msg = buildStudentCredentialMessage({ ...values, name: input });
-    expect(msg).toContain(expected);
+    expect(msg).toContain(input);
+  });
+});
+
+describe('buildTeacherCredentialMessage (6 slots)', () => {
+  const values = {
+    school: 'Test School',
+    name: 'Rubina Bibi',
+    website: 'https://school.test',
+    username: 'rubina_bibi',
+    password: 'Xk9mP2qR!aB1',
+    appUrl: 'https://school.test/app',
+  };
+
+  test('exact variable order: school, name, website, username, password, app', () => {
+    const msg = buildTeacherCredentialMessage(values);
+    expect(msg).not.toContain('{{');
+    expect(msg).toContain('Welcome to Test School, Rubina Bibi!');
+    expect(msg).toContain('Web Portal: https://school.test');
+    expect(msg).toContain('Username: rubina_bibi');
+    expect(msg).toContain('Password: Xk9mP2qR!aB1');
+    expect(msg).toContain('App Link: https://school.test/app');
+    expect(msg).not.toContain('{{5}}');
+  });
+
+  test('byte/order-sensitive mapping', () => {
+    const msg = buildTeacherCredentialMessage({ ...values, name: 'N', website: 'W', username: 'U', password: 'P', school: 'S', appUrl: 'A' });
+    expect(msg).toBe(TEACHER_CREDENTIAL_TEMPLATE
+      .replaceAll('{{1}}', 'S').replace('{{2}}', 'N').replace('{{3}}', 'W')
+      .replace('{{4}}', 'U').replace('{{5}}', 'P').replace('{{6}}', 'A'));
+  });
+});
+
+describe('buildStaffCredentialMessage (7 slots incl. designation)', () => {
+  const values = {
+    school: 'Test School',
+    name: 'Ahmed Raza',
+    designation: 'Accountant',
+    website: 'https://school.test',
+    username: 'ahmed_raza',
+    password: 'Xk9mP2qR!aB1',
+    appUrl: 'https://school.test/app',
+  };
+
+  test('exact variable order: school, name, designation, website, username, password, app', () => {
+    const msg = buildStaffCredentialMessage(values);
+    expect(msg).not.toContain('{{');
+    expect(msg).toContain('Welcome to Test School, Ahmed Raza!');
+    expect(msg).toContain('appointed as Accountant');
+    expect(msg).toContain('Web Portal: https://school.test');
+    expect(msg).toContain('Username: ahmed_raza');
+    expect(msg).toContain('Password: Xk9mP2qR!aB1');
+    expect(msg).toContain('App Link: https://school.test/app');
+  });
+
+  test('byte/order-sensitive mapping', () => {
+    const msg = buildStaffCredentialMessage({ ...values, school: 'S', name: 'N', designation: 'D', website: 'W', username: 'U', password: 'P', appUrl: 'A' });
+    expect(msg).toBe(STAFF_CREDENTIAL_TEMPLATE
+      .replaceAll('{{1}}', 'S').replace('{{2}}', 'N').replace('{{3}}', 'D')
+      .replace('{{4}}', 'W').replace('{{5}}', 'U').replace('{{6}}', 'P').replace('{{7}}', 'A'));
+  });
+
+  test.each([
+    ['Urdu designation', 'اکاؤنٹنٹ'],
+    ['ampersand name', 'A&B'],
+  ])('handles %s', (_label, input) => {
+    const msg = buildStaffCredentialMessage({ ...values, designation: input });
+    expect(msg).toContain(input);
   });
 });
 
@@ -97,16 +167,15 @@ describe('normalizePhoneDigits', () => {
 });
 
 describe('buildWhatsAppUrl', () => {
-  const msg = buildStudentCredentialMessage({
-    name: 'علی خان', className: '3 - A', website: 'https://mothercareschool.pk',
-    username: 'ali&khan?#1', password: 'P%ss#1?',
+  const msg = buildTeacherCredentialMessage({
+    school: 'Test School', name: 'علی خان', website: 'https://school.test',
+    username: 'ali&khan?#1', password: 'P%ss#1?', appUrl: 'https://school.test/app',
   });
 
   test('wa.me form with fully encoded text', () => {
     const url = buildWhatsAppUrl('923001234567', msg);
     expect(url.startsWith('https://wa.me/923001234567?text=')).toBe(true);
-    const text = decodeURIComponent(url.split('?text=')[1]);
-    expect(text).toBe(msg);
+    expect(decodeURIComponent(url.split('?text=')[1])).toBe(msg);
   });
 
   test('no unencoded specials outside structure; password only inside text', () => {
@@ -115,7 +184,6 @@ describe('buildWhatsAppUrl', () => {
     expect(query.startsWith('text=')).toBe(true);
     expect(query).not.toContain('&');
     expect(query).not.toContain('#');
-    // password appears exactly once and only inside the text param
     const text = decodeURIComponent(query.slice('text='.length));
     expect(text.split('P%ss#1?').length - 1).toBe(1);
   });

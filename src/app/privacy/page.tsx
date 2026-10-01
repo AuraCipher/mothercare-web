@@ -390,7 +390,6 @@ export default function PrivacyPage() {
               <li>Firebase (Google) &mdash; push notification delivery via Firebase Cloud Messaging</li>
               <li>Upstash &mdash; Redis-based rate limiting and session management</li>
               <li>Resend &mdash; transactional email delivery</li>
-              <li>Twilio &mdash; SMS and WhatsApp messaging</li>
               <li>Sentry &mdash; error monitoring and diagnostics</li>
             </ul>
 
@@ -440,11 +439,6 @@ export default function PrivacyPage() {
                   <td>Resend</td>
                   <td>Transactional email (admin invitations)</td>
                   <td>Email address, invitation content</td>
-                </tr>
-                <tr>
-                  <td>Twilio</td>
-                  <td>SMS and WhatsApp messaging</td>
-                  <td>Phone numbers, message content</td>
                 </tr>
                 <tr>
                   <td>Sentry</td>

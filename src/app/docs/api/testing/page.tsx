@@ -357,7 +357,7 @@ npm run test:soak`}</DocCodeBlock>
           ['Business logic correctness', 'Production environment compatibility'],
           ['API contract stability', 'Network reliability under real load'],
           ['RBAC/IDOR prevention', 'Infrastructure failure recovery'],
-          ['Offline queue reliability', 'Third-party service outages (FCM, Twilio)'],
+          ['Offline queue reliability', 'Third-party service outages (FCM)'],
           ['Concurrent operation safety', 'Long-term memory leaks (use soak tests)'],
           ['Schema migrations work', 'Backup/restore with real data volumes'],
         ]}

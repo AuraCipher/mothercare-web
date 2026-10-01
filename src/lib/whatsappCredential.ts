@@ -1,50 +1,144 @@
 /**
- * M21 — Manual WhatsApp handoff helpers for the Students Operations drawer.
+ * M21/M22 — Manual WhatsApp handoff helpers (provider-free).
+ *
+ * Message texts below are the owner-directed wordings (M22): there is no
+ * provider and therefore no template approval — the browser sends whatever
+ * text is constructed here. Slot orders are covered by byte-sensitive tests.
  *
  * Pure functions only. No provider calls, no network, no logging of secrets.
  * The password appears ONLY inside the encoded `text=` parameter of the
  * wa.me URL — never as a separate query parameter, never in a log.
  */
 
-/** Approved student_wc body, constructed locally (M19-verified wording). */
+/** Student/parent handoff text (owner-directed, 7 slots). */
 export const STUDENT_CREDENTIAL_TEMPLATE = [
+  'Welcome to {{1}}!',
+  '',
   'Dear Parent/Guardian,',
   '',
-  'We are pleased to welcome you at our school.',
+  'We are pleased to welcome {{2}} to our school. We look forward to supporting your child throughout their learning journey.',
   '',
-  'Your child has got admission in MCS.',
+  'Class: {{3}}',
   '',
-  'Student Details:',
+  'Portal Details',
+  'Web Portal: {{4}}',
+  'Login ID: {{5}}',
+  'Security Key: {{6}}',
   '',
-  'Student name: {{1}}. He got admission in Class {{2}}.',
+  "Use these exact details in our app to check your child's daily work and important updates.",
   '',
-  'For more information you can visit to our website {{3}}',
+  'App Link: {{7}}',
   '',
-  'Account details: {{4}} and {{5}}.',
-  '',
-  'In case of any confusion or problem, please contact the school office.',
+  'Please keep these details safe. For help accessing your account, contact the school office.',
   '',
   'Regards,',
+  '{{1}}',
+].join('\n');
+
+/** Teacher handoff text (owner-directed, 6 slots). */
+export const TEACHER_CREDENTIAL_TEMPLATE = [
+  'Welcome to {{1}}, {{2}}!',
   '',
-  'Mother Care School',
+  'Your teacher portal account is ready. Use the details below to log in.',
+  '',
+  'Web Portal: {{3}}',
+  'Username: {{4}}',
+  'Password: {{5}}',
+  '',
+  'Use the same login details in our app for chat, class updates, and announcements. App Link: {{6}}',
+  '',
+  'Through the portal, you can view your timetable, mark attendance, enter exam results, check announcements, and manage your profile.',
+  '',
+  'For help, contact the school office.',
+  '',
+  'Regards,',
+  '{{1}}',
+].join('\n');
+
+/** Staff handoff text (owner-drafted in the same structure + role slot, 7 slots). */
+export const STAFF_CREDENTIAL_TEMPLATE = [
+  'Welcome to {{1}}, {{2}}!',
+  '',
+  'Your staff account is ready. You have been appointed as {{3}} at our school.',
+  '',
+  'Use the details below to log in.',
+  '',
+  'Web Portal: {{4}}',
+  'Username: {{5}}',
+  'Password: {{6}}',
+  '',
+  'Use the same login details in our app for announcements, messages, and updates. App Link: {{7}}',
+  '',
+  'Through the portal, you can access your assigned modules, view your attendance, check announcements, and manage your profile.',
+  '',
+  'For help, contact the school office.',
+  '',
+  'Regards,',
+  '{{1}}',
 ].join('\n');
 
 export interface StudentCredentialValues {
+  school: string;
   name: string;
   className: string;
   website: string;
   username: string;
   password: string;
+  appUrl: string;
 }
 
-/** Substitute {{1}}..{{5}} into the approved template. Exact text preserved. */
+export interface TeacherCredentialValues {
+  school: string;
+  name: string;
+  website: string;
+  username: string;
+  password: string;
+  appUrl: string;
+}
+
+export interface StaffCredentialValues {
+  school: string;
+  name: string;
+  designation: string;
+  website: string;
+  username: string;
+  password: string;
+  appUrl: string;
+}
+
+/** Substitute {{1}}..{{7}} into the student text. Exact wording preserved. */
 export function buildStudentCredentialMessage(values: StudentCredentialValues): string {
   return STUDENT_CREDENTIAL_TEMPLATE
-    .replace('{{1}}', values.name)
-    .replace('{{2}}', values.className)
+    .replaceAll('{{1}}', values.school)
+    .replace('{{2}}', values.name)
+    .replace('{{3}}', values.className)
+    .replace('{{4}}', values.website)
+    .replace('{{5}}', values.username)
+    .replace('{{6}}', values.password)
+    .replace('{{7}}', values.appUrl);
+}
+
+/** Substitute {{1}}..{{6}} into the teacher text. Exact wording preserved. */
+export function buildTeacherCredentialMessage(values: TeacherCredentialValues): string {
+  return TEACHER_CREDENTIAL_TEMPLATE
+    .replaceAll('{{1}}', values.school)
+    .replace('{{2}}', values.name)
     .replace('{{3}}', values.website)
     .replace('{{4}}', values.username)
-    .replace('{{5}}', values.password);
+    .replace('{{5}}', values.password)
+    .replace('{{6}}', values.appUrl);
+}
+
+/** Substitute {{1}}..{{7}} into the staff text. Exact wording preserved. */
+export function buildStaffCredentialMessage(values: StaffCredentialValues): string {
+  return STAFF_CREDENTIAL_TEMPLATE
+    .replaceAll('{{1}}', values.school)
+    .replace('{{2}}', values.name)
+    .replace('{{3}}', values.designation)
+    .replace('{{4}}', values.website)
+    .replace('{{5}}', values.username)
+    .replace('{{6}}', values.password)
+    .replace('{{7}}', values.appUrl);
 }
 
 /**

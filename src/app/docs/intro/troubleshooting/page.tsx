@@ -153,9 +153,9 @@ export default function TroubleshootingPage() {
               q: 'WhatsApp credentials not received',
               a: (
                 <>
-                  Verify your phone number is correct in the system. Check that Twilio (or your
-                  SMS provider) is configured and has balance. Ask admin to resend credentials from
-                  the student or teacher profile. The message may be delayed by the carrier.
+                  Verify your phone number is correct in the system. The app opens WhatsApp with
+                  the message prefilled — the admin must press Send inside WhatsApp for delivery.
+                  Ask admin to use Save & Send from the student, teacher, or staff profile again.
                 </>
               ),
             },

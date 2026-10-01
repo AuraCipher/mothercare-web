@@ -42,7 +42,6 @@ export default function ApiIntroPage() {
   end
 
   subgraph workers [Background Workers]
-    MSG[Message Worker - WhatsApp credentials]
     CHAT[Chat Worker - FCM push + system feeds]
   end
 
@@ -53,9 +52,7 @@ export default function ApiIntroPage() {
   REST --> MW --> SVC --> PG
   SVC --> R2
   MW --> UR
-  SVC --> MSG
   SVC --> CHAT
-  MSG --> RT
   CHAT --> RT
   SOCK --> RT`}
       </pre>
@@ -77,7 +74,7 @@ export default function ApiIntroPage() {
           ['Realtime', 'Socket.IO + optional Redis adapter', 'backend/src/modules/chat/socket/'],
           ['Mobile', 'Flutter', 'mobile/'],
           ['File storage', 'Cloudflare R2 or local uploads/', 'backend/src/modules/upload/'],
-          ['Credentials', 'Twilio WhatsApp API', 'backend/src/services/twilio-whatsapp.service.ts'],
+          ['Credentials', 'Browser click-to-chat handoff (no provider)', 'web/src/lib/whatsappCredential.ts'],
           ['Email', 'Resend API — admin invitation emails', 'backend/src/lib/email/resend.service.ts'],
           ['Observability', 'Sentry, structured logging', 'backend/src/lib/sentry.ts'],
         ]}
@@ -160,10 +157,10 @@ export default function ApiIntroPage() {
         rows={[
           ['Core', 'DATABASE_URL, JWT_SECRET (≥32 chars)', 'Server exits on invalid env at boot'],
           ['HTTP', 'PORT, HOST, ALLOWED_ORIGINS (prod)', 'APP_MODE=development relaxes CORS'],
-          ['URLs', 'FRONTEND_URL, APP_URL', 'Used in invitations + WhatsApp templates (FRONTEND_URL = website slot)'],
+          ['URLs', 'FRONTEND_URL, APP_URL', 'Used in invitations + manual WhatsApp handoff (FRONTEND_URL = website slot)'],
           ['Redis REST', 'UPSTASH_REDIS_REST_URL + TOKEN', 'JWT blacklist; fails closed if unreachable at check'],
           ['Redis TCP', 'REDIS_URL', 'BullMQ: WhatsApp queue + chat push worker'],
-          ['WhatsApp', 'TWILIO_*', 'Credential delivery — see WhatsApp docs'],
+          ['WhatsApp', 'wa.me prefill (no provider)', 'Manual handoff — user presses Send in WhatsApp'],
           ['R2', 'R2_ACCOUNT_ID, keys, buckets', 'Falls back to local uploads/ when unset'],
           ['FCM', 'FCM_ENABLED, Firebase SA, PUSH_MASTER_SECRET', 'Encrypted mobile push'],
           ['Unused', 'RESEND_API_KEY, RESEND_FROM_EMAIL', 'Reserved — no backend sender yet'],

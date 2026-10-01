@@ -69,14 +69,7 @@ export default function ApiEnvironmentPage() {
           [<code>UPSTASH_REDIS_REST_URL</code>, 'No', '—', 'jwt.ts blacklist'],
           [<code>UPSTASH_REDIS_REST_TOKEN</code>, 'No', '—', 'jwt.ts blacklist'],
           [<code>REDIS_URL</code>, 'No', '—', 'BullMQ workers, Socket.IO adapter'],
-          [<code>MESSAGE_QUEUE_CONCURRENCY</code>, 'No', '3', 'message.worker.ts'],
           [<code>CHAT_QUEUE_CONCURRENCY</code>, 'No', '5', 'chat.worker.ts'],
-          [<code>TWILIO_ACCOUNT_SID</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
-          [<code>TWILIO_AUTH_TOKEN</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
-          [<code>TWILIO_WHATSAPP_FROM</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
-          [<code>TWILIO_TEMPLATE_STUDENT</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
-          [<code>TWILIO_TEMPLATE_TEACHER</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
-          [<code>TWILIO_TEMPLATE_STAFF</code>, 'For WA', '—', 'twilio-whatsapp.service.ts'],
           [<code>RESEND_API_KEY</code>, 'For email invites', '—', 'resend.service.ts → sendAdminInvitationEmail'],
           [<code>RESEND_FROM_EMAIL</code>, 'For email invites', '—', 'resend.service.ts (verified sender domain)'],
           [<code>R2_ACCOUNT_ID</code>, 'For R2', '—', 'upload.service.ts'],
@@ -141,11 +134,7 @@ export default function ApiEnvironmentPage() {
               'CEO invites return copy-link only',
               'No automatic invitation email — you paste the link manually',
             ],
-            [
-              <><code>TWILIO_*</code></>,
-              'Generate credentials still works; Send fails with an error',
-              'Cannot deliver login details via WhatsApp until Twilio API is configured',
-            ],
+
           ]}
         />
         <DocCallout variant="tip" title="Production vs development">
@@ -213,52 +202,25 @@ curl http://localhost:5000/health`}</DocCodeBlock>
         </p>
       </DocSection>
 
-      <DocSection title="Twilio WhatsApp — credential delivery">
+      <DocSection title="WhatsApp credential handoff (manual, no provider)">
         <p>
-          WhatsApp is the <strong>only production credential channel</strong>. Flow: admin UI →{' '}
-          <code>send-credentials</code> API → BullMQ (or sync) →{' '}
-          <code>twilio-whatsapp.service.ts</code> → Twilio API template message.
+          WhatsApp communication uses browser click-to-chat handoff with prefilled
+          message content. The application does not send WhatsApp messages directly.
+          Flow: drawer Generate → Save & Send (<code>save-credential</code> API:
+          hash + audit + timestamps) → message built locally →{' '}
+          <code>wa.me</code> chat opened → user presses Send in WhatsApp.
         </p>
         <DocSteps>
-          <DocStep title="Twilio setup">
-            Create a Twilio account → provision a WhatsApp-enabled phone number → register WhatsApp sender.
-          </DocStep>
-          <DocStep title="Create content templates">
-            In Twilio Console → Messaging → Content Template Builder, create and submit for WhatsApp approval:
-            <ul className="mt-2 list-disc pl-5">
-              <li><code>credential_send_student</code> — students</li>
-              <li><code>credential_send_teacher</code> — teachers</li>
-              <li><code>credential_send_staff</code> — staff</li>
-            </ul>
-            Each template body needs 5 text parameters: name, username, password, portal URL, app URL.
-          </DocStep>
-          <DocStep title="Get API credentials">
-            <DocTable
-              headers={['Env var', 'Where to find']}
-              rows={[
-                [<code>TWILIO_ACCOUNT_SID</code>, 'Twilio Console → Account Info → Account SID'],
-                [<code>TWILIO_AUTH_TOKEN</code>, 'Twilio Console → Account Info → Auth Token'],
-                [<code>TWILIO_WHATSAPP_FROM</code>, 'Your Twilio WhatsApp-enabled phone number (E.164 without +)'],
-                [<code>TWILIO_TEMPLATE_STUDENT</code>, 'Content SID (HX...) from Content Template Builder'],
-                [<code>TWILIO_TEMPLATE_TEACHER</code>, 'Content SID (HX...) from Content Template Builder'],
-                [<code>TWILIO_TEMPLATE_STAFF</code>, 'Content SID (HX...) from Content Template Builder'],
-              ]}
-            />
-          </DocStep>
           <DocStep title="Set portal URLs">
-            <DocCodeBlock>{`FRONTEND_URL=https://portal.yourschool.pk
+            <DocCodeBlock>{`FRONTEND_URL=https://mothercareschool.pk
+SCHOOL_NAME=Mother Care School
 APP_DOWNLOAD_URL=https://play.google.com/store/apps/details?id=com.mothercare.app`}</DocCodeBlock>
           </DocStep>
-          <DocStep title="Test send">
-            Admin portal → student with phone → Generate credentials → Send credentials (or Operations bulk).
-            Check API logs for <code>Credential WhatsApp sent</code> or classified Twilio error codes.
+          <DocStep title="Test handoff">
+            Admin portal → student with phone → open credentials → Generate →
+            Save & Send → WhatsApp opens with the message prefilled.
           </DocStep>
         </DocSteps>
-        <DocCallout variant="warn" title="Without REDIS_URL">
-          When <code>REDIS_URL</code> is unset, <code>enqueueCredentialSend()</code> calls{' '}
-          <code>deliverCredential()</code> synchronously — the admin HTTP request waits for Twilio API
-          response (up to 60s with queue wait).
-        </DocCallout>
       </DocSection>
 
       <DocSection title="Resend — CEO admin invitation emails">
