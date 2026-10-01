@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { api, apiRequest } from '@/lib/api';
 import {
@@ -15,6 +15,8 @@ import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
 import { safeErrorMessage } from '@/lib/errors';
+import CredentialDrawer, { CredentialDrawerButton, CredentialDrawerPerson } from '@/components/credential-drawer';
+import { formatClassLabel } from '@/lib/whatsappCredential';
 
 export default function StudentDetailPage() {
   const router = useRouter();
@@ -24,16 +26,6 @@ export default function StudentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Credential management
-  const [generatedPassword, setGeneratedPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
-  const [pendingSavePassword, setPendingSavePassword] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminPassError, setAdminPassError] = useState('');
-  const passwordInputRef = React.useRef<HTMLInputElement>(null);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -150,6 +142,13 @@ export default function StudentDetailPage() {
     catch (e: any) { showToast('error', e.message || 'Failed'); }
   };
 
+  // Credential drawer (shared manual-handoff flow)
+  const [drawerPerson, setDrawerPerson] = useState<CredentialDrawerPerson | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const credentialTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+
   if (loading) return <main className="mx-auto max-w-5xl px-6 py-10"><div className="h-6 w-48 animate-pulse rounded bg-warm-card mb-6" />{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-warm-card animate-pulse mb-3" />)}</main>;
   if (error || !data) return <main className="mx-auto max-w-5xl px-6 py-10"><button onClick={() => router.push('/admin/students')} className="mb-6 flex items-center gap-1.5 text-xs text-warm-muted hover:text-warm-cream"><ArrowLeft size={13} /> Back to Students</button><div className="rounded-xl border border-warm-card-border bg-warm-card p-8 text-center"><AlertTriangle size={28} className="mx-auto mb-3 text-warm-muted" /><p className="text-sm text-warm-muted">{error || 'Student not found'}</p></div></main>;
 
@@ -159,46 +158,45 @@ export default function StudentDetailPage() {
   const hasPrev = s.previousSchool || s.previousClass || s.tcNumber || s.referredBy;
   const studentUser = s.user;
 
-  // ─── Password Management ─────────────────────────────────
-  const generatePassword = () => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const all = upper + lower + digits + special;
-    let pw = '';
-    pw += upper[Math.floor(Math.random() * upper.length)];
-    pw += lower[Math.floor(Math.random() * lower.length)];
-    pw += digits[Math.floor(Math.random() * digits.length)];
-    pw += special[Math.floor(Math.random() * special.length)];
-    for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
-    const arr = pw.split('');
-    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
-    setGeneratedPassword(arr.join(''));
-    setPasswordSaved(false);
-    setShowPassword(true);
+  const openCredentialDrawer = (trigger: HTMLButtonElement | null) => {
+    if (!data) return;
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    credentialTriggerRef.current = trigger;
+    const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
+    setDrawerPerson({
+      id: data.id,
+      type: 'student',
+      name: data.name,
+      username: data.username,
+      phone: data.studentWhatsapp || data.phone || null,
+      classLabel: data.group ? formatClassLabel(data.group.name, data.group.section) : null,
+      designation: null,
+      hasExistingPassword: !!data.passwordSetAt,
+      saveUrl: `${config.apiUrl}/admin/students/${data.id}/save-credential`,
+      branchId,
+    });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawerOpen(true));
+    });
   };
 
-  const copyPassword = () => {
-    if (!generatedPassword) return;
-    navigator.clipboard.writeText(generatedPassword).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+  const closeCredentialDrawer = () => {
+    setDrawerOpen(false);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setDrawerPerson(null);
+      credentialTriggerRef.current?.focus();
+      credentialTriggerRef.current = null;
+      closeTimer.current = null;
+    }, 300);
   };
 
-  const handleSavePassword = () => {
-    if (!generatedPassword) return;
-    setPendingSavePassword(generatedPassword);
-    setShowAdminPassPopup(true);
-    setAdminPassword('');
-    setAdminPassError('');
-  };
-
+  // No-login branch: create the login (server password is discarded —
+  // the drawer generates the real credential afterwards).
   const handleGenerateCredentials = async () => {
     try {
       const res = await api.generateStudentCredentials(id);
       if (res.success) {
-        setGeneratedPassword(res.data.password);
-        setShowPassword(true);
-        setPasswordSaved(false);
         loadData(); // reload to get the new user data
         showToast('success', 'Credentials generated. Username: ' + res.data.username);
       }
@@ -229,25 +227,10 @@ export default function StudentDetailPage() {
     } catch (e: any) { showToast('error', e.message); }
   };
 
-  const handleAdminPassVerify = async () => {
-    if (!adminPassword.trim()) { setAdminPassError('Enter your password to confirm'); return; }
-    if (!pendingSavePassword) { setAdminPassError('No password generated'); return; }
-    try {
-      await api.setStudentPassword(id, pendingSavePassword, adminPassword);
-      setShowAdminPassPopup(false);
-      setAdminPassword('');
-      setAdminPassError('');
-      setPendingSavePassword('');
-      setGeneratedPassword('');
-      setPasswordSaved(true);
-      setShowPassword(false);
-      showToast('success', 'Password saved successfully');
-    } catch (e: any) {
-      const msg = e.message || '';
-      if (msg.includes('incorrect')) { setAdminPassError('Your password is incorrect.'); showToast('error', 'Wrong password.'); }
-      else { setAdminPassError(msg); showToast('error', msg); }
-    }
+  const handleDrawerSaved = () => {
+    loadData();
   };
+
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -545,233 +528,210 @@ export default function StudentDetailPage() {
                 </div>
               </div>
 
-              {/* Password */}
-              <div>
-                <p className="mb-1 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Password</p>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input ref={passwordInputRef} type={showPassword ? 'text' : 'password'}
-                      value={generatedPassword} readOnly
-                      placeholder={passwordSaved ? '••••••••••••' : ''}
-                      className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2.5 pl-9 pr-9 text-sm text-warm-cream font-mono outline-none placeholder:text-warm-muted/30 focus:border-warm-accent transition-colors" />
-                    <Key size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
-                    {generatedPassword && (
-                      <button onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-muted hover:text-warm-cream transition-colors">
-                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    )}
-                  </div>
-                  {generatedPassword && (
-                    <button onClick={copyPassword} title="Copy password"
-                      className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2.5 text-xs text-warm-muted hover:text-warm-cream hover:border-warm-accent/50 transition-colors">
-                      {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
-                  )}
-                  <button onClick={generatePassword} title="Generate new password"
-                    className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-                    <RefreshCw size={14} /> Generate
-                  </button>
-                </div>
-                {generatedPassword && (
-                  <div className="mt-3 flex gap-2">
-                    <button onClick={handleSavePassword}
-                      className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-                      <Save size={13} /> Save
-                    </button>
-                  </div>
-                )}
+              {/* Credentials — shared drawer (KeyRound launcher) */}
+              <div className="flex items-center justify-between rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5">
+                <span className="text-xs text-warm-muted">Generate, save & send credentials via WhatsApp</span>
+                <CredentialDrawerButton
+                  label={`Open credentials for ${s.name}`}
+                  onClick={(e) => { e.stopPropagation(); openCredentialDrawer(e.currentTarget); }}
+                />
               </div>
             </>
           )}
         </div>
       </section>
 
-      {/* ══ Admin Password Verification popup ══ */}
-      {showAdminPassPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
-            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm saving the student&apos;s new credentials.</p>
-            <input type="password" value={adminPassword}
-              onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdminPassVerify()}
-              placeholder="Your password" autoFocus
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
-            {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
+      {/* ══ MODALS ══ */}
+
+      {/* Student Edit */}
+      {editStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setEditStudent(false)}>
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Edit Student</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2"><label className="mb-1 block text-xs text-warm-muted">Full Name</label><input value={sf.name || ''} onChange={(e) => setSf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Gender</label><select value={sf.gender || ''} onChange={(e) => setSf((p: any) => ({ ...p, gender: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"><option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label><input value={sf.bloodGroup || ''} onChange={(e) => setSf((p: any) => ({ ...p, bloodGroup: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Date of Birth</label><input type="date" value={sf.dateOfBirth || ''} onChange={(e) => setSf((p: any) => ({ ...p, dateOfBirth: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Religion</label><input value={sf.religion || ''} onChange={(e) => setSf((p: any) => ({ ...p, religion: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Nationality</label><input value={sf.nationality || ''} onChange={(e) => setSf((p: any) => ({ ...p, nationality: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">B-Form / CNIC</label><input value={sf.bformCnic || ''} onChange={(e) => setSf((p: any) => ({ ...p, bformCnic: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Mother Tongue</label><input value={sf.motherTongue || ''} onChange={(e) => setSf((p: any) => ({ ...p, motherTongue: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Roll Number</label><input value={sf.rollNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, rollNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Admission Number</label><input value={sf.admissionNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Admission Date</label><input type="date" value={sf.admissionDate || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionDate: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Class</label><select value={sf.groupId || ''} onChange={(e) => setSf((p: any) => ({ ...p, groupId: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"><option value="">—</option>{editSections.map((g: any) => (<option key={g.id} value={g.id}>{g.name}{g.section ? ` — ${g.section}` : ''}</option>))}</select></div>
+            </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => { setShowAdminPassPopup(false); setAdminPassword(''); setAdminPassError(''); }}
-                className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={handleAdminPassVerify}
-                className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Verify</button>
+              <button onClick={() => setEditStudent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(`/admin/students/${id}`, { ...sf }, () => setEditStudent(false), 'Student updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══ MODALS ══ */}
-
-      {/* Student Edit */}
-      <Modal open={editStudent} onClose={() => setEditStudent(false)} title="Edit Student">
-        <div className="space-y-4">
-          <div><label className="mb-1 block text-xs text-warm-muted">Full Name</label><input value={sf.name} onChange={(e) => setSf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Gender</label><select value={sf.gender || ''} onChange={(e) => setSf((p: any) => ({ ...p, gender: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"><option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Date of Birth</label><input type="date" value={sf.dateOfBirth || ''} onChange={(e) => setSf((p: any) => ({ ...p, dateOfBirth: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label><input value={sf.bloodGroup || ''} onChange={(e) => setSf((p: any) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Roll No</label><input value={sf.rollNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, rollNumber: e.target.value }))} placeholder="e.g. 012" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Mother Tongue</label><input value={sf.motherTongue || ''} onChange={(e) => setSf((p: any) => ({ ...p, motherTongue: e.target.value }))} placeholder="e.g. Urdu" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">B-Form / CNIC</label><input value={sf.bformCnic || ''} onChange={(e) => setSf((p: any) => ({ ...p, bformCnic: e.target.value }))} placeholder="e.g. 61101-..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Religion</label><input value={sf.religion || ''} onChange={(e) => setSf((p: any) => ({ ...p, religion: e.target.value }))} placeholder="e.g. Islam" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Nationality</label><input value={sf.nationality || ''} onChange={(e) => setSf((p: any) => ({ ...p, nationality: e.target.value }))} placeholder="e.g. Pakistani" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Admission Date</label><input type="date" value={sf.admissionDate || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionDate: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Admission No.</label><input value={sf.admissionNumber || ''} onChange={(e) => setSf((p: any) => ({ ...p, admissionNumber: e.target.value }))} placeholder="System generated" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Class / Section</label>
-              <select value={sf.groupId || ''} onChange={(e) => setSf((p: any) => ({ ...p, groupId: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
-                <option value="">— Select —</option>
-                {editSections.map((sec: any) => <option key={sec.id} value={sec.id}>{sec.name}{sec.section ? ` — ${sec.section}` : ''}</option>)}
-              </select>
+      {/* Contact Edit */}
+      {editContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setEditContact(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Student Contact</h2>
+            <div className="space-y-3">
+              <div><label className="mb-1 block text-xs text-warm-muted">Phone</label><input value={cf.phone || ''} onChange={(e) => setCf((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Email</label><input value={cf.studentEmail || ''} onChange={(e) => setCf((p: any) => ({ ...p, studentEmail: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={cf.studentWhatsapp || ''} onChange={(e) => setCf((p: any) => ({ ...p, studentWhatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditContact(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(`/admin/students/${id}`, { ...cf }, () => setEditContact(false), 'Contact updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
             </div>
           </div>
-          <div className="flex justify-end gap-2"><button onClick={() => setEditStudent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, sf, () => setEditStudent(false), 'Student updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
-
-      {/* Contact Edit */}
-      <Modal open={editContact} onClose={() => setEditContact(false)} title="Student Contact">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Phone</label><input value={cf.phone || ''} onChange={(e) => setCf((p: any) => ({ ...p, phone: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Email</label><input value={cf.studentEmail || ''} onChange={(e) => setCf((p: any) => ({ ...p, studentEmail: e.target.value }))} placeholder="email@example.com" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={cf.studentWhatsapp || ''} onChange={(e) => setCf((p: any) => ({ ...p, studentWhatsapp: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="flex justify-end gap-2"><button onClick={() => setEditContact(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, cf, () => setEditContact(false), 'Contact saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
-        </div>
-      </Modal>
+      )}
 
       {/* Parent Edit */}
-      <Modal open={editParent} onClose={() => setEditParent(false)} title="Parent / Guardian">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Name</label><input value={pf.name} onChange={(e) => setPf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Relation</label><input value={pf.relation} onChange={(e) => setPf((p: any) => ({ ...p, relation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">CNIC</label><input value={pf.cnicNumber} onChange={(e) => setPf((p: any) => ({ ...p, cnicNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+      {editParent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setEditParent(false)}>
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Parent / Guardian</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2"><label className="mb-1 block text-xs text-warm-muted">Name</label><input value={pf.name || ''} onChange={(e) => setPf((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Relation</label><input value={pf.relation || ''} onChange={(e) => setPf((p: any) => ({ ...p, relation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">CNIC</label><input value={pf.cnicNumber || ''} onChange={(e) => setPf((p: any) => ({ ...p, cnicNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Occupation</label><input value={pf.occupation || ''} onChange={(e) => setPf((p: any) => ({ ...p, occupation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Employer</label><input value={pf.employerName || ''} onChange={(e) => setPf((p: any) => ({ ...p, employerName: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Marital Status</label><input value={pf.maritalStatus || ''} onChange={(e) => setPf((p: any) => ({ ...p, maritalStatus: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Monthly Income</label><input value={pf.monthlyIncome || ''} onChange={(e) => setPf((p: any) => ({ ...p, monthlyIncome: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Phone</label><input value={pf.phone || ''} onChange={(e) => setPf((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={pf.whatsapp || ''} onChange={(e) => setPf((p: any) => ({ ...p, whatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div className="col-span-2"><label className="mb-1 block text-xs text-warm-muted">Email</label><input value={pf.email || ''} onChange={(e) => setPf((p: any) => ({ ...p, email: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditParent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(s.parents?.length ? `/admin/students/${id}/parent` : `/admin/students/${id}/parents`, { ...pf }, () => setEditParent(false), 'Parent saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Occupation</label><input value={pf.occupation} onChange={(e) => setPf((p: any) => ({ ...p, occupation: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Employer</label><input value={pf.employerName} onChange={(e) => setPf((p: any) => ({ ...p, employerName: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Monthly Income</label><input value={pf.monthlyIncome} onChange={(e) => setPf((p: any) => ({ ...p, monthlyIncome: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Phone</label><input value={pf.phone} onChange={(e) => setPf((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={pf.whatsapp} onChange={(e) => setPf((p: any) => ({ ...p, whatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Email</label><input value={pf.email} onChange={(e) => setPf((p: any) => ({ ...p, email: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div><label className="mb-1 block text-xs text-warm-muted">Marital Status</label>
-            <select value={pf.maritalStatus || ''} onChange={(e) => setPf((p: any) => ({ ...p, maritalStatus: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent">
-              <option value="">—</option>
-              <option value="Married">Married</option>
-              <option value="Unmarried">Unmarried</option>
-              <option value="Widow/er">Widow/er</option>
-              <option value="Divorced">Divorced</option>
-            </select>
-          </div>
-          <div className="flex justify-end gap-2"><button onClick={() => setEditParent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={async () => { try { await apiRequest(`/admin/students/${id}/parent`, { method: 'PUT', body: JSON.stringify(pf) }); showToast('success', 'Parent updated'); setEditParent(false); loadData(); } catch (e: any) { showToast('error', e.message); } }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
+      )}
 
       {/* Address Edit */}
-      <Modal open={editAddress} onClose={() => setEditAddress(false)} title="Address">
-        <div className="space-y-4">
-          <div><label className="mb-1 block text-xs text-warm-muted">Address</label><textarea value={af.address || ''} onChange={(e) => setAf((p: any) => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">City</label><input value={af.city || ''} onChange={(e) => setAf((p: any) => ({ ...p, city: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Country</label><input value={af.country || ''} onChange={(e) => setAf((p: any) => ({ ...p, country: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Postal Code</label><input value={af.postalCode || ''} onChange={(e) => setAf((p: any) => ({ ...p, postalCode: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+      {editAddress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setEditAddress(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Address</h2>
+            <div className="space-y-3">
+              <div><label className="mb-1 block text-xs text-warm-muted">Address</label><input value={af.address || ''} onChange={(e) => setAf((p: any) => ({ ...p, address: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">City</label><input value={af.city || ''} onChange={(e) => setAf((p: any) => ({ ...p, city: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Country</label><input value={af.country || ''} onChange={(e) => setAf((p: any) => ({ ...p, country: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Postal Code</label><input value={af.postalCode || ''} onChange={(e) => setAf((p: any) => ({ ...p, postalCode: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditAddress(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(`/admin/students/${id}`, { ...af }, () => setEditAddress(false), 'Address updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+            </div>
           </div>
-          <div className="flex justify-end gap-2"><button onClick={() => setEditAddress(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, af, () => setEditAddress(false), 'Address saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
+      )}
 
-      {/* Emergency Contact Modal */}
-      <Modal open={showEcForm} onClose={() => setShowEcForm(false)} title="Emergency Contact">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Name *</label><input value={ec.name} onChange={(e) => setEc((p: any) => ({ ...p, name: e.target.value }))} placeholder="e.g. Mother" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Relationship</label><input value={ec.relationship} onChange={(e) => setEc((p: any) => ({ ...p, relationship: e.target.value }))} placeholder="e.g. Mother" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+      {/* Emergency Contact */}
+      {showEcForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowEcForm(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Emergency Contact</h2>
+            <div className="space-y-3">
+              <div><label className="mb-1 block text-xs text-warm-muted">Name</label><input value={ec.name || ''} onChange={(e) => setEc((p: any) => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Relationship</label><input value={ec.relationship || ''} onChange={(e) => setEc((p: any) => ({ ...p, relationship: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Phone</label><input value={ec.phone || ''} onChange={(e) => setEc((p: any) => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={ec.whatsapp || ''} onChange={(e) => setEc((p: any) => ({ ...p, whatsapp: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowEcForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(editEcId ? `/admin/students/${id}/emergency-contact/${editEcId}` : `/admin/students/${id}/emergency-contact`, { ...ec }, () => setShowEcForm(false), 'Emergency contact saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Phone *</label><input value={ec.phone} onChange={(e) => setEc((p: any) => ({ ...p, phone: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">WhatsApp</label><input value={ec.whatsapp} onChange={(e) => setEc((p: any) => ({ ...p, whatsapp: e.target.value }))} placeholder="+92 300 ..." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div className="flex justify-end gap-2"><button onClick={() => { setShowEcForm(false); setEditEcId(null); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={async () => { if (!ec.name || !ec.phone) { showToast('error', 'Name and phone required'); return; } try { if (editEcId) { await apiRequest(`/admin/students/${id}/emergency-contact/${editEcId}`, { method: 'PUT', body: JSON.stringify(ec) }); showToast('success', 'Contact updated'); } else { await apiRequest(`/admin/students/${id}/emergency-contact`, { method: 'POST', body: JSON.stringify(ec) }); showToast('success', 'Contact added'); } setShowEcForm(false); setEditEcId(null); setEc({ name: '', relationship: '', phone: '', whatsapp: '' }); loadData(); } catch (e: any) { showToast('error', e.message); } }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
+      )}
 
-      {/* Health Modal */}
-      <Modal open={showHlthForm} onClose={() => setShowHlthForm(false)} title="Health & Medical">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label><input value={hlth.bloodGroup || ''} onChange={(e) => setHlth((p: any) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. B+" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Allergies</label><input value={hlth.allergies || ''} onChange={(e) => setHlth((p: any) => ({ ...p, allergies: e.target.value }))} placeholder="e.g. Dust" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Chronic Disease</label><select value={hlth.hasChronicDisease ? 'true' : 'false'} onChange={(e) => setHlth((p: any) => ({ ...p, hasChronicDisease: e.target.value === 'true' }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent"><option value="false">No</option><option value="true">Yes</option></select></div>
+      {/* Health Record */}
+      {showHlthForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowHlthForm(false)}>
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Health Record</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="mb-1 block text-xs text-warm-muted">Blood Group</label><input value={hlth.bloodGroup || ''} onChange={(e) => setHlth((p: any) => ({ ...p, bloodGroup: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div className="flex items-end pb-2"><label className="flex items-center gap-1.5 text-xs text-warm-cream cursor-pointer"><input type="checkbox" checked={!!hlth.hasChronicDisease} onChange={(e) => setHlth((p: any) => ({ ...p, hasChronicDisease: e.target.checked }))} className="h-3.5 w-3.5 rounded border-warm-card-border bg-[#1a1614] text-warm-accent" /> Chronic disease</label></div>
+              <div className="col-span-2"><label className="mb-1 block text-xs text-warm-muted">Disease Details</label><input value={hlth.diseaseDetails || ''} onChange={(e) => setHlth((p: any) => ({ ...p, diseaseDetails: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Allergies</label><input value={hlth.allergies || ''} onChange={(e) => setHlth((p: any) => ({ ...p, allergies: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Disability</label><input value={hlth.disability || ''} onChange={(e) => setHlth((p: any) => ({ ...p, disability: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div className="col-span-2"><label className="mb-1 block text-xs text-warm-muted">Medical Notes</label><input value={hlth.medicalNotes || ''} onChange={(e) => setHlth((p: any) => ({ ...p, medicalNotes: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Doctor Name</label><input value={hlth.doctorName || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorName: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Doctor Phone</label><input value={hlth.doctorPhone || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorPhone: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowHlthForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(`/admin/students/${id}/health-record`, { ...hlth }, () => setShowHlthForm(false), 'Health record saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+            </div>
           </div>
-          <div><label className="mb-1 block text-xs text-warm-muted">Disease Details</label><textarea value={hlth.diseaseDetails || ''} onChange={(e) => setHlth((p: any) => ({ ...p, diseaseDetails: e.target.value }))} rows={2} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Doctor Name</label><input value={hlth.doctorName || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorName: e.target.value }))} placeholder="Dr." className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Doctor Phone</label><input value={hlth.doctorPhone || ''} onChange={(e) => setHlth((p: any) => ({ ...p, doctorPhone: e.target.value }))} placeholder="+92" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Disability</label><input value={hlth.disability || ''} onChange={(e) => setHlth((p: any) => ({ ...p, disability: e.target.value }))} placeholder="If any" className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          </div>
-          <div><label className="mb-1 block text-xs text-warm-muted">Medical Notes</label><textarea value={hlth.medicalNotes || ''} onChange={(e) => setHlth((p: any) => ({ ...p, medicalNotes: e.target.value }))} rows={3} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent resize-none" /></div>
-          <div className="flex justify-end gap-2"><button onClick={() => setShowHlthForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={async () => { try { await apiRequest(`/admin/students/${id}/health-record`, { method: 'PUT', body: JSON.stringify(hlth) }); showToast('success', 'Health record saved'); setShowHlthForm(false); loadData(); } catch (e: any) { showToast('error', e.message); } }} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
+      )}
 
-      {/* Previous Education Edit */}
-      <Modal open={editPrev} onClose={() => setEditPrev(false)} title="Previous Education">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="mb-1 block text-xs text-warm-muted">Previous School</label><input value={prevf.previousSchool || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, previousSchool: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">Previous Class</label><input value={prevf.previousClass || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, previousClass: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-            <div><label className="mb-1 block text-xs text-warm-muted">TC Number</label><input value={prevf.tcNumber || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, tcNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+      {/* Previous Education */}
+      {editPrev && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setEditPrev(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-sm font-medium text-warm-cream">Previous Education</h2>
+            <div className="space-y-3">
+              <div><label className="mb-1 block text-xs text-warm-muted">Previous School</label><input value={prevf.previousSchool || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, previousSchool: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Previous Class</label><input value={prevf.previousClass || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, previousClass: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">TC Number</label><input value={prevf.tcNumber || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, tcNumber: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+              <div><label className="mb-1 block text-xs text-warm-muted">Referred By</label><input value={prevf.referredBy || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, referredBy: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditPrev(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
+              <button onClick={() => handleSave(`/admin/students/${id}`, { ...prevf }, () => setEditPrev(false), 'Previous education updated')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+            </div>
           </div>
-          <div><label className="mb-1 block text-xs text-warm-muted">Referred By</label><input value={prevf.referredBy || ''} onChange={(e) => setPrevf((p: any) => ({ ...p, referredBy: e.target.value }))} className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none focus:border-warm-accent" /></div>
-          <div className="flex justify-end gap-2"><button onClick={() => setEditPrev(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream">Cancel</button><button onClick={() => handleSave(`/admin/students/${id}`, prevf, () => setEditPrev(false), 'Saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">Save</button></div>
         </div>
-      </Modal>
+      )}
+
+      {/* Delete confirm */}
       <ConfirmModal
         open={showDeleteConfirm}
-        title="Delete Student?"
-        message="Permanently delete this student? This action cannot be undone."
+        title="Delete student"
+        message={`Delete ${s.name}? This cannot be undone.`}
+        variant="danger"
         confirmLabel="Delete"
         cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={() => {
-          setShowDeleteConfirm(false);
-          void handleDelete();
-        }}
+        onConfirm={async () => { await handleDelete(); setShowDeleteConfirm(false); }}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <CredentialDrawer
+        person={drawerPerson}
+        open={drawerOpen}
+        onClose={closeCredentialDrawer}
+        triggerRef={credentialTriggerRef}
+        onSaved={handleDrawerSaved}
       />
     </main>
   );
 }
 
-// ── Helpers ──
-function Section({ title, children, onEdit, editLabel, showContent = true }: { title: string; children: React.ReactNode; onEdit?: () => void; editLabel?: string; showContent?: boolean }) {
+function Section({ title, onEdit, editLabel, showContent = true, children }: {
+  title: string; onEdit?: () => void; editLabel?: string; showContent?: boolean; children: React.ReactNode;
+}) {
   return (
-    <section className="mb-8">
-      <div className="flex items-center justify-between mb-3">
+    <section className="mb-10">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-medium text-warm-cream">{title}</h2>
-        {onEdit && <button onClick={onEdit} className="flex items-center gap-1 rounded-lg border border-warm-card-border px-2.5 py-1 text-[10px] text-warm-muted hover:text-warm-cream transition-colors">{editLabel === 'Edit' ? <><Edit3 size={11} /> Edit</> : <><Plus size={12} /> Add</>}</button>}
+        {onEdit && (
+          <button onClick={onEdit} className="rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            {editLabel || 'Edit'}
+          </button>
+        )}
       </div>
-      {showContent && children}
+      {showContent ? (
+        <div className="rounded-xl border border-warm-card-border bg-warm-card p-5">{children}</div>
+      ) : null}
     </section>
   );
 }
@@ -779,23 +739,11 @@ function Section({ title, children, onEdit, editLabel, showContent = true }: { t
 function Card({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-warm-card-border bg-warm-card p-3">
-      <div className="flex items-center gap-2"><Icon size={13} className="text-warm-accent shrink-0" /><span className="text-[10px] tracking-wider text-warm-muted uppercase">{label}</span></div>
-      <p className="mt-1 text-sm text-warm-cream break-words">{value}</p>
-    </div>
-  );
-}
-
-function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-warm-cream">{title}</h2>
-          <button onClick={onClose} className="text-warm-muted hover:text-warm-cream"><X size={16} /></button>
-        </div>
-        {children}
+      <div className="flex items-center gap-2">
+        <Icon size={13} className="text-warm-accent shrink-0" />
+        <span className="text-[10px] tracking-wider text-warm-muted uppercase">{label}</span>
       </div>
+      <p className="mt-1 text-sm text-warm-cream">{value}</p>
     </div>
   );
 }

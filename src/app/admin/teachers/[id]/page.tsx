@@ -5,8 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
   ArrowLeft, BookOpen, MapPin, Calendar, DollarSign,
-  Phone, Mail, User, Award, Heart, AlertTriangle, Key, Copy, Check,
-  Eye, EyeOff, Save, RefreshCw, Plus, Edit3, Trash2, X,
+  Phone, Mail, User, Award, Heart, AlertTriangle,
+  Save, Plus, Edit3, Trash2, X,
   CalendarDays, Clock, CreditCard, Briefcase, FileText,
 } from 'lucide-react';
 import AvatarImage from '@/components/avatar-image';
@@ -19,8 +19,7 @@ import TenureHistoryPanel from '@/components/tenure-history-panel';
 import { TeacherPermissionsPanel } from '@/components/admin/teacher-permissions-panel';
 import config from '@/config';
 import { safeErrorMessage } from '@/lib/errors';
-import { buildTeacherCredentialMessage, generateSecurePassword } from '@/lib/whatsappCredential';
-import { performManualHandoff } from '@/lib/manualHandoff';
+import CredentialDrawer, { CredentialDrawerButton, CredentialDrawerPerson } from '@/components/credential-drawer';
 
 interface TeacherDetail {
   id: string;
@@ -86,11 +85,48 @@ export default function TeacherDetailPage() {
   const [teacherTimetables, setTeacherTimetables] = useState<any[]>([]);
   const [loadingTt, setLoadingTt] = useState(false);
 
-  // Password management
-  const [generatedPassword, setGeneratedPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(true);
+  // Credential drawer (shared manual-handoff flow)
+  const [drawerPerson, setDrawerPerson] = useState<CredentialDrawerPerson | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const credentialTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const openCredentialDrawer = (trigger: HTMLButtonElement | null) => {
+    if (!data) return;
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    credentialTriggerRef.current = trigger;
+    setDrawerPerson({
+      id: data.id,
+      type: 'teacher',
+      name: data.user.name,
+      username: data.user.username,
+      phone: data.phone || data.user.phone || null,
+      classLabel: null,
+      designation: null,
+      hasExistingPassword: !!data.passwordSetAt,
+      saveUrl: `${config.apiUrl}/admin/teachers/${data.id}/save-credential`,
+      branchId: activeBranchId,
+    });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawerOpen(true));
+    });
+  };
+
+  const closeCredentialDrawer = () => {
+    setDrawerOpen(false);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setDrawerPerson(null);
+      credentialTriggerRef.current?.focus();
+      credentialTriggerRef.current = null;
+      closeTimer.current = null;
+    }, 300);
+  };
+
+  const handleDrawerSaved = (personId: string, updates: Record<string, any>) => {
+    setData((prev: any) => (prev && prev.id === personId ? { ...prev, ...updates } : prev));
+    setDrawerPerson((prev: any) => (prev ? { ...prev, ...updates, hasExistingPassword: true } : prev));
+  };
 
   // Assignment modal
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -101,15 +137,6 @@ export default function TeacherDetailPage() {
   const [savingAssign, setSavingAssign] = useState(false);
   const [assignError, setAssignError] = useState('');
 
-  // Admin password verification popup
-  const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
-  const [pendingSavePassword, setPendingSavePassword] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminPassError, setAdminPassError] = useState('');
-  const [idempotencyKey, setIdempotencyKey] = useState('');
-  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
-  const [handoffUrl, setHandoffUrl] = useState('');
-  const [savingCredential, setSavingCredential] = useState(false);
 
   // Profile edit
   const [profileEditing, setProfileEditing] = useState(false);
@@ -119,7 +146,6 @@ export default function TeacherDetailPage() {
     joiningDate: '', dateOfBirth: '', phone: '', emergencyContact: '', address: '',
     salary: '', gender: '', bloodGroup: '', cardId: '', severeDisease: '', experience: '', bio: '',
   });
-  const passwordInputRef = useRef<HTMLInputElement>(null);
   const [tenures, setTenures] = useState<any[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
 
@@ -127,146 +153,6 @@ export default function TeacherDetailPage() {
     setActiveBranchId(localStorage.getItem('activeBranchId'));
   }, []);
 
-  const generatePassword = () => {
-    // M22: cryptographically secure generation (crypto.getRandomValues).
-    setGeneratedPassword(generateSecurePassword());
-    setIdempotencyKey(crypto.randomUUID());
-    setReplaceConfirmed(false);
-    setHandoffUrl('');
-    setPasswordSaved(false);
-    setCopied(false);
-    setTimeout(() => passwordInputRef.current?.focus(), 50);
-  };
-
-  const copyPassword = () => {
-    if (!generatedPassword) return;
-    navigator.clipboard.writeText(generatedPassword).then(() => {
-      setCopied(true);
-      showToast('success', 'Password copied');
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const handleSavePassword = () => {
-    if (!generatedPassword) return;
-    setPendingSavePassword(generatedPassword);
-    setHandoffUrl('');
-    // M22: existing password → explicit replacement confirmation first.
-    // Backend re-checks authoritatively (stale-row safe).
-    if (data?.passwordSetAt && !replaceConfirmed) {
-      setConfirm({
-        open: true,
-        title: 'Password already exists',
-        message: 'This teacher already has a password. Do you want to replace it with the newly generated password?',
-        variant: 'warning',
-        confirmLabel: 'Yes, Replace',
-        action: async () => {
-          setReplaceConfirmed(true);
-          setShowAdminPassPopup(true);
-          setAdminPassword('');
-          setAdminPassError('');
-        },
-      });
-      return;
-    }
-    setShowAdminPassPopup(true);
-    setAdminPassword('');
-    setAdminPassError('');
-  };
-
-  const handleAdminPassVerify = async () => {
-    if (!adminPassword.trim()) {
-      setAdminPassError('Enter your password to confirm');
-      return;
-    }
-    if (!pendingSavePassword) {
-      setAdminPassError('No password generated');
-      return;
-    }
-    if (!data) return;
-    // M22: manual handoff — save EXACTLY the generated password, then open
-    // WhatsApp prefilled. The app never sends the message itself.
-    setSavingCredential(true);
-    const result = await performManualHandoff({
-      saveUrl: `${config.apiUrl}/admin/teachers/${data.id}/save-credential`,
-      token: localStorage.getItem('token'),
-      body: {
-        password: pendingSavePassword,
-        adminPassword,
-        replaceExisting: replaceConfirmed || !data.passwordSetAt,
-        idempotencyKey: idempotencyKey || undefined,
-        branchId: activeBranchId || undefined,
-      },
-      buildMessage: (save) => buildTeacherCredentialMessage({
-        school: save.schoolName || '',
-        name: data.user.name,
-        website: save.website || '',
-        username: data.user.username || data.user.name,
-        password: pendingSavePassword,
-        appUrl: save.appUrl || '',
-      }),
-      rawPhone: data.phone || data.user.phone || '',
-    });
-    setSavingCredential(false);
-    if (result.status === 'failed') {
-      if (result.code === 'PASSWORD_REPLACEMENT_REQUIRED') {
-        // Stale row data — backend is authoritative. Confirm, keep exact P1.
-        setShowAdminPassPopup(false);
-        setAdminPassword('');
-        setConfirm({
-          open: true,
-          title: 'Password already exists',
-          message: 'This teacher already has a password. Do you want to replace it with the newly generated password?',
-          variant: 'warning',
-          confirmLabel: 'Yes, Replace',
-          action: async () => {
-            setReplaceConfirmed(true);
-            setShowAdminPassPopup(true);
-            setAdminPassword('');
-            setAdminPassError('');
-          },
-        });
-        return;
-      }
-      const msg = result.message || '';
-      if (msg.includes('incorrect')) {
-        setAdminPassError('Your password is incorrect. Try again.');
-        showToast('error', 'Wrong password. Please try again.');
-      } else if (msg.includes('Too many') || msg.includes('rate limit')) {
-        setAdminPassError('Too many attempts. Please wait 1 minute before trying again.');
-        showToast('error', 'Too many attempts. Please wait 1 minute.');
-      } else if (msg.includes('used recently')) {
-        setAdminPassError('This password was used before. Please generate a different one.');
-        showToast('error', 'Password was used recently. Choose a new one.');
-      } else if (msg.includes('429')) {
-        setAdminPassError('Too many attempts. Please wait 1 minute before trying again.');
-        showToast('error', 'Too many attempts. Please wait.');
-      } else {
-        setAdminPassError(msg || 'Failed to save password');
-        showToast('error', msg || 'Failed to save password');
-      }
-      return;
-    }
-    if (result.status === 'blocked') {
-      setHandoffUrl(result.url);
-      showToast('success', 'Password saved — open WhatsApp manually');
-    } else {
-      setHandoffUrl('');
-      showToast('success', 'Password saved — WhatsApp opened');
-    }
-    try {
-      // Refresh row state so replacement detection stays truthful.
-      const d = await api.getTeacher(data.id);
-      if (d?.success) setData({ ...data, passwordSetAt: d.data?.passwordSetAt ?? new Date().toISOString() });
-    } catch { /* best-effort */ }
-    setShowAdminPassPopup(false);
-    setAdminPassword('');
-    setAdminPassError('');
-    setPendingSavePassword('');
-    setGeneratedPassword('');
-    setPasswordSaved(true);
-    setShowPassword(false);
-  };
   const loadData = () => {
     setLoading(true);
     api.getTeacher(id)
@@ -758,63 +644,13 @@ export default function TeacherDetailPage() {
             </div>
           </div>
 
-          {/* Password */}
-          <div>
-            <p className="mb-1 text-[10px] font-medium tracking-wider text-warm-muted uppercase">Password</p>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  ref={passwordInputRef}
-                  type={showPassword ? 'text' : 'password'}
-                  value={generatedPassword}
-                  readOnly
-                  placeholder={passwordSaved ? '••••••••••••' : ''}
-                  className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2.5 pl-9 pr-9 text-sm text-warm-cream font-mono outline-none placeholder:text-warm-muted/30 focus:border-warm-accent transition-colors"
-                />
-                <Key size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
-                {generatedPassword && (
-                  <button
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-muted hover:text-warm-cream transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                )}
-              </div>
-              {generatedPassword && (
-                <button onClick={copyPassword} title="Copy password"
-                  className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2.5 text-xs text-warm-muted hover:text-warm-cream hover:border-warm-accent/50 transition-colors"
-                >
-                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              )}
-              <button onClick={generatePassword} title="Generate new password"
-                className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
-              >
-                <RefreshCw size={14} /> Generate
-              </button>
-            </div>
-
-            {/* Save & Send (manual WhatsApp handoff) */}
-            {generatedPassword && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={handleSavePassword}
-                  className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
-                >
-                  <Save size={13} /> Save & Send
-                </button>
-              </div>
-            )}
-            {handoffUrl && (
-              <div className="mt-3 rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
-                <p className="mb-2">Credential saved. WhatsApp could not be opened automatically.</p>
-                <a href={handoffUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-block rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
-                  Open WhatsApp
-                </a>
-              </div>
-            )}
+          {/* Credentials — shared drawer (KeyRound launcher) */}
+          <div className="flex items-center justify-between rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5">
+            <span className="text-xs text-warm-muted">Generate, save & send credentials via WhatsApp</span>
+            <CredentialDrawerButton
+              label={`Open credentials for ${user.name}`}
+              onClick={(e) => { e.stopPropagation(); openCredentialDrawer(e.currentTarget); }}
+            />
           </div>
         </div>
       </section>
@@ -1012,34 +848,16 @@ export default function TeacherDetailPage() {
         onCancel={() => setConfirm(prev => ({ ...prev, open: false }))}
       />
 
-      {/* ── Admin Password Verification popup ──────────── */}
-      {showAdminPassPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
-            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm saving the teacher&apos;s new credentials.</p>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdminPassVerify()}
-              placeholder="Your password"
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
-              autoFocus
-            />
-            {adminPassError && (
-              <p className="mt-2 text-xs text-red-400">{adminPassError}</p>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => { setShowAdminPassPopup(false); setAdminPassword(''); setAdminPassError(''); }} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={handleAdminPassVerify} disabled={savingCredential} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:opacity-50">{savingCredential ? "Saving…" : "Verify"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CredentialDrawer
+        person={drawerPerson}
+        open={drawerOpen}
+        onClose={closeCredentialDrawer}
+        triggerRef={credentialTriggerRef}
+        onSaved={handleDrawerSaved}
+      />
     </main>
-  );
-}
+    );
+  }
 
 /* ── Detail card helper ── */
 const profileFieldClass =

@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, Shield, Mail, Phone, User, Save, Edit3, X, Key, Copy, Check, HardHat,
-  Eye, EyeOff, RefreshCw, Award, BookOpen, Calendar, MapPin, DollarSign,
+  ArrowLeft, Shield, Mail, Phone, User, Save, Edit3, X, HardHat,
+  Award, BookOpen, Calendar, MapPin, DollarSign,
   Heart, CreditCard, AlertTriangle, Briefcase, FileText,
 } from 'lucide-react';
 import { api, scopeQuery } from '@/lib/api';
-import { buildStaffCredentialMessage, generateSecurePassword } from '@/lib/whatsappCredential';
-import { performManualHandoff } from '@/lib/manualHandoff';
+import CredentialDrawer, { CredentialDrawerButton, CredentialDrawerPerson } from '@/components/credential-drawer';
 import config from '@/config';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -154,7 +153,6 @@ export default function StaffDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-  const passwordInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [data, setData] = useState<StaffDetail | null>(null);
@@ -170,18 +168,48 @@ export default function StaffDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const [generatedPassword, setGeneratedPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(true);
-  const [showAdminPassPopup, setShowAdminPassPopup] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminPassError, setAdminPassError] = useState('');
-  const [pendingSavePassword, setPendingSavePassword] = useState('');
-  const [idempotencyKey, setIdempotencyKey] = useState('');
-  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
-  const [handoffUrl, setHandoffUrl] = useState('');
-  const [savingCredential, setSavingCredential] = useState(false);
+  // Credential drawer (shared manual-handoff flow)
+  const [drawerPerson, setDrawerPerson] = useState<CredentialDrawerPerson | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const credentialTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const openCredentialDrawer = (trigger: HTMLButtonElement | null) => {
+    if (!data) return;
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    credentialTriggerRef.current = trigger;
+    setDrawerPerson({
+      id: userId,
+      type: 'staff',
+      name: data.name,
+      username: data.username,
+      phone: displayPhone || null,
+      classLabel: null,
+      designation: data.workRole || data.branchRole || null,
+      // No passwordSetAt signal on staff: backend detects replacement authoritatively.
+      hasExistingPassword: false,
+      saveUrl: `${config.apiUrl}/admin/staff/${userId}/save-credential${scopeQuery()}`,
+      branchId: null,
+    });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawerOpen(true));
+    });
+  };
+
+  const closeCredentialDrawer = () => {
+    setDrawerOpen(false);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setDrawerPerson(null);
+      credentialTriggerRef.current?.focus();
+      credentialTriggerRef.current = null;
+      closeTimer.current = null;
+    }, 300);
+  };
+
+  const handleDrawerSaved = () => {
+    load();
+  };
 
   const [confirm, setConfirm] = useState<{
     open: boolean; title: string; message: string;
@@ -306,105 +334,6 @@ export default function StaffDetailPage() {
     } finally {
       setSavingPerms(false);
     }
-  };
-
-  const generatePassword = () => {
-    // M22: cryptographically secure generation (crypto.getRandomValues).
-    setGeneratedPassword(generateSecurePassword());
-    setIdempotencyKey(crypto.randomUUID());
-    setReplaceConfirmed(false);
-    setHandoffUrl('');
-    setPasswordSaved(false);
-    setCopied(false);
-    setTimeout(() => passwordInputRef.current?.focus(), 50);
-  };
-
-  const copyPassword = () => {
-    if (!generatedPassword) return;
-    navigator.clipboard.writeText(generatedPassword).then(() => {
-      setCopied(true);
-      showToast('success', 'Password copied');
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const handleSavePasswordClick = () => {
-    if (!generatedPassword) return;
-    setPendingSavePassword(generatedPassword);
-    setHandoffUrl('');
-    setShowAdminPassPopup(true);
-    setAdminPassword('');
-    setAdminPassError('');
-  };
-
-  const handleAdminPassVerify = async () => {
-    if (!adminPassword.trim()) {
-      setAdminPassError('Enter your password to confirm');
-      return;
-    }
-    if (!pendingSavePassword || !data) return;
-    // M22: manual handoff — save EXACTLY the generated password, then open
-    // WhatsApp prefilled. The app never sends the message itself.
-    // Staff has no passwordSetAt signal: replacement is detected
-    // authoritatively by the backend (409 → confirm dialog).
-    setSavingCredential(true);
-    const result = await performManualHandoff({
-      saveUrl: `${config.apiUrl}/admin/staff/${userId}/save-credential${scopeQuery()}`,
-      token: localStorage.getItem('token'),
-      body: {
-        password: pendingSavePassword,
-        adminPassword,
-        replaceExisting: replaceConfirmed,
-        idempotencyKey: idempotencyKey || undefined,
-      },
-      buildMessage: (save) => buildStaffCredentialMessage({
-        school: save.schoolName || '',
-        name: data.name,
-        designation: data.workRole || data.branchRole || '',
-        website: save.website || '',
-        username: data.username || data.name,
-        password: pendingSavePassword,
-        appUrl: save.appUrl || '',
-      }),
-      rawPhone: displayPhone || '',
-    });
-    setSavingCredential(false);
-    if (result.status === 'failed') {
-      if (result.code === 'PASSWORD_REPLACEMENT_REQUIRED') {
-        setShowAdminPassPopup(false);
-        setAdminPassword('');
-        setConfirm({
-          open: true,
-          title: 'Password already exists',
-          message: 'This staff member already has a password. Do you want to replace it with the newly generated password?',
-          variant: 'warning',
-          confirmLabel: 'Yes, Replace',
-          action: async () => {
-            setReplaceConfirmed(true);
-            setShowAdminPassPopup(true);
-            setAdminPassword('');
-            setAdminPassError('');
-          },
-        });
-        return;
-      }
-      const msg = result.message || 'Failed';
-      setAdminPassError(msg);
-      showToast('error', msg);
-      return;
-    }
-    if (result.status === 'blocked') {
-      setHandoffUrl(result.url);
-      showToast('success', 'Password saved — open WhatsApp manually');
-    } else {
-      setHandoffUrl('');
-      showToast('success', 'Password saved — WhatsApp opened');
-    }
-    setShowAdminPassPopup(false);
-    setGeneratedPassword('');
-    setPendingSavePassword('');
-    setPasswordSaved(true);
-    setShowPassword(false);
   };
 
   const toggleStatus = () => {
@@ -676,69 +605,23 @@ export default function StaffDetailPage() {
             <span className="font-mono text-sm text-warm-cream">{data.username || '—'}</span>
           </div>
         </div>
-        <div>
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-warm-muted">Password</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[200px] flex-1">
-              <input
-                ref={passwordInputRef}
-                type={showPassword ? 'text' : 'password'}
-                value={generatedPassword}
-                readOnly
-                placeholder={passwordSaved ? '••••••••••••' : ''}
-                className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] py-2.5 pl-9 pr-9 font-mono text-sm text-warm-cream outline-none placeholder:text-warm-muted/30 focus:border-warm-accent"
-              />
-              <Key size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-muted" />
-              {generatedPassword && (
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-muted hover:text-warm-cream">
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              )}
-            </div>
-            {generatedPassword && (
-              <button type="button" onClick={copyPassword} className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-2.5 text-xs text-warm-muted hover:text-warm-cream">
-                {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            )}
-            <button type="button" onClick={generatePassword} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2.5 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76]">
-              <RefreshCw size={14} /> Generate
-            </button>
-          </div>
-          {generatedPassword && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={handleSavePasswordClick} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">
-                <Save size={13} /> Save & Send
-              </button>
-            </div>
-          )}
-          {!displayPhone && <p className="mt-2 text-[11px] text-amber-400/80">Add a phone number in profile to send credentials.</p>}
-          {handoffUrl && (
-            <div className="mt-2 rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
-              <p className="mb-2">Credential saved. WhatsApp could not be opened automatically.</p>
-              <a href={handoffUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614]">
-                Open WhatsApp
-              </a>
-            </div>
-          )}
+        <div className="flex items-center justify-between rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5">
+          <span className="text-xs text-warm-muted">Generate, save & send credentials via WhatsApp</span>
+          <CredentialDrawerButton
+            label={`Open credentials for ${data.name}`}
+            onClick={(e) => { e.stopPropagation(); openCredentialDrawer(e.currentTarget); }}
+          />
         </div>
       </section>
       )}
 
-      {showAdminPassPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAdminPassPopup(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="mb-2 text-sm font-medium text-warm-cream">Confirm password save</h3>
-            <p className="mb-4 text-xs text-warm-muted">Enter your own password to confirm.</p>
-            <input type="password" value={adminPassword} onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }} placeholder="Your password" autoFocus className={fieldClass} onKeyDown={(e) => e.key === 'Enter' && handleAdminPassVerify()} />
-            {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAdminPassPopup(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Cancel</button>
-              <button type="button" onClick={handleAdminPassVerify} disabled={savingCredential} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-50">{savingCredential ? "Saving…" : "Confirm"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CredentialDrawer
+        person={drawerPerson}
+        open={drawerOpen}
+        onClose={closeCredentialDrawer}
+        triggerRef={credentialTriggerRef}
+        onSaved={handleDrawerSaved}
+      />
 
       <ConfirmModal
         open={confirm.open}
