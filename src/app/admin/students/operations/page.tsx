@@ -1,31 +1,49 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+/**
+ * M21 — Students Operations manual WhatsApp handoff.
+ *
+ * Generate (local, secure) → Save & Send (hash + audit via save-credential)
+ * → local approved-message construction → wa.me prefill → USER presses Send.
+ * No automated delivery: this page performs no provider calls and imports
+ * no messaging/queue services. The only WhatsApp action is browser navigation.
+ */
+
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
-  ArrowLeft, Send, RefreshCw, Save, Key, Check, X,
-  Users, Search, Filter, GraduationCap, BookOpen, ChevronDown, ChevronRight,
+  ArrowLeft, RefreshCw, Eye, EyeOff, X,
+  Users, Search, ChevronRight,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import config from '@/config';
+import ConfirmModal from '@/components/confirm-modal';
 
 import { CREDENTIAL_TAG_LABELS } from '@/lib/staff-permissions';
+import {
+  buildStudentCredentialMessage,
+  buildWhatsAppUrl,
+  formatClassLabel,
+  generateSecurePassword,
+  normalizePhoneDigits,
+} from '@/lib/whatsappCredential';
 
-type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'cred_carried' | 'cred_new' | 'no_login';
+type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent';
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All Students' },
   { value: 'no_creds', label: 'No Credentials' },
   { value: 'pending', label: 'Not Sent Yet' },
   { value: 'sent', label: 'Sent' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'read', label: 'Read / Seen' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'cred_carried', label: 'Credential carried' },
-  { value: 'cred_new', label: 'New — not sent' },
-  { value: 'no_login', label: 'No login' },
 ];
+
+type DrawerPhase =
+  | 'ready'
+  | 'generated'
+  | 'saving'
+  | 'blocked'
+  | 'done';
 
 function statusBadge(status: string | null | undefined) {
   switch (status) {
@@ -37,6 +55,12 @@ function statusBadge(status: string | null | undefined) {
   }
 }
 
+function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return '—';
+  const t = phone.trim();
+  return t.length > 6 ? `${t.slice(0, 4)}****${t.slice(-2)}` : '****';
+}
+
 export default function StudentCredentialsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<any[]>([]);
@@ -46,49 +70,25 @@ export default function StudentCredentialsPage() {
   const [groupId, setGroupId] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [sections, setSections] = useState<any[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [sendHistory, setSendHistory] = useState<Record<string, any[]>>({});
-  const [passwords, setPasswords] = useState<Record<string, string>>({});
-  const [credStatus, setCredStatus] = useState<Record<string, { saved: boolean }>>({});
-  const [showAdminPopup, setShowAdminPopup] = useState(false);
+
+  // ─── Drawer state (M21 state machine: ready → generated → saving → done/blocked) ───
+  const [drawerStudent, setDrawerStudent] = useState<any | null>(null);
+  const [phase, setPhase] = useState<DrawerPhase>('ready');
+  const [drawerPassword, setDrawerPassword] = useState('');
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [showAdminStep, setShowAdminStep] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminPassError, setAdminPassError] = useState('');
-  const [savingAll, setSavingAll] = useState(false);
-  const [pendingSaveTargets, setPendingSaveTargets] = useState<string[]>([]);
-
-  const generatePassword = (): string => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const all = upper + lower + digits + special;
-    let pw = '';
-    pw += upper[Math.floor(Math.random() * upper.length)];
-    pw += lower[Math.floor(Math.random() * lower.length)];
-    pw += digits[Math.floor(Math.random() * digits.length)];
-    pw += special[Math.floor(Math.random() * special.length)];
-    for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
-    const arr = pw.split('');
-    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
-    return arr.join('');
-  };
-
-  const handleGenerate = (studentId: string) => {
-    setPasswords(prev => ({ ...prev, [studentId]: generatePassword() }));
-  };
-
-  const handleGenerateAll = async () => {
-    let count = 0;
-    for (const s of students) {
-      if (!s.username || !passwords[s.id]) {
-        handleGenerate(s.id);
-        count++;
-      }
-    }
-    if (count > 0) showToast('success', `Passwords generated for ${count} students`);
-    else showToast('info', 'All students already have passwords');
-  };
+  const [drawerError, setDrawerError] = useState('');
+  const [handoffUrl, setHandoffUrl] = useState('');
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const branchId = typeof window !== 'undefined' ? localStorage.getItem('activeBranchId') : null;
   const ayId = typeof window !== 'undefined' ? localStorage.getItem('activeAYId') : null;
@@ -106,17 +106,11 @@ export default function StudentCredentialsPage() {
       const res = await api.getStudents({ limit: -1, groupId: groupId || undefined, rollNumber: rollNumber || undefined });
       if (res.success) {
         let filtered = res.data;
-        // Apply status filter
+        // Apply status filter (client-side; no backend status param exists)
         switch (statusFilter) {
           case 'no_creds': filtered = filtered.filter((s: any) => !s.username); break;
           case 'pending': filtered = filtered.filter((s: any) => s.username && !s.credentialSentAt); break;
           case 'sent': filtered = filtered.filter((s: any) => s.credentialStatus === 'sent'); break;
-          case 'delivered': filtered = filtered.filter((s: any) => s.credentialDeliveredAt && !s.credentialSeenAt); break;
-          case 'read': filtered = filtered.filter((s: any) => s.credentialSeenAt); break;
-          case 'failed': filtered = filtered.filter((s: any) => s.credentialStatus === 'failed'); break;
-          case 'cred_carried': filtered = filtered.filter((s: any) => s.credentialTag === 'CRED_CARRIED'); break;
-          case 'cred_new': filtered = filtered.filter((s: any) => s.credentialTag === 'CRED_NEW' || (s.credentialTag === 'CRED_NONE' && !s.credentialSentAt)); break;
-          case 'no_login': filtered = filtered.filter((s: any) => s.credentialTag === 'NO_LOGIN'); break;
         }
         // Apply search
         if (search.trim()) {
@@ -130,172 +124,222 @@ export default function StudentCredentialsPage() {
 
   useEffect(() => { loadStudents(); }, [statusFilter, search, groupId, rollNumber]);
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  // ─── Drawer open/close + focus management ───
+  const openDrawer = (student: any, trigger: HTMLButtonElement | null) => {
+    triggerRef.current = trigger;
+    setDrawerStudent(student);
+    setPhase('ready');
+    setDrawerPassword('');
+    setGeneratedAt(null);
+    setIdempotencyKey('');
+    setShowPassword(false);
+    setShowReplaceConfirm(false);
+    setReplaceConfirmed(false);
+    setShowAdminStep(false);
+    setAdminPassword('');
+    setDrawerError('');
+    setHandoffUrl('');
+    setSavedAt(null);
   };
 
-  const selectAll = () => {
-    if (selectedIds.size === students.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(students.map(s => s.id)));
+  const closeDrawer = () => {
+    setDrawerStudent(null);
+    setPhase('ready');
+    setShowReplaceConfirm(false);
+    setDrawerError('');
+    // Return focus to the triggering arrow
+    triggerRef.current?.focus();
+    triggerRef.current = null;
   };
 
-  // Ensure a student has a User account before saving password
-  const ensureUser = async (studentId: string, token: string) => {
-    const s = students.find(st => st.id === studentId);
-    if (s?.userId) return true; // already has User
-    const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/generate-credentials`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    return data.success;
-  };
+  useEffect(() => {
+    if (drawerStudent) {
+      closeRef.current?.focus();
+    }
+  }, [drawerStudent]);
 
-  const savePassword = async (studentId: string, password: string, adminPass: string, token: string) => {
-    // First ensure User exists (generate credentials if needed)
-    await ensureUser(studentId, token);
-    const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/set-password`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, adminPassword: adminPass }),
-    });
-    const data = await res.json();
-    return data;
-  };
+  // Escape closes drawer (replacement modal handles its own Escape)
+  useEffect(() => {
+    if (!drawerStudent || showReplaceConfirm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerStudent, showReplaceConfirm]);
 
-  const handleSaveClick = (studentId: string) => {
-    const pw = passwords[studentId];
-    if (!pw) { showToast('info', 'Generate a password first'); return; }
-    setPendingSaveTargets([studentId]);
-    setShowAdminPopup(true);
-  };
-
-  const handleSaveAllClick = () => {
-    const pending = Object.entries(passwords).filter(([sid]) => !credStatus[sid]?.saved);
-    if (pending.length === 0) { showToast('info', 'No unsaved passwords'); return; }
-    setPendingSaveTargets(pending.map(([sid]) => sid));
-    setShowAdminPopup(true);
-  };
-
-  const handleAdminVerify = async () => {
-    if (!adminPassword.trim()) { setAdminPassError('Enter your password'); return; }
-    setSavingAll(true);
-    try {
-      let successCount = 0;
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      for (const sid of pendingSaveTargets) {
-        const pw = passwords[sid];
-        if (!pw) continue;
-        try {
-          const data = await savePassword(sid, pw, adminPassword, token);
-          if (data.success) { setCredStatus(prev => ({ ...prev, [sid]: { saved: true } })); successCount++; }
-        } catch {}
-      }
-      showToast('success', `${successCount}/${pendingSaveTargets.length} saved`);
-    } finally {
-      setShowAdminPopup(false); setAdminPassword(''); setAdminPassError(''); setSavingAll(false); setPendingSaveTargets([]);
+  // Simple focus trap inside the drawer
+  const trapTab = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !drawerRef.current) return;
+    const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled])',
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   };
 
-  const handleSend = async (studentId: string) => {
-    const token = localStorage.getItem('token');
+  // ─── Drawer gates (mirrored by backend save-credential preconditions) ───
+  const ds = drawerStudent;
+  const hasUsername = !!ds?.username;
+  const hasClass = !!ds?.group;
+  const rawPhone: string | null = ds ? (ds.studentWhatsapp || ds.phone || null) : null;
+  const hasPhone = !!rawPhone;
+  const canGenerate = hasUsername && hasClass;
+  const canSaveSend = hasPhone && hasUsername && hasClass && drawerPassword.length > 0;
+  const hasExistingPassword = !!ds?.passwordSetAt;
+
+  const handleGenerate = () => {
+    if (!canGenerate) return;
     try {
-      const res = await fetch(`${config.apiUrl}/admin/students/${studentId}/send-credentials`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.success) showToast('success', 'Sent via WhatsApp');
-      else showToast('error', data.message || 'Failed');
-      loadStudents();
-    } catch { showToast('error', 'Failed'); }
+      setDrawerPassword(generateSecurePassword());
+    } catch {
+      setDrawerError('Secure random generator unavailable in this browser.');
+      return;
+    }
+    setGeneratedAt(Date.now());
+    setIdempotencyKey(crypto.randomUUID());
+    setShowPassword(false);
+    setReplaceConfirmed(false);
+    setShowAdminStep(false);
+    setDrawerError('');
+    setHandoffUrl('');
+    setSavedAt(null);
+    setPhase('generated');
   };
 
-  const handleSendSelected = async () => {
-    if (selectedIds.size === 0) { showToast('info', 'Select students first'); return; }
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(`${config.apiUrl}/admin/students/send-all-credentials`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentIds: Array.from(selectedIds) }),
-      });
-      const data = await res.json();
-      if (data.success) showToast('success', `${data.data.sent} sent, ${data.data.failed} failed`);
-      else showToast('error', data.message || 'Failed');
-      loadStudents();
-    } catch { showToast('error', 'Failed'); }
+  const handleSaveSendClick = () => {
+    if (!canSaveSend || phase === 'saving') return;
+    setDrawerError('');
+    // Replacement confirmation first when the row shows an existing password.
+    // Backend re-checks authoritatively (stale-row safe) and returns
+    // PASSWORD_REPLACEMENT_REQUIRED if confirmation is still needed.
+    if (hasExistingPassword && !replaceConfirmed) {
+      setShowReplaceConfirm(true);
+      return;
+    }
+    setShowAdminStep(true);
   };
 
-  const handleSendToNew = async () => {
-    const token = localStorage.getItem('token');
+  const handleReplaceCancel = () => {
+    // M21 §16: back to the exact pre-click state — no mutation of any kind.
+    setShowReplaceConfirm(false);
+  };
+
+  const handleReplaceConfirm = () => {
+    setShowReplaceConfirm(false);
+    setReplaceConfirmed(true);
+    setShowAdminStep(true);
+  };
+
+  const doSave = async () => {
+    if (!ds || !canSaveSend || phase === 'saving') return;
+    if (!adminPassword) {
+      setDrawerError('Enter your admin password to authorize this save.');
+      return;
+    }
+    // Popup-safe: open the blank window synchronously in the click gesture,
+    // navigate it only after the backend confirms the save.
+    const popup = window.open('about:blank', '_blank');
+    const popupBlocked = !popup;
+    setPhase('saving');
+    setDrawerError('');
     try {
-      const res = await fetch(`${config.apiUrl}/admin/students/send-to-new`, {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${config.apiUrl}/admin/students/${ds.id}/save-credential`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          academicYearId: ayId,
-          branchId,
+          password: drawerPassword,
+          adminPassword,
+          replaceExisting: replaceConfirmed,
+          idempotencyKey: idempotencyKey || undefined,
+          branchId: branchId || undefined,
         }),
       });
       const data = await res.json();
-      if (data.success) showToast('success', `${data.data.sent} sent, ${data.data.skipped} skipped`);
-      else showToast('error', data.message || 'Failed');
-      loadStudents();
-    } catch { showToast('error', 'Failed'); }
+      if (!data.success) {
+        popup?.close();
+        if (data.code === 'PASSWORD_REPLACEMENT_REQUIRED') {
+          // Stale row data: backend is authoritative — confirm, keep exact P1.
+          setShowAdminStep(false);
+          setAdminPassword('');
+          setShowReplaceConfirm(true);
+          setPhase('generated');
+        } else {
+          setDrawerError(data.message || 'Save failed. Nothing was changed.');
+          setPhase('generated');
+        }
+        return;
+      }
+      // SUCCESS — build the message with EXACTLY the drawer password (P1).
+      const website: string = data.data?.website || '';
+      const message = buildStudentCredentialMessage({
+        name: ds.name,
+        className: formatClassLabel(ds.group.name, ds.group.section),
+        website,
+        username: ds.username,
+        password: drawerPassword,
+      });
+      const digits = normalizePhoneDigits(rawPhone as string);
+      const url = buildWhatsAppUrl(digits, message);
+      setHandoffUrl(url);
+      setSavedAt(data.data?.credentialSentAt || new Date().toISOString());
+      setAdminPassword('');
+      // Update the row optimistically (no full refetch).
+      setStudents(prev => prev.map(s => s.id === ds.id ? {
+        ...s,
+        credentialSentAt: data.data?.credentialSentAt || new Date().toISOString(),
+        credentialStatus: 'sent',
+        passwordSetAt: data.data?.credentialSentAt || new Date().toISOString(),
+        credentialGeneratedAt: data.data?.credentialGeneratedAt || new Date().toISOString(),
+      } : s));
+      setDrawerStudent((prev: any) => prev ? {
+        ...prev,
+        credentialSentAt: data.data?.credentialSentAt || new Date().toISOString(),
+        credentialStatus: 'sent',
+        passwordSetAt: data.data?.credentialSentAt || new Date().toISOString(),
+      } : prev);
+      if (popup && !popup.closed) {
+        popup.location.href = url;
+        setPhase('done');
+        showToast('success', 'Credential saved — WhatsApp opened');
+      } else {
+        // M21 §31 fallback: SAME url, no re-save, no regeneration.
+        setPhase('blocked');
+      }
+    } catch {
+      popup?.close();
+      setDrawerError('Network error. Nothing was saved — safe to retry.');
+      setPhase('generated');
+    }
   };
 
   const toggleHistory = async (studentId: string) => {
     if (expandedId === studentId) { setExpandedId(null); return; }
     setExpandedId(studentId);
-    if (!sendHistory[studentId]) {
-      try {
-        const token = localStorage.getItem('token');
-        // Fetch from a simple endpoint - for now show from the student data
-        setSendHistory(prev => ({ ...prev, [studentId]: [{ status: 'info', msg: 'Send history tracked in CredentialSend table', }] }));
-      } catch {}
-    }
   };
-
-  const pendingCount = students.filter((s: any) => s.username && !s.credentialSentAt).length;
-  const failedCount = students.filter((s: any) => s.credentialStatus === 'failed').length;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/admin/students')} className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors">
+          <button onClick={() => router.push('/admin/students')} className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors" aria-label="Back to students">
             <ArrowLeft size={16} />
           </button>
           <Users size={20} className="text-warm-accent" />
           <h1 className="text-lg font-light text-warm-cream">Credentials Management</h1>
-        </div>
-      </div>
-
-      {/* Bulk Action Bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-warm-card-border bg-warm-card p-3">
-        <button onClick={handleGenerateAll}
-          className="flex items-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors">
-          <RefreshCw size={13} /> Gen All
-        </button>
-        <button onClick={handleSaveAllClick}
-          className="flex items-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-1.5 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors">
-          <Save size={13} /> Save All
-        </button>
-        <button onClick={handleSendSelected}
-          className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream transition-colors">
-          <Send size={13} /> Send Selected ({selectedIds.size})
-        </button>
-        <div className="ml-auto flex items-center gap-1 text-xs text-warm-muted/60">
-          <span className={pendingCount > 0 ? 'text-yellow-400' : ''}>⏳{pendingCount}</span>
-          <span className="text-green-400 ml-2">📬{students.filter((s:any) => s.credentialDeliveredAt).length}</span>
-          <span className="text-red-400 ml-2">❌{failedCount}</span>
         </div>
       </div>
 
@@ -309,7 +353,7 @@ export default function StudentCredentialsPage() {
         </div>
         <div className="min-w-[150px]">
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}
-            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent transition-colors">
+            className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none focus:border-warm-accent transition-colors" aria-label="Filter by class">
             <option value="">All Classes</option>
             {sections.map((sec: any) => (
               <option key={sec.id} value={sec.id}>{sec.name}{sec.section ? ` — ${sec.section}` : ''}</option>
@@ -318,7 +362,7 @@ export default function StudentCredentialsPage() {
         </div>
         <div className="min-w-[100px]">
           <input type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
-            placeholder="Roll no." autoComplete="off"
+            placeholder="Roll no." autoComplete="off" aria-label="Filter by roll number"
             className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-2.5 py-1.5 text-xs text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
         </div>
         {STATUS_OPTIONS.map(opt => (
@@ -345,15 +389,13 @@ export default function StudentCredentialsPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-warm-card/50">
-                <th className="w-8 px-3 py-2"><input type="checkbox" onChange={selectAll} checked={selectedIds.size === students.length && students.length > 0} className="accent-warm-accent" /></th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium">Name</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden sm:table-cell">Class</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden md:table-cell">WhatsApp</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium hidden lg:table-cell">Username</th>
-                <th className="text-left px-3 py-2 text-warm-muted font-medium">Password</th>
                 <th className="text-left px-3 py-2 text-warm-muted font-medium">Status</th>
-                <th className="text-left px-3 py-2 text-warm-muted font-medium hidden md:table-cell">Last Sent</th>
-                <th className="w-20 px-3 py-2"></th>
+                <th className="text-left px-3 py-2 text-warm-muted font-medium hidden md:table-cell">Last WhatsApp Handoff</th>
+                <th className="w-20 px-3 py-2"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -362,9 +404,6 @@ export default function StudentCredentialsPage() {
                   <tr
                     className="border-t border-warm-card-border/50 hover:bg-warm-card/30 transition-colors cursor-pointer"
                     onClick={() => toggleHistory(s.id)}>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} className="accent-warm-accent" />
-                    </td>
                     <td className="px-3 py-2.5">
                       <p className="text-warm-cream font-medium">{s.name}</p>
                       {s.credentialTag && s.credentialTag !== 'CRED_NONE' && (
@@ -376,52 +415,30 @@ export default function StudentCredentialsPage() {
                     <td className="px-3 py-2.5 text-warm-muted hidden sm:table-cell">{s.group?.name || '—'}{s.group?.section ? ` — ${s.group.section}` : ''}</td>
                     <td className="px-3 py-2.5 text-warm-muted hidden md:table-cell">{s.studentWhatsapp || s.phone || '—'}</td>
                     <td className="px-3 py-2.5 text-warm-accent font-mono hidden lg:table-cell">{s.username || '—'}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {passwords[s.id] ? (
-                          <span className="text-xs text-warm-cream font-mono">{passwords[s.id]}</span>
-                        ) : (
-                          <span className="text-xs text-warm-muted/40">—</span>
-                        )}
-                        <button onClick={(e) => { e.stopPropagation(); handleGenerate(s.id); }}
-                          className="rounded p-0.5 text-warm-muted hover:text-warm-accent transition-colors" title="Generate password">
-                          <RefreshCw size={12} />
-                        </button>
-                      </div>
-                    </td>
                     <td className="px-3 py-2.5">{statusBadge(s.credentialStatus)}</td>
                     <td className="px-3 py-2.5 text-warm-muted/60 hidden md:table-cell">
                       {s.credentialSentAt ? new Date(s.credentialSentAt).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        {passwords[s.id] && (
-                          <button onClick={() => handleSaveClick(s.id)} title="Save password"
-                            className={`rounded p-1 transition-colors ${credStatus[s.id]?.saved ? 'text-green-400' : 'text-warm-muted hover:text-warm-accent'}`}>
-                            <Save size={13} />
-                          </button>
-                        )}
-                        {s.username && (
-                          <button onClick={() => handleSend(s.id)} title="Send via WhatsApp"
-                            className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors">
-                            <Send size={13} />
-                          </button>
-                        )}
-                        {expandedId === s.id ? <ChevronDown size={14} className="text-warm-muted mt-0.5" /> : <ChevronRight size={14} className="text-warm-muted mt-0.5" />}
-                      </div>
+                    <td className="px-3 py-2.5">
+                      <button
+                        type="button"
+                        aria-label={`Open credentials for ${s.name}`}
+                        onClick={(e) => { e.stopPropagation(); openDrawer(s, e.currentTarget); }}
+                        className="rounded p-1 text-warm-muted hover:text-warm-accent transition-colors"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
                     </td>
                   </tr>
                   {expandedId === s.id && (
                     <tr key={`${s.id}-history`}>
-                      <td colSpan={8} className="bg-warm-card/20 px-6 py-4">
+                      <td colSpan={7} className="bg-warm-card/20 px-6 py-4">
                         <div className="text-xs text-warm-muted space-y-1">
                           <p className="text-warm-cream font-medium mb-2">📋 Credential Info</p>
                           <p>👤 Username: <span className="text-warm-accent font-mono">{s.username || '—'}</span></p>
                           <p>📅 Generated: {s.credentialGeneratedAt ? new Date(s.credentialGeneratedAt).toLocaleString() : '—'}</p>
                           <p>🔑 Password last changed: {s.passwordSetAt ? new Date(s.passwordSetAt).toLocaleString() : '—'}</p>
-                          <p>📤 Last sent: {s.credentialSentAt ? new Date(s.credentialSentAt).toLocaleString() : '—'}</p>
-                          <p>📬 Delivered: {s.credentialDeliveredAt ? new Date(s.credentialDeliveredAt).toLocaleString() : '—'}</p>
-                          <p>👁 Seen: {s.credentialSeenAt ? new Date(s.credentialSeenAt).toLocaleString() : '—'}</p>
+                          <p>📤 Last WhatsApp handoff: {s.credentialSentAt ? new Date(s.credentialSentAt).toLocaleString() : '—'}</p>
                         </div>
                       </td>
                     </tr>
@@ -433,30 +450,173 @@ export default function StudentCredentialsPage() {
         </div>
       )}
 
-      {/* Admin password verification popup */}
-      {showAdminPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => { setShowAdminPopup(false); setPendingSaveTargets([]); }}>
-          <div className="w-full max-w-sm rounded-xl border border-warm-card-border bg-[#24201e] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-sm font-medium text-warm-cream">Verify Your Password</h2>
-            <p className="mb-4 text-xs text-warm-muted">Enter your admin password to confirm saving {pendingSaveTargets.length > 1 ? `${pendingSaveTargets.length} student` : ''} credentials.</p>
-            <input type="text" value={adminPassword}
-              style={{ WebkitTextSecurity: 'disc' } as any}
-              onChange={(e) => { setAdminPassword(e.target.value); setAdminPassError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && !savingAll && handleAdminVerify()}
-              placeholder="Your password" autoFocus
-              className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2.5 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors" />
-            {adminPassError && <p className="mt-2 text-xs text-red-400">{adminPassError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => { setShowAdminPopup(false); setAdminPassword(''); setAdminPassError(''); setPendingSaveTargets([]); }}
-                className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={handleAdminVerify} disabled={savingAll}
-                className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:opacity-50">
-                {savingAll ? 'Saving...' : 'Verify'}
+      {/* ─── Credential drawer ─── */}
+      {ds && (
+        <div className="fixed inset-0 z-50" role="presentation">
+          <div className="absolute inset-0 bg-black/60" onClick={closeDrawer} aria-hidden="true" />
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Student credentials for ${ds.name}`}
+            onKeyDown={trapTab}
+            className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-warm-card-border bg-[#1a1614] shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-warm-card-border px-5 py-4">
+              <h2 className="text-sm font-medium text-warm-cream">Student Credentials</h2>
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={closeDrawer}
+                aria-label="Close credentials drawer"
+                className="rounded p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
+              >
+                <X size={16} />
               </button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">Student Name</p>
+                <p className="text-sm text-warm-cream">{ds.name}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">Class</p>
+                <p className="text-sm text-warm-cream">
+                  {ds.group ? formatClassLabel(ds.group.name, ds.group.section) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">WhatsApp</p>
+                <p className="text-sm text-warm-cream">{maskPhone(ds.studentWhatsapp || ds.phone)}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">Username</p>
+                <p className="font-mono text-sm text-warm-accent">{ds.username || '—'}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">Password</p>
+                <div className="flex items-center gap-2">
+                  <p className="min-h-[1.25rem] flex-1 font-mono text-sm text-warm-cream" aria-live="polite">
+                    {drawerPassword ? (showPassword ? drawerPassword : '••••••••••••') : <span className="text-warm-muted/40">—</span>}
+                  </p>
+                  {drawerPassword && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPassword}
+                      className="rounded p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {!canGenerate && (
+                <p role="alert" className="rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
+                  Username and class are required before generating credentials.
+                </p>
+              )}
+              {!hasPhone && (
+                <p role="alert" className="rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
+                  A WhatsApp/phone number is required before Save &amp; Send.
+                </p>
+              )}
+              {drawerError && (
+                <p role="alert" className="rounded-lg border border-red-900/40 bg-red-900/10 px-3 py-2 text-xs text-red-300">
+                  {drawerError}
+                </p>
+              )}
+              {phase === 'done' && (
+                <p role="status" className="rounded-lg border border-green-900/40 bg-green-900/10 px-3 py-2 text-xs text-green-300">
+                  Credential saved{savedAt ? ` (${new Date(savedAt).toLocaleString()})` : ''} — WhatsApp opened with the message prefilled. Press Send inside WhatsApp to deliver it.
+                </p>
+              )}
+              {phase === 'blocked' && (
+                <div role="alert" className="rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
+                  <p className="mb-2">Credential saved successfully. WhatsApp could not be opened automatically.</p>
+                  <a
+                    href={handoffUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
+                  >
+                    Open WhatsApp
+                  </a>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={!canGenerate || phase === 'saving'}
+                title={!canGenerate ? 'Username and class are required before generating credentials.' : 'Generate password'}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent/10 px-3 py-2 text-xs text-warm-accent hover:bg-warm-accent/20 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <RefreshCw size={13} /> Generate
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveSendClick}
+                disabled={!canSaveSend || phase === 'saving' || showAdminStep}
+                title={!canSaveSend ? 'WhatsApp number, username, class and a generated password are required.' : 'Save & Send'}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {phase === 'saving' ? 'Saving…' : 'Save & Send'}
+              </button>
+
+              {showAdminStep && phase !== 'saving' && (
+                <div className="space-y-2 rounded-lg border border-warm-card-border bg-warm-card/30 p-3">
+                  <label htmlFor="drawer-admin-password" className="text-xs text-warm-muted">
+                    Enter your admin password to authorize this save.
+                  </label>
+                  <input
+                    id="drawer-admin-password"
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') doSave(); }}
+                    placeholder="Your password"
+                    autoComplete="current-password"
+                    className="w-full rounded-lg border border-warm-card-border bg-[#1a1614] px-3 py-2 text-sm text-warm-cream outline-none placeholder:text-warm-muted/40 focus:border-warm-accent transition-colors"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAdminStep(false); setAdminPassword(''); }}
+                      className="flex-1 rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={doSave}
+                      className="flex-1 rounded-lg bg-warm-accent px-3 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors"
+                    >
+                      Confirm Save
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Replacement confirmation: No mutation on Cancel (M21 §16) */}
+      <ConfirmModal
+        open={showReplaceConfirm}
+        title="Password already exists"
+        message="This student already has a password. Do you want to replace it with the newly generated password?"
+        confirmLabel="Yes, Replace"
+        cancelLabel="No, Cancel"
+        variant="warning"
+        onConfirm={handleReplaceConfirm}
+        onCancel={handleReplaceCancel}
+      />
     </main>
   );
 }
