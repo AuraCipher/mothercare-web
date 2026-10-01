@@ -360,7 +360,6 @@ export default function StudentCredentialsPage() {
           <button onClick={() => router.push('/admin/students')} className="rounded-lg p-1.5 text-warm-muted hover:bg-warm-card hover:text-warm-cream transition-colors" aria-label="Back to students">
             <ArrowLeft size={16} />
           </button>
-          <Users size={20} className="text-warm-accent" />
           <h1 className="text-lg font-light text-warm-cream">Credentials Management</h1>
         </div>
       </div>
