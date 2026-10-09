@@ -203,3 +203,44 @@ describe('replacement + save per type', () => {
     (window.open as any).mockRestore?.();
   });
 });
+
+describe('recipient resolution (student → guardian, teacher/staff → own number)', () => {
+  async function saveAndGetUrl(person: CredentialDrawerPerson, saveData: Record<string, any>) {
+    vi.mocked(fetch).mockResolvedValue({ json: async () => ({ success: true, data: saveData }) } as any);
+    const popup = { closed: false, close: vi.fn(), location: { href: '' } };
+    vi.spyOn(window, 'open').mockReturnValue(popup as any);
+    renderOpen(person);
+    await userEvent.click(screen.getByRole('button', { name: /Generate/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save & Send' }));
+    await userEvent.type(screen.getByPlaceholderText('Your password'), 'AdminPass123!');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm Save' }));
+    await waitFor(() => expect(popup.location.href).not.toBe(''));
+    (window.open as any).mockRestore?.();
+    return popup.location.href;
+  }
+
+  const baseSave = {
+    website: 'https://school.test', schoolName: 'Test School', appUrl: 'https://school.test/app',
+    credentialSentAt: '2026-09-30T00:00:00.000Z', credentialGeneratedAt: '2026-09-30T00:00:00.000Z',
+  };
+
+  it('student → server recipientPhone (parent/guardian), never the student number', async () => {
+    const url = await saveAndGetUrl(student, { ...baseSave, recipientPhone: '03331112233' });
+    expect(url.startsWith('https://wa.me/923331112233?text=')).toBe(true);
+  });
+
+  it('teacher → the teacher\'s own number even if recipientPhone is echoed', async () => {
+    const url = await saveAndGetUrl({ ...teacher, hasExistingPassword: false }, { ...baseSave, recipientPhone: '03331112233' });
+    expect(url.startsWith('https://wa.me/923007654321?text=')).toBe(true);
+  });
+
+  it('staff → the staff member\'s own number even if recipientPhone is echoed', async () => {
+    const url = await saveAndGetUrl(staff, { ...baseSave, recipientPhone: '03331112233' });
+    expect(url.startsWith('https://wa.me/923001112222?text=')).toBe(true);
+  });
+
+  it('student falls back to the guardian number passed by the page when server omits it', async () => {
+    const url = await saveAndGetUrl(student, baseSave);
+    expect(url.startsWith('https://wa.me/923001234567?text=')).toBe(true);
+  });
+});
