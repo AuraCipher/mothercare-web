@@ -10,6 +10,7 @@ import {
   formatClassLabel,
   generateSecurePassword,
   normalizePhoneDigits,
+  pickParentWhatsapp,
 } from '@/lib/whatsappCredential';
 
 describe('generateSecurePassword', () => {
@@ -146,6 +147,35 @@ describe('formatClassLabel', () => {
     expect(formatClassLabel('class 10', null)).toBe('10');
     expect(formatClassLabel('Playgroup', null)).toBe('Playgroup');
     expect(formatClassLabel('Classroom Juniors', 'B')).toBe('Classroom Juniors - B');
+  });
+});
+
+describe('pickParentWhatsapp', () => {
+  test('primary parent first, whatsapp before phone', () => {
+    const links = [
+      { isPrimary: false, parent: { whatsapp: '03001112222', phone: '0511111111' } },
+      { isPrimary: true, parent: { whatsapp: '03339998888', phone: '0512222222' } },
+    ];
+    expect(pickParentWhatsapp(links)).toBe('03339998888');
+  });
+
+  test('falls back to parent phone when whatsapp missing', () => {
+    expect(pickParentWhatsapp([{ isPrimary: true, parent: { whatsapp: null, phone: ' 0513333333 ' } }]))
+      .toBe('0513333333');
+  });
+
+  test('skips parents without any number', () => {
+    const links = [
+      { isPrimary: true, parent: { whatsapp: null, phone: null } },
+      { isPrimary: false, parent: { whatsapp: '03001234567' } },
+    ];
+    expect(pickParentWhatsapp(links)).toBe('03001234567');
+  });
+
+  test('null/empty links → null (never the student number)', () => {
+    expect(pickParentWhatsapp(null)).toBeNull();
+    expect(pickParentWhatsapp([])).toBeNull();
+    expect(pickParentWhatsapp([{ isPrimary: true, parent: null }])).toBeNull();
   });
 });
 

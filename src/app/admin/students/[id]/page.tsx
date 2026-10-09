@@ -16,7 +16,7 @@ import ConfirmModal from '@/components/confirm-modal';
 import config from '@/config';
 import { safeErrorMessage } from '@/lib/errors';
 import CredentialDrawer, { CredentialDrawerButton, CredentialDrawerPerson } from '@/components/credential-drawer';
-import { formatClassLabel } from '@/lib/whatsappCredential';
+import { formatClassLabel, pickParentWhatsapp } from '@/lib/whatsappCredential';
 
 export default function StudentDetailPage() {
   const router = useRouter();
@@ -168,7 +168,7 @@ export default function StudentDetailPage() {
       type: 'student',
       name: data.name,
       username: data.username,
-      phone: data.studentWhatsapp || data.phone || null,
+      phone: pickParentWhatsapp(data.parents),
       classLabel: data.group ? formatClassLabel(data.group.name, data.group.section) : null,
       designation: null,
       hasExistingPassword: !!data.passwordSetAt,

@@ -31,7 +31,7 @@ export interface CredentialDrawerPerson {
   type: CredentialPersonType;
   name: string;
   username: string | null;
-  /** Resolved raw recipient number (studentWhatsapp||phone, profile||user phone). */
+  /** Resolved raw recipient number (students: parent/guardian whatsapp||phone; teacher/staff: profile||user phone). */
   phone: string | null;
   /** Student only: pre-formatted class label (formatClassLabel applied by caller). */
   classLabel?: string | null;
@@ -237,7 +237,9 @@ export default function CredentialDrawer({ person, open, onClose, triggerRef, on
         }
         return;
       }
-      const url = buildWhatsAppUrl(normalizePhoneDigits(person.phone as string), buildMessage(data.data || {}));
+      // Students: the server-resolved parent/guardian number is authoritative.
+      const recipient = (person.type === 'student' ? data.data?.recipientPhone : null) || person.phone;
+      const url = buildWhatsAppUrl(normalizePhoneDigits(recipient as string), buildMessage(data.data || {}));
       const sentAt: string = data.data?.credentialSentAt || new Date().toISOString();
       const generatedAtOut: string = data.data?.credentialGeneratedAt || sentAt;
       setHandoffUrl(url);
@@ -316,7 +318,7 @@ export default function CredentialDrawer({ person, open, onClose, triggerRef, on
             </div>
           )}
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">WhatsApp</p>
+            <p className="mb-1 text-[11px] uppercase tracking-wide text-warm-muted">{person.type === 'student' ? 'Guardian WhatsApp' : 'WhatsApp'}</p>
             <p className="text-sm text-warm-cream">{maskPhone(person.phone)}</p>
           </div>
           <div>
@@ -352,7 +354,9 @@ export default function CredentialDrawer({ person, open, onClose, triggerRef, on
           )}
           {!!person.username && !person.phone && (
             <p role="alert" className="rounded-lg border border-yellow-900/40 bg-yellow-900/10 px-3 py-2 text-xs text-yellow-300">
-              A WhatsApp/phone number is required before Save &amp; Send.
+              {person.type === 'student'
+                ? 'A parent/guardian WhatsApp number is required before Save & Send.'
+                : 'A WhatsApp/phone number is required before Save & Send.'}
             </p>
           )}
           {error && (

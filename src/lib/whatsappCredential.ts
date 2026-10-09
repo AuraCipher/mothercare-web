@@ -150,6 +150,26 @@ export function formatClassLabel(groupName: string, section?: string | null): st
   return section?.trim() ? `${name} - ${section.trim()}` : name;
 }
 
+export interface StudentParentLink {
+  isPrimary?: boolean | null;
+  parent?: { whatsapp?: string | null; phone?: string | null } | null;
+}
+
+/**
+ * Mirrors server pickParentWhatsapp (M21): the credential recipient is ALWAYS
+ * the parent/guardian's number — primary parent first, whatsapp before phone.
+ * The student's own numbers are never used for sending.
+ */
+export function pickParentWhatsapp(links: StudentParentLink[] | null | undefined): string | null {
+  if (!links || links.length === 0) return null;
+  const ordered = [...links].sort((a, b) => Number(b.isPrimary ?? false) - Number(a.isPrimary ?? false));
+  for (const link of ordered) {
+    const number = link.parent?.whatsapp?.trim() || link.parent?.phone?.trim();
+    if (number) return number;
+  }
+  return null;
+}
+
 /**
  * Mirrors server normalizeWhatsAppPhone (M19): digits only, leading 0 → 92,
  * bare 10-digit → 92 prefix. Returns digits WITHOUT '+' for wa.me use.

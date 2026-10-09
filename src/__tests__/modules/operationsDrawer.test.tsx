@@ -33,6 +33,8 @@ const studentNoExisting = {
   id: 's1', name: 'Ali Khan', username: 'ali_khan', userId: 'u1',
   group: { id: 'g1', name: 'Class 3', section: 'A' },
   studentWhatsapp: '03001234567', phone: null,
+  // Recipient is the parent/guardian number — the student's own numbers are never used.
+  parents: [{ isPrimary: true, parent: { whatsapp: '03331112233', phone: '0511234567' } }],
   credentialStatus: null, credentialSentAt: null, passwordSetAt: null,
   credentialGeneratedAt: null, credentialTag: 'CRED_NONE',
 };
@@ -99,12 +101,21 @@ describe('drawer open/close', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  it('shows masked WhatsApp inside the drawer', async () => {
+  it('shows the parent/guardian WhatsApp (masked), never the student number', async () => {
     renderWith([studentNoExisting]);
     await openDrawerFor('Ali Khan');
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('0300****67')).toBeInTheDocument();
+    expect(within(dialog).getByText('Guardian WhatsApp')).toBeInTheDocument();
+    expect(within(dialog).getByText('0333****33')).toBeInTheDocument();
+    expect(within(dialog).queryByText('0300****67')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('03001234567')).not.toBeInTheDocument();
+  });
+
+  it('blocks Save & Send when no parent/guardian number exists', async () => {
+    renderWith([{ ...studentNoExisting, id: 's5', parents: [], studentWhatsapp: '03001234567' }]);
+    await openDrawerFor('Ali Khan');
+    expect(screen.getByText(/parent\/guardian WhatsApp number is required/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save & Send' })).toBeDisabled();
   });
 });
 
@@ -221,7 +232,7 @@ describe('save flow + popup fallback', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Save' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const url: string = popup.location.href;
-    expect(url.startsWith('https://wa.me/923001234567?text=')).toBe(true);
+    expect(url.startsWith('https://wa.me/923331112233?text=')).toBe(true);
     const text = decodeURIComponent(url.split('?text=')[1]);
     expect(text).toContain('We are pleased to welcome Ali Khan to our school.');
     expect(text).toContain('Class: 3 - A');
@@ -247,7 +258,7 @@ describe('save flow + popup fallback', () => {
     await waitFor(() => expect(screen.getByText(/could not be opened automatically/)).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1); // exactly one save
     const fallback = screen.getByRole('link', { name: 'Open WhatsApp' });
-    expect((fallback.getAttribute('href') || '').startsWith('https://wa.me/923001234567?text=')).toBe(true);
+    expect((fallback.getAttribute('href') || '').startsWith('https://wa.me/923331112233?text=')).toBe(true);
     (window.open as any).mockRestore?.();
   });
 

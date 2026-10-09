@@ -20,7 +20,7 @@ import config from '@/config';
 import CredentialDrawer, { CredentialDrawerPerson } from '@/components/credential-drawer';
 
 import { CREDENTIAL_TAG_LABELS } from '@/lib/staff-permissions';
-import { formatClassLabel } from '@/lib/whatsappCredential';
+import { formatClassLabel, pickParentWhatsapp } from '@/lib/whatsappCredential';
 
 type StatusFilter = 'all' | 'no_creds' | 'pending' | 'sent';
 
@@ -121,7 +121,7 @@ export default function StudentCredentialsPage() {
     type: 'student',
     name: drawerStudent.name,
     username: drawerStudent.username,
-    phone: drawerStudent.studentWhatsapp || drawerStudent.phone || null,
+    phone: pickParentWhatsapp(drawerStudent.parents),
     classLabel: drawerStudent.group ? formatClassLabel(drawerStudent.group.name, drawerStudent.group.section) : null,
     designation: null,
     hasExistingPassword: !!drawerStudent.passwordSetAt,
