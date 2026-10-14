@@ -268,3 +268,74 @@ describe('TeachersPage — empty state', () => {
     expect(await screen.findByText('Add your first teacher')).toBeInTheDocument();
   });
 });
+
+describe('TeachersPage — pagination', () => {
+  const row = (id: string, name: string) => ({
+    id, userId: `u-${id}`, employeeId: null, qualification: 'M.Sc',
+    specialization: null, joiningDate: null, salary: null,
+    phone: null, emergencyContact: null, address: null,
+    dateOfBirth: null, gender: null, bloodGroup: null,
+    createdAt: '2024-01-15', updatedAt: '2024-01-15',
+    user: { id: `u-${id}`, name, email: null, phone: null, role: 'teacher', status: 'active' },
+    _count: { assignments: 0 },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // 22 teachers, limit 20 → page 1 has “Teacher 1”, page 2 has “Teacher 21”.
+    mockGetTeachers.mockImplementation((params: any) => {
+      if (params?.status === 'inactive') {
+        return Promise.resolve({ success: true, data: [], meta: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+      }
+      if (params?.page === 2) {
+        return Promise.resolve({
+          success: true,
+          data: [row('tp-21', 'Teacher 21'), row('tp-22', 'Teacher 22')],
+          meta: { page: 2, limit: 20, total: 22, totalPages: 2 },
+        });
+      }
+      return Promise.resolve({
+        success: true,
+        data: [row('tp-1', 'Teacher 1')],
+        meta: { page: 1, limit: 20, total: 22, totalPages: 2 },
+      });
+    });
+  });
+
+  it('fetches and shows page 2 when Next is clicked (no infinite loading)', async () => {
+    const user = userEvent.setup();
+    render(<TeachersPage />);
+    await screen.findByText('Teacher 1');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(mockGetTeachers).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+    expect(await screen.findByText('Teacher 21')).toBeInTheDocument();
+    expect(await screen.findByText('Teacher 22')).toBeInTheDocument();
+    expect(screen.queryByText('Teacher 1')).not.toBeInTheDocument();
+  });
+
+  it('Previous returns to page 1', async () => {
+    const user = userEvent.setup();
+    render(<TeachersPage />);
+    await screen.findByText('Teacher 1');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Teacher 21');
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    expect(mockGetTeachers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
+    expect(await screen.findByText('Teacher 1')).toBeInTheDocument();
+  });
+
+  it('changing the qualification filter reloads page 1 with that filter', async () => {
+    const user = userEvent.setup();
+    render(<TeachersPage />);
+    await screen.findByText('Teacher 1');
+
+    await user.selectOptions(screen.getByDisplayValue('All Qualifications'), 'M.Sc');
+    expect(mockGetTeachers).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, qualification: 'M.Sc' }),
+    );
+  });
+});

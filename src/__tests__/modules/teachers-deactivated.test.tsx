@@ -103,4 +103,35 @@ describe('DeactivatedTeachersPage', () => {
     // Only Mr. Ahmed (0 assignments) gets the ✕ delete button.
     expect(screen.getAllByTitle('Delete permanently')).toHaveLength(1);
   });
+
+  it('fetches and shows page 2 when Next is clicked (no infinite loading)', async () => {
+    mockGetTeachers.mockImplementation((params: any) => {
+      if (params?.page === 2) {
+        return Promise.resolve({
+          success: true,
+          data: [
+            {
+              ...mockInactiveTeachers[0],
+              id: 'tp-21', userId: 'u-21',
+              user: { ...mockInactiveTeachers[0].user, id: 'u-21', name: 'Ms. Page Two' },
+            },
+          ],
+          meta: { page: 2, limit: 20, total: 21, totalPages: 2 },
+        });
+      }
+      return Promise.resolve({
+        success: true,
+        data: mockInactiveTeachers,
+        meta: { page: 1, limit: 20, total: 21, totalPages: 2 },
+      });
+    });
+    const user = userEvent.setup();
+    render(<DeactivatedTeachersPage />);
+    await screen.findByText('Ms. Sarah');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(mockGetTeachers).toHaveBeenCalledWith(expect.objectContaining({ page: 2, status: 'inactive' }));
+    expect(await screen.findByText('Ms. Page Two')).toBeInTheDocument();
+  });
 });

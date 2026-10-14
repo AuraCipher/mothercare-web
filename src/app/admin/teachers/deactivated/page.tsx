@@ -43,10 +43,10 @@ export default function DeactivatedTeachersPage() {
 
   useEffect(() => { loadTeachers(); }, []);
 
-  const loadTeachers = () => {
+  const loadTeachers = (page: number = meta.page) => {
     const params: { search?: string; page?: number; limit?: number; status: 'inactive' } = {
       status: 'inactive',
-      page: meta.page,
+      page,
       limit: meta.limit,
     };
     if (search) params.search = search;
@@ -59,10 +59,16 @@ export default function DeactivatedTeachersPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   };
 
+  const goToPage = (p: number) => {
+    setMeta(m => ({ ...m, page: p }));
+    setLoading(true);
+    loadTeachers(p);
+  };
+
   const handleSearch = () => {
     setLoading(true);
     setMeta(m => ({ ...m, page: 1 }));
-    loadTeachers();
+    loadTeachers(1);
   };
 
   const promptReactivate = (t: DeactivatedTeacher) => {
@@ -218,14 +224,14 @@ export default function DeactivatedTeachersPage() {
               <div className="flex gap-2">
                 <button
                   disabled={meta.page <= 1}
-                  onClick={() => { setMeta(m => ({ ...m, page: m.page - 1 })); setLoading(true); }}
+                  onClick={() => goToPage(meta.page - 1)}
                   className="rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream disabled:opacity-30 transition-colors"
                 >
                   Previous
                 </button>
                 <button
                   disabled={meta.page >= meta.totalPages}
-                  onClick={() => { setMeta(m => ({ ...m, page: m.page + 1 })); setLoading(true); }}
+                  onClick={() => goToPage(meta.page + 1)}
                   className="rounded-lg border border-warm-card-border px-3 py-1.5 text-xs text-warm-muted hover:text-warm-cream disabled:opacity-30 transition-colors"
                 >
                   Next
