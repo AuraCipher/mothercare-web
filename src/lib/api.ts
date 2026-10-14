@@ -496,12 +496,13 @@ export const api = {
     }),
 
   // ─── Teachers ────────────────────────────────────────────
-  getTeachers: (params?: { search?: string; qualification?: string; page?: number; limit?: number }) => {
+  getTeachers: (params?: { search?: string; qualification?: string; page?: number; limit?: number; status?: 'active' | 'inactive' | 'all' }) => {
     const q = buildScopeParams({
       search: params?.search,
       qualification: params?.qualification,
       page: params?.page ? String(params.page) : undefined,
       limit: params?.limit ? String(params.limit) : undefined,
+      status: params?.status,
     });
     const qs = q.toString();
     return apiRequest<{ success: boolean; data: any[]; meta: any }>(`/admin/teachers${qs ? `?${qs}` : ''}`);

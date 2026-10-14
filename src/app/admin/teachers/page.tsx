@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
   Plus, GraduationCap, Search, X, Edit3, Trash2, ExternalLink,
-  BookOpen, MapPin, Calendar, DollarSign, Phone, Mail, User,
+  BookOpen, MapPin, Calendar, DollarSign, Phone, Mail, User, UserX,
 } from 'lucide-react';
 import { showToast } from '@/components/toast';
 import ConfirmModal from '@/components/confirm-modal';
@@ -67,6 +67,7 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('');
   const [qualFilter, setQualFilter] = useState('');
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [inactiveCount, setInactiveCount] = useState(0);
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
@@ -100,7 +101,13 @@ export default function TeachersPage() {
     confirmLabel: string; action: () => Promise<void>;
   }>({ open: false, title: '', message: '', variant: 'default', confirmLabel: 'Confirm', action: async () => {} });
 
-  useEffect(() => { loadTeachers(); }, []);
+  useEffect(() => { loadTeachers(); loadInactiveCount(); }, []);
+
+  const loadInactiveCount = () => {
+    api.getTeachers({ status: 'inactive', limit: 1 }).then(d => {
+      if (d.success) setInactiveCount(d.meta?.total ?? 0);
+    }).catch(() => {});
+  };
 
   const loadTeachers = () => {
     const params: any = {};
@@ -266,6 +273,7 @@ export default function TeachersPage() {
           await api.deactivateTeacher(t.id);
           showToast('success', `"${t.user.name}" deactivated`);
           loadTeachers();
+          loadInactiveCount();
         } catch (e: any) {
           showToast('error', e.message || 'Failed to deactivate');
         }
@@ -285,6 +293,7 @@ export default function TeachersPage() {
           await api.reactivateTeacher(t.id);
           showToast('success', `"${t.user.name}" reactivated`);
           loadTeachers();
+          loadInactiveCount();
         } catch (e: any) {
           showToast('error', e.message || 'Failed to reactivate');
         }
@@ -308,6 +317,7 @@ export default function TeachersPage() {
           await api.deleteTeacher(t.id);
           showToast('success', 'Teacher deleted permanently');
           loadTeachers();
+          loadInactiveCount();
         } catch (e: any) {
           showToast('error', e.message || 'Failed to delete');
         }
@@ -325,9 +335,23 @@ export default function TeachersPage() {
           <h1 className="mb-1 text-xl font-light text-warm-cream">Teachers</h1>
           <p className="text-sm text-warm-muted">Manage teaching staff profiles and assignments.</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-sm font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76]">
-          <Plus size={15} /> Add Teacher
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push('/admin/teachers/deactivated')}
+            className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-sm text-warm-muted hover:text-warm-cream transition-colors"
+            title="View deactivated teachers"
+          >
+            <UserX size={15} /> Deactivated
+            {inactiveCount > 0 && (
+              <span className="rounded-full bg-warm-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-warm-accent">
+                {inactiveCount}
+              </span>
+            )}
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-sm font-medium text-[#1a1614] transition-colors hover:bg-[#b39a76]">
+            <Plus size={15} /> Add Teacher
+          </button>
+        </div>
       </div>
 
       {/* Search + Filter */}

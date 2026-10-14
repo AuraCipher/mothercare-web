@@ -65,8 +65,11 @@ export default function AdminTeachersPage() {
           Success toast: &quot;Credentials sent via WhatsApp&quot;.
         </DocStep>
         <DocStep title="Deactivate or reactivate">
-          From list or profile — deactivated teachers cannot sign in but records are retained.
-          Delete only allowed when no class assignments exist.
+          From list or profile — deactivated teachers leave the active list and move to the
+          separate <strong>Deactivated</strong> page (button on the Teachers header, with a
+          count badge). They cannot sign in but records are retained. Reactivate from the
+          Deactivated page or the teacher&apos;s profile. Delete only allowed when no class
+          assignments exist.
         </DocStep>
       </DocSteps>
 
