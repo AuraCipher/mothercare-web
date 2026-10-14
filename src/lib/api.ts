@@ -283,6 +283,17 @@ export const api = {
       method: 'POST',
     }),
 
+  updatePromotionCarry: (
+    branchId: string,
+    sourceAcademicYearId: string,
+    runId: string,
+    carryOptions: Record<string, boolean>,
+  ) =>
+    apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/runs/${runId}/carry`, {
+      method: 'PATCH',
+      body: JSON.stringify({ carryOptions }),
+    }),
+
   applyBatchPromotion: (branchId: string, sourceAcademicYearId: string, runId: string) =>
     apiRequest(`/admin/branches/${branchId}/academic-years/${sourceAcademicYearId}/promotion/runs/${runId}/apply`, {
       method: 'POST',

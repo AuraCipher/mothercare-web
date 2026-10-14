@@ -19,6 +19,13 @@ export function getPromotionCarryValidation(carryOptions: Record<string, boolean
   return { selectedCarryCount, invalidCarryConfig };
 }
 
+/** UI checkbox state → exact PATCH body (only the six known keys). */
+export function pickCarryOptions(carryOptions: Record<string, boolean>): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const k of PROMOTION_UI_CARRY_KEYS) out[k] = !!carryOptions[k];
+  return out;
+}
+
 export default function BatchPromotionPage() {
   const router = useRouter();
   const params = useParams();
@@ -59,6 +66,7 @@ export default function BatchPromotionPage() {
           const existing = preRes.data.inProgressRun;
           setRun(existing);
           setRunId(existing.id);
+          setCarryOptions({ ...(preRes.data.defaultCarryOptions || {}), ...(existing.carryOptions || {}) });
           if (existing.phase === 'DRAFT') setStep(2);
           else if (existing.phase === 'SNAPSHOT_DONE') setStep(3);
           else if (existing.phase === 'APPLIED') setStep(4);
@@ -74,6 +82,11 @@ export default function BatchPromotionPage() {
 
   const allAcked = Object.values(ack).every(Boolean);
   const { selectedCarryCount, invalidCarryConfig } = getPromotionCarryValidation(carryOptions);
+  // Unsaved checkbox edits vs the stored run options (apply() uses stored).
+  const carryDirty =
+    !!run &&
+    run.phase === 'DRAFT' &&
+    PROMOTION_UI_CARRY_KEYS.some((k) => !!carryOptions[k] !== !!((run.carryOptions || {})[k]));
 
   const startRun = async () => {
     if (selectedCarryCount === 0) {
@@ -94,6 +107,7 @@ export default function BatchPromotionPage() {
       if (!res.success) throw new Error((res as any).message);
       setRunId(res.data.id);
       setRun(res.data);
+      setCarryOptions((prev) => ({ ...prev, ...((res.data as any).carryOptions || {}) }));
       setStep(3);
       showToast('success', 'Promotion run started');
     } catch (e: any) {
@@ -147,9 +161,37 @@ export default function BatchPromotionPage() {
     }
   };
 
+  const doSaveCarry = async () => {
+    if (!run || run.phase !== 'DRAFT') return;
+    if (invalidCarryConfig) {
+      showToast('error', 'Carry dependencies are invalid. Enable required base options.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.updatePromotionCarry(branchId, sourceAyId, runId, pickCarryOptions(carryOptions));
+      if (!res.success) throw new Error((res as any).message);
+      setRun(res.data);
+      showToast('success', 'Carry options saved');
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to save carry options');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const doSnapshot = async () => {
     setBusy(true);
     try {
+      // Persist any unsaved checkbox edits first — apply() uses the stored
+      // options, so snapshotting with a dirty draft would silently apply
+      // the old selection.
+      if (carryDirty && run?.phase === 'DRAFT') {
+        if (invalidCarryConfig) throw new Error('Carry dependencies are invalid. Enable required base options.');
+        const saveRes = await api.updatePromotionCarry(branchId, sourceAyId, runId, pickCarryOptions(carryOptions));
+        if (!saveRes.success) throw new Error((saveRes as any).message);
+        setRun(saveRes.data);
+      }
       const res = await api.snapshotBatchPromotion(branchId, sourceAyId, runId);
       if (!res.success) throw new Error((res as any).message);
       setRun(res.data);
@@ -243,14 +285,15 @@ export default function BatchPromotionPage() {
               Existing promotion run found for this branch:
               <span className="ml-1 font-medium">{pre.inProgressRun.sourceAy?.calendar?.label} → {pre.inProgressRun.targetAy?.calendar?.label}</span>
               <span className="ml-1">({pre.inProgressRun.phase})</span>
-              <button
-                onClick={() => {
-                  setRun(pre.inProgressRun);
-                  setRunId(pre.inProgressRun.id);
-                  if (pre.inProgressRun.phase === 'DRAFT') setStep(2);
-                  else if (pre.inProgressRun.phase === 'SNAPSHOT_DONE') setStep(3);
-                  else if (pre.inProgressRun.phase === 'APPLIED') setStep(4);
-                }}
+                <button
+                  onClick={() => {
+                    setRun(pre.inProgressRun);
+                    setRunId(pre.inProgressRun.id);
+                    setCarryOptions({ ...(pre.defaultCarryOptions || {}), ...(pre.inProgressRun.carryOptions || {}) });
+                    if (pre.inProgressRun.phase === 'DRAFT') setStep(2);
+                    else if (pre.inProgressRun.phase === 'SNAPSHOT_DONE') setStep(3);
+                    else if (pre.inProgressRun.phase === 'APPLIED') setStep(4);
+                  }}
                 className="ml-3 rounded border border-blue-400/40 px-2 py-0.5 text-[11px] hover:bg-blue-500/20"
               >
                 Continue existing
@@ -323,12 +366,44 @@ export default function BatchPromotionPage() {
               </>
             )}
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-warm-muted">Carry into new year (defaults recommended)</p>
+          <p className="rounded-lg border border-warm-card-border/50 bg-warm-card/30 p-3 text-[11px] text-warm-muted">
+            You&apos;ll choose what to carry (classes, students, subjects…) in the next step —
+            nothing is copied until you apply.
+          </p>
+          <ul className="rounded-lg border border-warm-card-border/50 bg-warm-card/30 p-3 text-[11px] text-warm-muted">
+            {(pre?.fixedStudentRules || []).map((r: string) => <li key={r}>• {r}</li>)}
+          </ul>
+          <div className="flex gap-2">
+            <button onClick={() => setStep(1)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Back</button>
+            <button
+              disabled={busy || (useExistingTarget ? !targetAyId : !calendarId)}
+              onClick={startRun}
+              className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-40"
+            >
+              Start promotion
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step >= 3 && run && (
+        <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
+          <h2 className="text-sm font-medium text-warm-cream">Step 3 — Build stage</h2>
+          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-200">
+            BUILD_STAGE preview mode: operations continue in old ACTIVE year until publish.
+          </div>
+          <p className="text-xs text-warm-muted">Phase: <strong>{run.phase}</strong></p>
+          <div className="space-y-2 rounded-lg border border-warm-card-border/60 bg-warm-card/25 p-3">
+            <p className="text-xs font-medium text-warm-cream">Keep in the new year</p>
+            <p className="text-[11px] text-warm-muted">
+              Tick what should be carried into {run.targetAy?.calendar?.label || 'the new year'}. Saving is only
+              possible before the snapshot; afterwards the selection is locked.
+            </p>
             {PROMOTION_UI_CARRY_KEYS.map((key) => (
               <label key={key} className="flex items-center gap-2 text-xs text-warm-cream">
                 <input
                   type="checkbox"
+                  disabled={run.phase !== 'DRAFT' || busy}
                   checked={!!carryOptions[key]}
                   onChange={(e) => setCarryOptions((prev) => ({ ...prev, [key]: e.target.checked }))}
                 />
@@ -352,33 +427,19 @@ export default function BatchPromotionPage() {
             {!!carryOptions.timetableGrid && (!carryOptions.classes || !carryOptions.subjects) && (
               <p className="text-[11px] text-red-300">Timetable requires classes + subjects.</p>
             )}
+            {run.phase === 'DRAFT' && (
+              <button
+                disabled={busy || invalidCarryConfig || selectedCarryCount === 0 || !carryDirty}
+                onClick={doSaveCarry}
+                className="rounded-lg border border-warm-accent/40 bg-warm-accent/10 px-3 py-2 text-xs font-medium text-warm-accent disabled:opacity-40"
+              >
+                {carryDirty ? 'Save carry options' : 'Carry options saved'}
+              </button>
+            )}
           </div>
-          <ul className="rounded-lg border border-warm-card-border/50 bg-warm-card/30 p-3 text-[11px] text-warm-muted">
-            {(pre?.fixedStudentRules || []).map((r: string) => <li key={r}>• {r}</li>)}
-          </ul>
-          <div className="flex gap-2">
-            <button onClick={() => setStep(1)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted">Back</button>
-            <button
-              disabled={busy || invalidCarryConfig || selectedCarryCount === 0 || (useExistingTarget ? !targetAyId : !calendarId)}
-              onClick={startRun}
-              className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] disabled:opacity-40"
-            >
-              Start promotion
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step >= 3 && run && (
-        <div className="mt-6 space-y-4 rounded-xl border border-warm-card-border bg-warm-card/20 p-5">
-          <h2 className="text-sm font-medium text-warm-cream">Step 3 — Build stage</h2>
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-200">
-            BUILD_STAGE preview mode: operations continue in old ACTIVE year until publish.
-          </div>
-          <p className="text-xs text-warm-muted">Phase: <strong>{run.phase}</strong></p>
           <div className="flex flex-wrap gap-2">
-            <button disabled={busy || run.phase !== 'DRAFT'} onClick={doSnapshot} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-cream disabled:opacity-40">
-              Create snapshot
+            <button disabled={busy || run.phase !== 'DRAFT' || invalidCarryConfig || selectedCarryCount === 0} onClick={doSnapshot} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-cream disabled:opacity-40">
+              Create snapshot{carryDirty && run.phase === 'DRAFT' ? ' (+ save options)' : ''}
             </button>
             <button disabled={busy || run.phase !== 'SNAPSHOT_DONE'} onClick={doApply} className="rounded-lg border border-warm-card-border px-3 py-2 text-xs text-warm-cream disabled:opacity-40">
               Apply carry options

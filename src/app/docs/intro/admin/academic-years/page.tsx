@@ -62,17 +62,18 @@ export default function AdminAcademicYearsPage() {
           (2) graduates lose login, (3) outstanding fees remain in the old year, (4) class promotion is
           automatic (+1 class / empty lowest / graduate highest).
         </DocStep>
-        <DocStep title="Step 2 — Target year &amp; carry options">
-          Pick an existing BUILD_STAGE year or create one from a calendar. Select what to copy: classes,
-          subjects, students, teacher assignments, timetable, fee structures. Dependencies are enforced
-          (e.g. students require classes). Click <strong>Start promotion</strong> → backend phase{' '}
-          <code>DRAFT</code>.
+        <DocStep title="Step 2 — Target year">
+          Pick an existing BUILD_STAGE year or create one from a calendar. Click{' '}
+          <strong>Start promotion</strong> → backend phase <code>DRAFT</code>. Nothing is copied yet.
         </DocStep>
-        <DocStep title="Step 3 — Snapshot &amp; apply">
-          <strong>Create snapshot</strong> captures an audit record of the source year (groups, student
-          counts, teacher assignments) → phase <code>SNAPSHOT_DONE</code>. Then <strong>Apply carry</strong>{' '}
-          copies selected data into the target BUILD_STAGE year → phase <code>APPLIED</code>. Source year
-          is still ACTIVE throughout.
+        <DocStep title="Step 3 — Carry options, snapshot &amp; apply">
+          Tick what to keep in the new year: classes, subjects, students, teacher assignments,
+          timetable, fee structures. Dependencies are enforced (e.g. students require classes).
+          <strong>Save carry options</strong> (or just snapshot — unsaved edits are saved
+          automatically first), then <strong>Create snapshot</strong> captures an audit record of
+          the source year → phase <code>SNAPSHOT_DONE</code>. Then <strong>Apply carry</strong>{' '}
+          copies the selected data into the target BUILD_STAGE year → phase <code>APPLIED</code>.
+          Source year is still ACTIVE throughout.
         </DocStep>
         <DocStep title="Step 4 — Publish">
           Confirm and <strong>Publish</strong> → source becomes <code>ARCHIVED</code>, target becomes{' '}
