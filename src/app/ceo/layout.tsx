@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
+import { isTokenExpired } from '@/lib/teacher/auth-routing';
 import ToastContainer from '@/components/toast';
 import { DocsHelpLink } from '@/components/docs/help-link';
 import {
@@ -57,7 +58,9 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
 
     // Use JWT payload directly — no background verification
     const payload = decodeJwtPayload(token);
-    if (!payload) { clearAuth(); return; }
+    // Expired (or malformed) token: log out now. Re-runs on pathname change
+    // so post-expiry navigation bounces straight to login.
+    if (!payload || isTokenExpired(token)) { clearAuth(); return; }
 
     // Guard: only super_admin can access /ceo
     if (payload.role !== 'super_admin') {
@@ -91,7 +94,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [router]);
+  }, [router, pathname]);
 
   // Cross-tab logout sync: if token is removed from localStorage in another tab,
   // immediately log out this tab too.

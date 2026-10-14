@@ -1,5 +1,6 @@
 import config from '@/config';
 import { canteenQuery } from '@/lib/canteen';
+import { clearAuthStorage, sanitizePostLoginRedirect } from '@/lib/teacher/auth-routing';
 /**
  * Mother Care School — API Client
  *
@@ -41,6 +42,26 @@ export function scopeQuery(extra?: Record<string, string | undefined>): string {
   return s ? `?${s}` : '';
 }
 
+/**
+ * Session-expiry handler — fires at most once per page lifetime.
+ * Clears the dead JWT everywhere (localStorage + proxy cookie, which also
+ * syncs other open tabs via their `storage` listeners) and sends the user
+ * to /login, preserving a safe post-login redirect. Runs on ANY 401 from
+ * ANY page/role, so an expired 7-day token always ends in a clean logout
+ * instead of a broken half-logged-in shell.
+ */
+let expiredRedirectStarted = false;
+export function handleExpiredSession(): void {
+  if (typeof window === 'undefined') return;
+  clearAuthStorage();
+  if (expiredRedirectStarted) return;
+  expiredRedirectStarted = true;
+  const pathname = window.location.pathname;
+  if (pathname === '/login' || pathname.startsWith('/login/')) return;
+  const safe = sanitizePostLoginRedirect(pathname);
+  window.location.href = safe ? `/login?redirect=${encodeURIComponent(safe)}` : '/login';
+}
+
 /** Merge branch + academic year from localStorage into a POST/PATCH body. */
 export function scopeBody<T extends Record<string, unknown>>(body: T): T & { academicYearId?: string; branchId?: string } {
   if (typeof window === 'undefined') return body;
@@ -67,6 +88,7 @@ export async function apiRequest<T = any>(
 
   // If user is logged in, attach JWT (takes priority over API keys)
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const hadToken = !!token;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -89,6 +111,14 @@ export async function apiRequest<T = any>(
   }
 
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && hadToken && !path.startsWith('/auth/')) {
+    // Dead session (expired/revoked/deactivated): log out everywhere and
+    // bounce to login instead of leaving a broken shell behind. Skips /auth/*
+    // so failed logins and public invite links never nuke a live session,
+    // and requires hadToken so public endpoints can't log anyone out.
+    handleExpiredSession();
+    throw new Error('Session expired. Please sign in again.');
+  }
   if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
   return data as T;
 }

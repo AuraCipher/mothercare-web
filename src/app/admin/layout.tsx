@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
+import { isTokenExpired } from '@/lib/teacher/auth-routing';
 import ToastContainer from '@/components/toast';
 import DocNav from '@/components/doc-nav';
 import { DocsHelpLink } from '@/components/docs/help-link';
@@ -84,7 +85,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Use JWT payload directly — no background verification needed
     // (token is validated on every actual API call)
     const payload = decodeJwtPayload(token);
-    if (!payload) { clearAuth(); return; }
+    // Expired (or malformed) token: log out now instead of rendering a shell
+    // whose every request will 401. Re-runs on pathname change so clicking
+    // Dashboard etc. after the 7-day expiry bounces straight to login.
+    if (!payload || isTokenExpired(token)) { clearAuth(); return; }
 
     // Guard: CEO belongs in /ceo, not /admin
     if (payload.role === 'super_admin') {
@@ -141,7 +145,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     })();
     return () => { cancelled = true; };
-  }, [router]);
+  }, [router, pathname]);
 
   useEffect(() => {
     if (!activeBranchId || loadingUser) return;

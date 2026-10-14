@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { decodeJwtPayload } from '@/lib/teacher/auth-routing';
+import { decodeJwtPayload, isTokenExpired } from '@/lib/teacher/auth-routing';
 import { StudentBootstrapProvider } from '@/lib/student/use-student-bootstrap';
 import { StudentPortalShell } from '@/components/student/student-portal-shell';
 import '../teacher/teacher-portal.css';
@@ -20,7 +20,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     }
 
     const payload = decodeJwtPayload(token);
-    if (!payload) {
+    if (!payload || isTokenExpired(token)) {
       localStorage.removeItem('token');
       document.cookie = 'token=; path=/; max-age=0';
       router.replace('/login');

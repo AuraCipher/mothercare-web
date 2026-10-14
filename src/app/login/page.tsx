@@ -8,6 +8,7 @@ import { firstAllowedPath } from '@/lib/staff-permissions';
 import {
   decodeJwtPayload,
   defaultLandingForRole,
+  isTokenExpired,
   sanitizePostLoginRedirect,
 } from '@/lib/teacher/auth-routing';
 import { Building2, GraduationCap, Shield, Users } from 'lucide-react';
@@ -86,6 +87,14 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
+
+    // Dead (expired/malformed) token: wipe it and stay on the login form
+    // instead of bouncing into a portal whose every request will 401.
+    if (isTokenExpired(token)) {
+      localStorage.removeItem('token');
+      document.cookie = 'token=; path=/; max-age=0';
+      return;
+    }
 
     const hasCookie = document.cookie.split(';').some((c) => c.trim().startsWith('token='));
     if (!hasCookie) {

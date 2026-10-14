@@ -3,7 +3,7 @@
 import './teacher-portal.css';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { decodeJwtPayload } from '@/lib/teacher/auth-routing';
+import { decodeJwtPayload, isTokenExpired } from '@/lib/teacher/auth-routing';
 import { TeacherBootstrapProvider } from '@/lib/teacher/use-teacher-bootstrap';
 import { TeacherPortalShell } from '@/components/teacher/teacher-portal-shell';
 
@@ -20,7 +20,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     }
 
     const payload = decodeJwtPayload(token);
-    if (!payload) {
+    if (!payload || isTokenExpired(token)) {
       localStorage.removeItem('token');
       document.cookie = 'token=; path=/; max-age=0';
       router.replace('/login');

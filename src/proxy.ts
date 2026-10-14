@@ -13,6 +13,7 @@ import type { NextRequest } from 'next/server';
 import {
   decodeJwtPayload,
   defaultLandingForRole,
+  isTokenExpired,
   sanitizePostLoginRedirect,
 } from '@/lib/teacher/auth-routing';
 
@@ -77,6 +78,17 @@ export function proxy(request: NextRequest) {
       const safeRedirect = sanitizePostLoginRedirect(pathname);
       if (safeRedirect) loginUrl.searchParams.set('redirect', safeRedirect);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Expired JWT (backend expiry is 7d): the cookie is present but dead —
+    // clear it and bounce to login before the page shell even renders.
+    if (isTokenExpired(token)) {
+      const loginUrl = new URL('/login', request.url);
+      const safeRedirect = sanitizePostLoginRedirect(pathname);
+      if (safeRedirect) loginUrl.searchParams.set('redirect', safeRedirect);
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.set('token', '', { path: '/', maxAge: 0 });
+      return res;
     }
 
     if (pathname.startsWith('/teacher') && role && role !== 'teacher') {
