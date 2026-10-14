@@ -278,3 +278,46 @@ describe('StudentDetailPage — section modals', () => {
     );
   });
 });
+
+describe('StudentDetailPage — parent save endpoint', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetStudent.mockResolvedValue({ success: true, data: { ...baseStudent, parents: [] } });
+    mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects });
+    mockGetStudentSchoolTenures.mockResolvedValue({ data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [] });
+    mockApiRequest.mockResolvedValue({ success: true, data: {} });
+  });
+
+  it('saves a first-time parent to the singular /parent endpoint (never PUT /parents)', async () => {
+    const user = userEvent.setup();
+    render(<StudentDetailPage />);
+    // No parents linked → section button reads "Add".
+    await user.click(await screen.findByText('Add'));
+    await user.click(await screen.findByText('Save'));
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      '/admin/students/s-1/parent',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    const urls = mockApiRequest.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u === '/admin/students/s-1/parents')).toBe(false);
+  });
+
+  it('saves a first-time emergency contact via POST (never PUT without :contactId)', async () => {
+    vi.clearAllMocks();
+    mockGetStudent.mockResolvedValue({ success: true, data: { ...baseStudent, emergencyContacts: [] } });
+    mockGetSectionSubjects.mockResolvedValue({ success: true, data: mockSubjects });
+    mockGetStudentSchoolTenures.mockResolvedValue({ data: [] });
+    mockGetSections.mockResolvedValue({ success: true, data: [] });
+    mockApiRequest.mockResolvedValue({ success: true, data: {} });
+    const user = userEvent.setup();
+    render(<StudentDetailPage />);
+    // No contacts linked → section button reads "Add".
+    await user.click(await screen.findByText('Add'));
+    await user.click(await screen.findByText('Save'));
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      '/admin/students/s-1/emergency-contact',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+});

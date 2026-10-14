@@ -137,8 +137,8 @@ export default function StudentDetailPage() {
   const [prevf, setPrevf] = useState<any>({});
   const openPrev = () => { const s = data; setPrevf({ previousSchool: s.previousSchool || '', previousClass: s.previousClass || '', tcNumber: s.tcNumber || '', referredBy: s.referredBy || '' }); setEditPrev(true); };
 
-  const handleSave = async (endpoint: string, body: any, cb: () => void, msg: string) => {
-    try { await apiRequest(endpoint, { method: 'PUT', body: JSON.stringify(body) }); showToast('success', msg); cb(); loadData(); }
+  const handleSave = async (endpoint: string, body: any, cb: () => void, msg: string, method: 'PUT' | 'POST' = 'PUT') => {
+    try { await apiRequest(endpoint, { method, body: JSON.stringify(body) }); showToast('success', msg); cb(); loadData(); }
     catch (e: any) { showToast('error', e.message || 'Failed'); }
   };
 
@@ -607,7 +607,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setEditParent(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={() => handleSave(s.parents?.length ? `/admin/students/${id}/parent` : `/admin/students/${id}/parents`, { ...pf }, () => setEditParent(false), 'Parent saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+              <button onClick={() => handleSave(`/admin/students/${id}/parent`, { ...pf }, () => setEditParent(false), 'Parent saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
             </div>
           </div>
         </div>
@@ -645,7 +645,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowEcForm(false)} className="rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">Cancel</button>
-              <button onClick={() => handleSave(editEcId ? `/admin/students/${id}/emergency-contact/${editEcId}` : `/admin/students/${id}/emergency-contact`, { ...ec }, () => setShowEcForm(false), 'Emergency contact saved')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
+              <button onClick={() => handleSave(editEcId ? `/admin/students/${id}/emergency-contact/${editEcId}` : `/admin/students/${id}/emergency-contact`, { ...ec }, () => setShowEcForm(false), 'Emergency contact saved', editEcId ? 'PUT' : 'POST')} className="rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">Save</button>
             </div>
           </div>
         </div>
