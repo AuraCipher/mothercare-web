@@ -313,6 +313,7 @@ export default function StudentDetailPage() {
           <Card icon={Award} label="Religion" value={s.religion || '—'} />
           <Card icon={Award} label="Nationality" value={s.nationality || '—'} />
           <Card icon={Heart} label="Gender" value={s.gender ? s.gender.charAt(0).toUpperCase() + s.gender.slice(1) : '—'} />
+          <Card icon={Heart} label="Blood Group" value={s.bloodGroup || '—'} />
           <Card icon={CreditCard} label="B-Form / CNIC" value={s.bformCnic || '—'} />
           <Card icon={BookOpen} label="Admission No." value={s.admissionNumber || '—'} />
           <Card icon={Calendar} label="Admission Date" value={s.admissionDate ? new Date(s.admissionDate).toLocaleDateString() : '—'} />

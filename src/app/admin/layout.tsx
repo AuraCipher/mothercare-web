@@ -291,8 +291,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1614]">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3">
+    <div className="min-h-screen bg-[#1a1614] print:min-h-0 print:bg-white">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-warm-card-border bg-[#1a1614] px-6 py-3 print:hidden">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -325,7 +325,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </header>
 
       {/* Sidebar */}
-      <div className={`fixed inset-0 z-40 transition-all duration-300 ease-out ${menuOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-40 transition-all duration-300 ease-out print:hidden ${menuOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
         <div className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ease-out ${menuOpen ? 'opacity-100' : 'opacity-0'}`}
           onClick={() => setMenuOpen(false)} />
         <nav className={`relative flex h-full w-64 flex-col bg-[#24201e] border-r border-warm-card-border transition-transform duration-300 ease-out ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -464,7 +464,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </AyPermissionsProvider>
       {activeAY?.status === 'BUILD_STAGE' && (
-        <div className="fixed bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">
+        <div className="fixed bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200 print:hidden">
           BUILD_STAGE year active in selector (preview/setup mode)
         </div>
       )}

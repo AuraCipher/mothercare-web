@@ -52,6 +52,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Printed sheets (admission form etc.) must always be black-on-white,
+   regardless of the warm dark screen theme or the OS dark-mode preference. */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+}
+
+/* A4 portrait with a comfortable handwriting margin. */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+/* A printable sheet must keep its shaded strips / section chips, and must not
+   inherit the on-screen card shadow. */
+.print-sheet,
+.print-exact {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+@media print {
+  .print-sheet {
+    box-shadow: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+}
+
 /* Hide scrollbar globally but allow scrolling */
 * {
   scrollbar-width: none;       /* Firefox */

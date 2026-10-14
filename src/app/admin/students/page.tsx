@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Plus, Users, GraduationCap, BookOpen, Search, Filter } from 'lucide-react';
+import { Plus, Users, GraduationCap, BookOpen, Search, Filter, Printer } from 'lucide-react';
 
 export default function StudentsPage() {
   const router = useRouter();
@@ -46,6 +46,10 @@ export default function StudentsPage() {
           <h1 className="text-xl font-light text-warm-cream">Students</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/admin/students/admission-form')}
+            className="flex items-center gap-1.5 rounded-lg border border-warm-card-border px-4 py-2 text-xs text-warm-muted hover:text-warm-cream transition-colors">
+            <Printer size={14} /> Print Admission Form
+          </button>
           <button onClick={() => router.push('/admin/students/new')}
             className="flex items-center gap-1.5 rounded-lg bg-warm-accent px-4 py-2 text-xs font-medium text-[#1a1614] hover:bg-[#b39a76] transition-colors">
             <Plus size={14} /> Add Student
